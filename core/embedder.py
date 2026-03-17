@@ -1,13 +1,13 @@
 """
-Embedder for DTA Online Guide RAG pipeline.
+Embedder for Policy Navigator RAG pipeline.
 
-Reads the chunked JSON files produced by chunker.py, generates
+Reads chunked JSON files produced by source-specific chunkers, generates
 embeddings via the Voyage AI API, and stores everything in ChromaDB
 for retrieval.
 
-Creates two ChromaDB collections:
-  - pages    — 1,202 page-level documents for broad topic matching
-  - sections — ~6,785 section-level chunks for specific answers
+Supports multiple sources via the --source flag:
+  - olg  — DTA Online Guide (pages + sections)
+  - fns  — FNS Handbook 310 (chapters + sections)
 
 Features:
   - Batch embedding (sends up to 64 texts per API call)
@@ -16,18 +16,18 @@ Features:
   - Metadata stored alongside embeddings for filtered retrieval
 
 Usage:
-    # Estimate cost without embedding
+    # OLG (default)
     python embedder.py --dry-run
-
-    # Embed everything
     python embedder.py
-
-    # Embed only sections (skip pages, or vice versa)
-    python embedder.py --only sections
     python embedder.py --only pages
 
-    # Force re-embed (delete existing collections first)
-    python embedder.py --force
+    # FNS
+    python embedder.py --source fns --dry-run
+    python embedder.py --source fns
+    python embedder.py --source fns --only chapters
+
+    # Force re-embed from scratch
+    python embedder.py --source fns --force
 
 Configuration:
     See config.ini for API key, model name, and ChromaDB settings.
@@ -50,12 +50,6 @@ import voyageai
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_FILE = PROJECT_ROOT / "config.ini"
-
-# TODO: These paths are OLG-specific. When FNS Phase 2 lands, this module
-# needs to become source-aware (e.g., via a --source CLI flag or by reading
-# source-specific chunk paths from config.ini sections).
-PAGE_CHUNKS_FILE = PROJECT_ROOT / "data" / "olg" / "page_chunks.json"
-SECTION_CHUNKS_FILE = PROJECT_ROOT / "data" / "olg" / "section_chunks.json"
 
 # Voyage AI pricing (per 1M tokens) as of 2026
 # See https://docs.voyageai.com/docs/pricing
@@ -82,6 +76,38 @@ def load_config() -> configparser.ConfigParser:
     return config
 
 
+def _resolve_source_paths(source: str) -> dict:
+    """
+    Return chunk file paths, collection config keys, labels, and
+    descriptions for a given source.
+    """
+    if source == "olg":
+        return {
+            "broad_chunks_file": PROJECT_ROOT / "data" / "olg" / "page_chunks.json",
+            "granular_chunks_file": PROJECT_ROOT / "data" / "olg" / "section_chunks.json",
+            "broad_collection_key": "olg_page_collection",
+            "granular_collection_key": "olg_section_collection",
+            "broad_label": "pages",
+            "granular_label": "sections",
+            "broad_description": "DTA Policy Online Guide - page-level documents",
+            "granular_description": "DTA Policy Online Guide - section-level chunks",
+        }
+    elif source == "fns":
+        return {
+            "broad_chunks_file": PROJECT_ROOT / "data" / "fns" / "chapter_chunks.json",
+            "granular_chunks_file": PROJECT_ROOT / "data" / "fns" / "section_chunks.json",
+            "broad_collection_key": "fns_chapter_collection",
+            "granular_collection_key": "fns_section_collection",
+            "broad_label": "chapters",
+            "granular_label": "sections",
+            "broad_description": "FNS Handbook 310 - chapter-level documents",
+            "granular_description": "FNS Handbook 310 - section-level chunks",
+        }
+    else:
+        print(f"Error: Unknown source '{source}'. Use 'olg' or 'fns'.")
+        sys.exit(1)
+
+
 # ============================================================
 # CHUNK LOADING
 # ============================================================
@@ -89,7 +115,7 @@ def load_config() -> configparser.ConfigParser:
 def load_chunks(filepath: Path) -> list[dict]:
     """Load chunks from a JSON file."""
     if not filepath.exists():
-        print(f"Error: {filepath} not found. Run chunker.py first.")
+        print(f"Error: {filepath} not found. Run the chunker first.")
         sys.exit(1)
 
     with open(filepath, "r", encoding="utf-8") as f:
@@ -308,6 +334,7 @@ def _make_stats(total_tokens: int, embedded: int, skipped: int,
 # ============================================================
 
 def run_embedder(
+    source: str = "olg",
     dry_run: bool = False,
     force: bool = False,
     only: str | None = None,
@@ -316,11 +343,22 @@ def run_embedder(
     Main embedding pipeline.
 
     Args:
+        source: Which source to embed ('olg' or 'fns').
         dry_run: If True, estimate cost without actually embedding.
         force: If True, delete existing collections before embedding.
-        only: If set, embed only "pages" or "sections".
+        only: If set, embed only the broad tier ('pages'/'chapters')
+              or 'sections'.
     """
     config = load_config()
+    paths = _resolve_source_paths(source)
+
+    # Validate --only against source
+    if only:
+        valid_only = {paths["broad_label"], paths["granular_label"]}
+        if only not in valid_only:
+            print(f"Error: --only {only} is not valid for --source {source}.")
+            print(f"  Valid choices for {source}: {', '.join(sorted(valid_only))}")
+            sys.exit(1)
 
     api_key = config.get("api", "voyage_api_key")
     model = config.get("embedding", "model", fallback="voyage-3")
@@ -328,12 +366,17 @@ def run_embedder(
     max_tpb = config.getint("embedding", "max_tokens_per_batch", fallback=0)
     rate_delay = config.getfloat("embedding", "rate_limit_delay", fallback=0.2)
     persist_dir = config.get("chromadb", "persist_dir", fallback="data/chroma_db")
-    page_collection_name = config.get("chromadb", "olg_page_collection", fallback="pages")
-    section_collection_name = config.get("chromadb", "olg_section_collection", fallback="sections")
+    broad_collection_name = config.get(
+        "chromadb", paths["broad_collection_key"],
+        fallback=paths["broad_label"])
+    granular_collection_name = config.get(
+        "chromadb", paths["granular_collection_key"],
+        fallback=paths["granular_label"])
 
     # Resolve persist dir relative to the project root
     persist_path = (PROJECT_ROOT / persist_dir).resolve()
 
+    print(f"Source: {source}")
     print(f"Model: {model}")
     print(f"Batch size: {batch_size} items, {max_tpb} tokens/batch")
     print(f"Rate limit delay: {rate_delay}s between requests")
@@ -341,22 +384,23 @@ def run_embedder(
     print()
 
     # Load chunks
-    do_pages = only is None or only == "pages"
-    do_sections = only is None or only == "sections"
+    do_broad = only is None or only == paths["broad_label"]
+    do_granular = only is None or only == paths["granular_label"]
 
-    page_chunks = load_chunks(PAGE_CHUNKS_FILE) if do_pages else []
-    section_chunks = load_chunks(SECTION_CHUNKS_FILE) if do_sections else []
+    broad_chunks = load_chunks(paths["broad_chunks_file"]) if do_broad else []
+    granular_chunks = load_chunks(paths["granular_chunks_file"]) if do_granular else []
 
     # Cost estimation
     all_texts = (
-        ([c["text"] for c in page_chunks] if do_pages else []) +
-        ([c["text"] for c in section_chunks] if do_sections else [])
+        ([c["text"] for c in broad_chunks] if do_broad else []) +
+        ([c["text"] for c in granular_chunks] if do_granular else [])
     )
 
     est_tokens, est_cost = estimate_cost(all_texts, model)
     print(f"\nEstimated tokens: {est_tokens:,}")
     print(f"Estimated cost:   ${est_cost:.4f}")
-    print(f"  ({len(page_chunks)} page docs + {len(section_chunks)} section chunks)")
+    print(f"  ({len(broad_chunks)} {paths['broad_label']} + "
+          f"{len(granular_chunks)} {paths['granular_label']})")
     print()
 
     if dry_run:
@@ -369,27 +413,27 @@ def run_embedder(
 
     total_stats = {"tokens": 0, "cost": 0.0, "embedded": 0}
 
-    # Embed pages
-    if do_pages and page_chunks:
+    # Embed broad tier (pages or chapters)
+    if do_broad and broad_chunks:
         print(f"{'='*50}")
-        print(f"Embedding page documents into '{page_collection_name}'")
+        print(f"Embedding {paths['broad_label']} into '{broad_collection_name}'")
         print(f"{'='*50}")
 
         if force:
             try:
-                chroma_client.delete_collection(page_collection_name)
-                print(f"  Deleted existing '{page_collection_name}' collection")
+                chroma_client.delete_collection(broad_collection_name)
+                print(f"  Deleted existing '{broad_collection_name}' collection")
             except Exception:
                 pass
 
-        page_collection = chroma_client.get_or_create_collection(
-            name=page_collection_name,
-            metadata={"description": "DTA Policy Online Guide - page-level documents"},
+        broad_collection = chroma_client.get_or_create_collection(
+            name=broad_collection_name,
+            metadata={"description": paths["broad_description"]},
         )
 
         stats = embed_chunks(
-            page_chunks, page_collection, vo, model, batch_size,
-            page_collection_name,
+            broad_chunks, broad_collection, vo, model, batch_size,
+            broad_collection_name,
             rate_limit_delay=rate_delay,
             max_tokens_per_batch=max_tpb,
         )
@@ -397,32 +441,32 @@ def run_embedder(
         total_stats["cost"] += stats["cost"]
         total_stats["embedded"] += stats["embedded"]
 
-        print(f"  Pages: {stats['embedded']} embedded, "
+        print(f"  {paths['broad_label'].title()}: {stats['embedded']} embedded, "
               f"{stats['skipped']} skipped, "
               f"{stats['tokens']:,} tokens, ${stats['cost']:.4f}")
         print()
 
-    # Embed sections
-    if do_sections and section_chunks:
+    # Embed granular tier (sections)
+    if do_granular and granular_chunks:
         print(f"{'='*50}")
-        print(f"Embedding section chunks into '{section_collection_name}'")
+        print(f"Embedding {paths['granular_label']} into '{granular_collection_name}'")
         print(f"{'='*50}")
 
         if force:
             try:
-                chroma_client.delete_collection(section_collection_name)
-                print(f"  Deleted existing '{section_collection_name}' collection")
+                chroma_client.delete_collection(granular_collection_name)
+                print(f"  Deleted existing '{granular_collection_name}' collection")
             except Exception:
                 pass
 
-        section_collection = chroma_client.get_or_create_collection(
-            name=section_collection_name,
-            metadata={"description": "DTA Policy Online Guide - section-level chunks"},
+        granular_collection = chroma_client.get_or_create_collection(
+            name=granular_collection_name,
+            metadata={"description": paths["granular_description"]},
         )
 
         stats = embed_chunks(
-            section_chunks, section_collection, vo, model, batch_size,
-            section_collection_name,
+            granular_chunks, granular_collection, vo, model, batch_size,
+            granular_collection_name,
             rate_limit_delay=rate_delay,
             max_tokens_per_batch=max_tpb,
         )
@@ -430,7 +474,7 @@ def run_embedder(
         total_stats["cost"] += stats["cost"]
         total_stats["embedded"] += stats["embedded"]
 
-        print(f"  Sections: {stats['embedded']} embedded, "
+        print(f"  {paths['granular_label'].title()}: {stats['embedded']} embedded, "
               f"{stats['skipped']} skipped, "
               f"{stats['tokens']:,} tokens, ${stats['cost']:.4f}")
         print()
@@ -452,15 +496,27 @@ def run_embedder(
 def main():
     """Parse arguments and run the embedder."""
     parser = argparse.ArgumentParser(
-        description="Embed DTA policy chunks using Voyage AI and store in ChromaDB.",
+        description="Embed policy chunks using Voyage AI and store in ChromaDB.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python embedder.py --dry-run       # Estimate cost first
-  python embedder.py                 # Embed everything
-  python embedder.py --only pages    # Embed pages only
-  python embedder.py --force         # Re-embed from scratch
+  # OLG (default)
+  python embedder.py --dry-run             # Estimate cost first
+  python embedder.py                       # Embed everything
+  python embedder.py --only pages          # Embed pages only
+
+  # FNS
+  python embedder.py --source fns --dry-run
+  python embedder.py --source fns
+  python embedder.py --source fns --only chapters
+
+  # Force re-embed
+  python embedder.py --source fns --force
         """,
+    )
+    parser.add_argument(
+        "--source", choices=["olg", "fns"], default="olg",
+        help="Which source to embed (default: olg)",
     )
     parser.add_argument(
         "--dry-run", action="store_true",
@@ -471,12 +527,13 @@ Examples:
         help="Delete existing collections and re-embed from scratch",
     )
     parser.add_argument(
-        "--only", choices=["pages", "sections"],
-        help="Embed only pages or only sections",
+        "--only", choices=["pages", "sections", "chapters"],
+        help="Embed only one tier (pages/chapters=broad, sections=granular)",
     )
     args = parser.parse_args()
 
     run_embedder(
+        source=args.source,
         dry_run=args.dry_run,
         force=args.force,
         only=args.only,

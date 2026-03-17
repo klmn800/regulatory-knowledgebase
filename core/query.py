@@ -1,5 +1,5 @@
 """
-Search interface for the DTA Online Guide RAG pipeline.
+Search interface for the Policy Navigator RAG pipeline.
 
 Provides three ways to search the embedded policy knowledge base:
 
@@ -7,38 +7,32 @@ Provides three ways to search the embedded policy knowledge base:
   2. Python API       — from query import search; search("income deduction")
   3. JSON output      — python query.py "income deduction" --json
 
-Searches two ChromaDB collections:
-  - sections  (~6,785 chunks) — default, for specific policy answers
-  - pages     (~1,202 docs)   — for broad topic discovery
+Supports multiple sources via the --source flag:
+  - olg  — DTA Online Guide (pages + sections)
+  - fns  — FNS Handbook 310 (chapters + sections)
 
 Features:
-  - Program filtering (SNAP, TAFDC, EAEDC, etc.)
+  - Program filtering (SNAP, TAFDC, EAEDC, etc.) — OLG only
   - Similarity scores converted to intuitive 0-1 scale
-  - Parent page context fetching for section results
+  - Parent context fetching (parent page for OLG, parent chapter for FNS)
   - Reusable client objects for agent integration (avoid re-init)
   - Source attribution with breadcrumb paths and URLs
 
 Usage:
-    # Basic search
+    # OLG (default)
     python query.py "income deduction"
-
-    # Filter by program
     python query.py "expedited SNAP" --program SNAP
-
-    # More results, full text
     python query.py "benefit calculation" --top 10 --full
-
-    # Search page-level documents
     python query.py "eligibility rules" --collection pages
-
-    # Include parent page context
     python query.py "income limits" --context
-
-    # Machine-readable JSON output
     python query.py "work requirements" --json
-
-    # List available programs
     python query.py --list-programs
+
+    # FNS
+    python query.py "income deduction" --source fns
+    python query.py "income" --source fns --collection chapters
+    python query.py "income" --source fns --context
+    python query.py --source fns --list-programs
 
 Configuration:
     See config.ini for API key, model, and ChromaDB settings.
@@ -63,11 +57,6 @@ import voyageai
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_FILE = PROJECT_ROOT / "config.ini"
 
-# TODO: This module currently only queries OLG collections (pages, sections).
-# When FNS Phase 2 lands, it needs to become source-aware — e.g., a --source
-# CLI flag to select which collections to search, or an orchestration layer
-# that queries multiple sources and merges results.
-
 # Display defaults
 DEFAULT_TOP_N = 5
 DEFAULT_COLLECTION = "sections"
@@ -90,6 +79,36 @@ def load_config() -> configparser.ConfigParser:
     return config
 
 
+def _resolve_source_config(source: str) -> dict:
+    """
+    Return collection config keys, labels, and feature flags
+    for a given source.
+    """
+    if source == "olg":
+        return {
+            "broad_collection_key": "olg_page_collection",
+            "granular_collection_key": "olg_section_collection",
+            "broad_name": "pages",
+            "granular_name": "sections",
+            "has_program_filter": True,
+            "parent_id_field": "parent_page_id",
+            "source_label": "DTA Online Guide",
+        }
+    elif source == "fns":
+        return {
+            "broad_collection_key": "fns_chapter_collection",
+            "granular_collection_key": "fns_section_collection",
+            "broad_name": "chapters",
+            "granular_name": "sections",
+            "has_program_filter": False,
+            "parent_id_field": "parent_chapter_id",
+            "source_label": "FNS Handbook 310",
+        }
+    else:
+        print(f"Error: Unknown source '{source}'. Use 'olg' or 'fns'.")
+        sys.exit(1)
+
+
 # ============================================================
 # QUERY EMBEDDING
 # ============================================================
@@ -99,25 +118,9 @@ def embed_query(query_text: str, client: voyageai.Client,
     """
     Embed a query string using Voyage AI.
 
-    Retries on rate limit errors with exponential backoff (up to 3
-    attempts). This is important for accounts without a payment method
-    on the Voyage AI dashboard, which are limited to 3 RPM / 10K TPM.
-
     Note: We do NOT set input_type='query' because the document
     embeddings were created without input_type='document'. Mixing
-    input_types would degrade retrieval quality. If the embedder
-    is re-run with input_type in the future, update this to match.
-
-    Args:
-        query_text: The search query string.
-        client: Initialized Voyage AI client.
-        model: Embedding model name (e.g., 'voyage-3').
-
-    Returns:
-        Embedding vector as list of floats.
-
-    Raises:
-        voyageai.error.VoyageError: If the API call fails after retries.
+    input_types would degrade retrieval quality.
     """
     max_retries = 3
     for attempt in range(max_retries):
@@ -148,12 +151,7 @@ def _build_where_filter(program: str | None = None) -> dict | None:
     """
     Build a ChromaDB where filter from query parameters.
 
-    ChromaDB where syntax:
-        {"program": "SNAP"}
-        {"$and": [{"program": "SNAP"}, {"section_level": 2}]}
-
-    Returns None if no filters are specified (ChromaDB treats
-    None as "no filter").
+    Returns None if no filters are specified.
     """
     conditions = []
 
@@ -174,9 +172,6 @@ def _l2_to_similarity(l2_distance: float) -> float:
     For unit-normalized vectors (Voyage AI embeddings are normalized):
         L2_distance = 2 * (1 - cosine_similarity)
         similarity = 1 - (L2_distance / 2)
-
-    Returns a float between 0.0 (completely dissimilar) and
-    1.0 (identical).
     """
     return max(0.0, 1.0 - (l2_distance / 2.0))
 
@@ -191,21 +186,7 @@ def query_collection(
     """
     Query a ChromaDB collection and return ranked results.
 
-    Args:
-        query_embedding: The query vector from Voyage AI.
-        collection: ChromaDB collection to search.
-        n_results: Maximum number of results to return.
-        where: ChromaDB metadata filter dict (or None for no filter).
-        similarity_threshold: Minimum similarity score (0-1). Results
-            below this threshold are excluded. 0 means no filtering.
-
-    Returns:
-        List of result dicts, each containing:
-            rank (int):     1-indexed position
-            score (float):  Similarity score 0-1 (higher = better)
-            text (str):     Full document text
-            metadata (dict): All ChromaDB metadata fields
-            id (str):       ChromaDB document ID
+    Returns list of result dicts with rank, score, text, metadata, id.
     """
     kwargs = {
         "query_embeddings": [query_embedding],
@@ -247,27 +228,19 @@ def query_collection(
 # CONTEXT FETCHING
 # ============================================================
 
-def fetch_parent_page(
-    parent_page_id: str,
-    pages_collection: chromadb.Collection,
+def fetch_parent_context(
+    parent_id: str,
+    broad_collection: chromadb.Collection,
 ) -> dict | None:
     """
-    Fetch the full parent page document for a section chunk.
+    Fetch the full parent document (page or chapter) for a section chunk.
 
-    Uses the parent_page_id metadata field from a section result
-    to look up the full page in the pages collection.
-
-    Args:
-        parent_page_id: The chunk_id of the parent page document.
-        pages_collection: The ChromaDB pages collection.
-
-    Returns:
-        Dict with 'text' and 'metadata' keys, or None if the page
-        is not found in the collection.
+    Uses the parent_page_id or parent_chapter_id metadata field from
+    a section result to look up the full document in the broad collection.
     """
     try:
-        result = pages_collection.get(
-            ids=[parent_page_id],
+        result = broad_collection.get(
+            ids=[parent_id],
             include=["documents", "metadatas"],
         )
         if result["ids"]:
@@ -285,7 +258,7 @@ def fetch_parent_page(
 # PYTHON API
 # ============================================================
 
-def create_client() -> dict:
+def create_client(source: str = "olg") -> dict:
     """
     Initialize Voyage AI and ChromaDB clients for repeated queries.
 
@@ -295,18 +268,22 @@ def create_client() -> dict:
 
     Example::
 
-        clients = create_client()
+        clients = create_client(source="fns")
         r1 = search_with_client("income deduction", clients)
         r2 = search_with_client("expedited benefits", clients)
     """
     config = load_config()
+    source_config = _resolve_source_config(source)
 
     api_key = config.get("api", "voyage_api_key")
     model = config.get("embedding", "model", fallback="voyage-3")
     persist_dir = config.get("chromadb", "persist_dir", fallback="data/chroma_db")
-    page_coll_name = config.get("chromadb", "olg_page_collection", fallback="pages")
-    section_coll_name = config.get("chromadb", "olg_section_collection",
-                                   fallback="sections")
+    broad_coll_name = config.get(
+        "chromadb", source_config["broad_collection_key"],
+        fallback=source_config["broad_name"])
+    granular_coll_name = config.get(
+        "chromadb", source_config["granular_collection_key"],
+        fallback=source_config["granular_name"])
 
     persist_path = (PROJECT_ROOT / persist_dir).resolve()
 
@@ -322,8 +299,10 @@ def create_client() -> dict:
         "voyage_client": vo,
         "chroma_client": chroma,
         "model": model,
-        "pages_collection": chroma.get_collection(page_coll_name),
-        "sections_collection": chroma.get_collection(section_coll_name),
+        "source": source,
+        "source_config": source_config,
+        "broad_collection": chroma.get_collection(broad_coll_name),
+        "granular_collection": chroma.get_collection(granular_coll_name),
     }
 
 
@@ -345,35 +324,44 @@ def search_with_client(
     Args:
         query: Natural language search query.
         clients: Dict from create_client() with initialized clients.
-        collection: Which collection to search ('sections' or 'pages').
-        program: Filter by program (e.g., 'SNAP'). None = all programs.
+        collection: Which collection to search ('sections', 'pages',
+                    or 'chapters').
+        program: Filter by program (e.g., 'SNAP'). OLG only.
         top_n: Maximum number of results to return.
         threshold: Minimum similarity score (0-1). 0 = no threshold.
         include_context: If True and searching sections, include the
-            full parent page text for each result.
+            full parent document text for each result.
 
     Returns:
-        Dict with keys:
-            query (str):         The original query text
-            collection (str):    Which collection was searched
-            filters (dict):      Applied metadata filters
-            result_count (int):  Number of results returned
-            results (list):      List of result dicts, each containing:
-                rank (int), score (float), text (str),
-                metadata (dict), id (str), parent_page (dict|None)
+        Dict with query, source, collection, filters, result_count, results.
     """
-    # Resolve program filter (case-insensitive)
+    source = clients["source"]
+    source_config = clients["source_config"]
+
+    # Resolve collection name to ChromaDB collection object
+    broad_name = source_config["broad_name"]
+    granular_name = source_config["granular_name"]
+
+    if collection == broad_name:
+        coll = clients["broad_collection"]
+    elif collection == granular_name or collection == "sections":
+        coll = clients["granular_collection"]
+    else:
+        print(f"Warning: Collection '{collection}' not valid for source "
+              f"'{source}'. Using '{granular_name}'.")
+        coll = clients["granular_collection"]
+        collection = granular_name
+
+    # Handle program filter
     resolved_program = None
     if program:
-        resolved_program = _resolve_program_name(
-            program, clients["sections_collection"]
-        )
-
-    # Choose collection
-    if collection == "pages":
-        coll = clients["pages_collection"]
-    else:
-        coll = clients["sections_collection"]
+        if not source_config["has_program_filter"]:
+            print(f"Note: Program filtering is not available for {source_config['source_label']} "
+                  f"(all content is SNAP QC). Ignoring --program.")
+        else:
+            resolved_program = _resolve_program_name(
+                program, clients["granular_collection"]
+            )
 
     # Embed the query
     query_embedding = embed_query(
@@ -388,19 +376,20 @@ def search_with_client(
         similarity_threshold=threshold,
     )
 
-    # Optionally fetch parent page context for section results
-    if include_context and collection == "sections":
+    # Optionally fetch parent context for section results
+    if include_context and collection in ("sections", granular_name):
+        parent_id_field = source_config["parent_id_field"]
         for result in results:
-            parent_id = result["metadata"].get("parent_page_id")
+            parent_id = result["metadata"].get(parent_id_field)
             if parent_id:
-                result["parent_page"] = fetch_parent_page(
-                    parent_id, clients["pages_collection"]
+                result["parent_context"] = fetch_parent_context(
+                    parent_id, clients["broad_collection"]
                 )
             else:
-                result["parent_page"] = None
+                result["parent_context"] = None
     else:
         for result in results:
-            result["parent_page"] = None
+            result["parent_context"] = None
 
     # Build filters dict for the response
     filters = {}
@@ -409,6 +398,7 @@ def search_with_client(
 
     return {
         "query": query,
+        "source": source,
         "collection": collection,
         "filters": filters,
         "result_count": len(results),
@@ -418,6 +408,7 @@ def search_with_client(
 
 def search(
     query: str,
+    source: str = "olg",
     collection: str = DEFAULT_COLLECTION,
     program: str | None = None,
     top_n: int = DEFAULT_TOP_N,
@@ -425,24 +416,13 @@ def search(
     include_context: bool = False,
 ) -> dict:
     """
-    Search the DTA Online Guide knowledge base (convenience wrapper).
+    Search the policy knowledge base (convenience wrapper).
 
     Initializes clients internally — simple for one-off queries.
     For repeated queries, use create_client() + search_with_client()
     to avoid re-initialization overhead.
-
-    Args:
-        query: Natural language search query.
-        collection: 'sections' (default) or 'pages'.
-        program: Filter by program (e.g., 'SNAP'). None = all.
-        top_n: Maximum number of results.
-        threshold: Minimum similarity score (0-1).
-        include_context: Include full parent page text for sections.
-
-    Returns:
-        Same dict structure as search_with_client().
     """
-    clients = create_client()
+    clients = create_client(source=source)
     return search_with_client(
         query, clients,
         collection=collection,
@@ -461,14 +441,15 @@ def _resolve_program_name(
     Resolve a user-provided program name to the canonical stored value.
 
     Does a case-insensitive match against all program values in the
-    sections collection. Returns the correctly-cased program name,
-    or prints a warning and returns None if no match is found.
+    sections collection.
     """
     # Get all unique programs from the collection
     all_meta = sections_collection.get(include=["metadatas"])
-    programs = sorted(set(m["program"] for m in all_meta["metadatas"]))
+    programs = sorted(set(
+        m["program"] for m in all_meta["metadatas"] if "program" in m
+    ))
 
-    # Build a lookup map: uppercase → canonical
+    # Build a lookup map: uppercase -> canonical
     lookup = {p.upper(): p for p in programs}
 
     canonical = lookup.get(user_input.upper())
@@ -494,29 +475,24 @@ def format_result_text(
 ) -> str:
     """
     Format search results as human-readable text for the terminal.
-
-    Args:
-        response: The search response dict from search().
-        max_text_length: Truncate text to this many characters
-            (ignored if show_full is True).
-        show_full: If True, show complete text without truncation.
-
-    Returns:
-        Formatted string ready to print.
+    Adapts display format based on the source (OLG vs FNS).
     """
     lines = []
     query = response["query"]
+    source = response["source"]
     collection = response["collection"]
     count = response["result_count"]
     filters = response["filters"]
 
     # Header
+    source_config = _resolve_source_config(source)
     filter_str = ""
     if filters:
         parts = [f"{k}={v}" for k, v in filters.items()]
         filter_str = f"  (filtered: {', '.join(parts)})"
 
-    lines.append(f'Found {count} results for "{query}" in {collection}{filter_str}')
+    lines.append(f'Found {count} results for "{query}" in '
+                 f'{source_config["source_label"]} {collection}{filter_str}')
     lines.append("")
 
     if count == 0:
@@ -529,36 +505,12 @@ def format_result_text(
         score = result["score"]
         text = result["text"]
 
-        # Build the breadcrumb display line
-        breadcrumb = meta.get("breadcrumb", "")
-
         lines.append("=" * 60)
 
-        # Header line: rank, score, breadcrumb
-        lines.append(f"[{result['rank']}]  Score: {score:.2f}  |  {breadcrumb}")
-
-        # Page title and section heading
-        if collection == "sections":
-            page_title = meta.get("page_title", "")
-            section_heading = meta.get("section_heading", "")
-            if page_title:
-                lines.append(f"     Page:    {page_title}")
-            if section_heading:
-                lines.append(f"     Section: {section_heading}")
+        if source == "olg":
+            _format_olg_result(lines, result, meta, score, collection)
         else:
-            title = meta.get("title", "")
-            if title:
-                lines.append(f"     Title:   {title}")
-
-        # URL
-        url = meta.get("url", "")
-        if url:
-            lines.append(f"     URL:     {url}")
-
-        # Last updated
-        last_updated = meta.get("last_updated", "")
-        if last_updated:
-            lines.append(f"     Updated: {last_updated}")
+            _format_fns_result(lines, result, meta, score, collection)
 
         lines.append("")
 
@@ -577,11 +529,12 @@ def format_result_text(
                                 subsequent_indent="     ")
         lines.append(wrapped)
 
-        # Parent page context (if available)
-        parent = result.get("parent_page")
+        # Parent context (if available)
+        parent = result.get("parent_context")
         if parent and parent.get("text"):
             lines.append("")
-            lines.append("     --- Parent Page Context ---")
+            parent_label = "Parent Page" if source == "olg" else "Parent Chapter"
+            lines.append(f"     --- {parent_label} Context ---")
             parent_text = parent["text"]
             if not show_full and len(parent_text) > max_text_length:
                 parent_text = parent_text[:max_text_length].rstrip() + "..."
@@ -599,13 +552,62 @@ def format_result_text(
     return "\n".join(lines)
 
 
-def format_result_json(response: dict) -> str:
-    """
-    Format the full search response as indented JSON.
+def _format_olg_result(lines: list[str], result: dict, meta: dict,
+                       score: float, collection: str) -> None:
+    """Format a single OLG result's header lines."""
+    breadcrumb = meta.get("breadcrumb", "")
+    lines.append(f"[{result['rank']}]  Score: {score:.2f}  |  {breadcrumb}")
 
-    Suitable for piping to other tools or for programmatic
-    consumption.
-    """
+    if collection == "sections":
+        page_title = meta.get("page_title", "")
+        section_heading = meta.get("section_heading", "")
+        if page_title:
+            lines.append(f"     Page:    {page_title}")
+        if section_heading:
+            lines.append(f"     Section: {section_heading}")
+    else:
+        title = meta.get("title", "")
+        if title:
+            lines.append(f"     Title:   {title}")
+
+    url = meta.get("url", "")
+    if url:
+        lines.append(f"     URL:     {url}")
+
+    last_updated = meta.get("last_updated", "")
+    if last_updated:
+        lines.append(f"     Updated: {last_updated}")
+
+
+def _format_fns_result(lines: list[str], result: dict, meta: dict,
+                       score: float, collection: str) -> None:
+    """Format a single FNS result's header lines."""
+    chapter = meta.get("chapter", "")
+    chapter_title = meta.get("chapter_title", "")
+    context = f"FNS 310 > Chapter {chapter}: {chapter_title}"
+    lines.append(f"[{result['rank']}]  Score: {score:.2f}  |  {context}")
+
+    if collection == "sections":
+        sec_num = meta.get("section_number", "")
+        sec_title = meta.get("section_title", "")
+        if sec_num:
+            lines.append(f"     Section: {sec_num} {sec_title}")
+
+        handbook_pages = meta.get("handbook_pages", "")
+        pdf_pages = meta.get("pdf_pages", "")
+        if handbook_pages:
+            page_str = f"     Pages:   {handbook_pages}"
+            if pdf_pages:
+                page_str += f" (PDF p.{pdf_pages})"
+            lines.append(page_str)
+    else:
+        section_count = meta.get("section_count", "")
+        if section_count:
+            lines.append(f"     Sections: {section_count}")
+
+
+def format_result_json(response: dict) -> str:
+    """Format the full search response as indented JSON."""
     return json.dumps(response, indent=2, ensure_ascii=False)
 
 
@@ -613,13 +615,12 @@ def format_result_json(response: dict) -> str:
 # MAIN
 # ============================================================
 
-def _print_programs() -> None:
-    """List all unique program values in the sections collection."""
+def _print_info(source: str) -> None:
+    """List source-specific info (programs for OLG, chapters for FNS)."""
     config = load_config()
+    source_config = _resolve_source_config(source)
     persist_dir = config.get("chromadb", "persist_dir", fallback="data/chroma_db")
     persist_path = (PROJECT_ROOT / persist_dir).resolve()
-    section_name = config.get("chromadb", "olg_section_collection",
-                              fallback="sections")
 
     if not persist_path.exists():
         print(f"Error: ChromaDB directory not found at {persist_path}")
@@ -627,25 +628,48 @@ def _print_programs() -> None:
         sys.exit(1)
 
     chroma = chromadb.PersistentClient(path=str(persist_path))
-    collection = chroma.get_collection(section_name)
-
+    granular_coll_name = config.get(
+        "chromadb", source_config["granular_collection_key"],
+        fallback=source_config["granular_name"])
+    collection = chroma.get_collection(granular_coll_name)
     all_meta = collection.get(include=["metadatas"])
-    programs = {}
-    for meta in all_meta["metadatas"]:
-        prog = meta["program"]
-        programs[prog] = programs.get(prog, 0) + 1
 
-    print("Available programs:")
-    print()
-    for prog, count in sorted(programs.items(), key=lambda x: -x[1]):
-        print(f"  {prog:25s} ({count:,} chunks)")
-    print()
-    print(f"Total: {sum(programs.values()):,} chunks across "
-          f"{len(programs)} programs")
+    if source == "olg":
+        # Show programs
+        programs = {}
+        for meta in all_meta["metadatas"]:
+            prog = meta.get("program", "")
+            programs[prog] = programs.get(prog, 0) + 1
+
+        print("Available programs:")
+        print()
+        for prog, count in sorted(programs.items(), key=lambda x: -x[1]):
+            print(f"  {prog:25s} ({count:,} chunks)")
+        print()
+        print(f"Total: {sum(programs.values()):,} chunks across "
+              f"{len(programs)} programs")
+
+    elif source == "fns":
+        # Show chapters
+        chapters = {}
+        for meta in all_meta["metadatas"]:
+            ch = meta.get("chapter", "")
+            ch_title = meta.get("chapter_title", "")
+            key = (ch, ch_title)
+            chapters[key] = chapters.get(key, 0) + 1
+
+        print(f"{source_config['source_label']} chapters:")
+        print()
+        for (ch, ch_title), count in sorted(chapters.items()):
+            print(f"  Chapter {ch:>2}: {ch_title:50s} ({count} chunks)")
+        print()
+        print(f"Total: {sum(chapters.values()):,} chunks across "
+              f"{len(chapters)} chapters")
 
 
 def run_query(
     query: str,
+    source: str = "olg",
     collection: str = DEFAULT_COLLECTION,
     program: str | None = None,
     top_n: int = DEFAULT_TOP_N,
@@ -656,12 +680,9 @@ def run_query(
 ) -> None:
     """
     Execute a query and print results to stdout.
-
-    This is the orchestration function called by main(). It handles
-    client initialization, search execution, and output formatting.
     """
     # Initialize clients once
-    clients = create_client()
+    clients = create_client(source=source)
 
     # Run the search
     response = search_with_client(
@@ -687,18 +708,24 @@ def run_query(
 def main():
     """Parse command-line arguments and run the query."""
     parser = argparse.ArgumentParser(
-        description="Search the DTA Online Policy Guide knowledge base.",
+        description="Search the Policy Navigator knowledge base.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # OLG (default)
   python query.py "income deduction"                    # Basic search
   python query.py "expedited SNAP" --program SNAP       # Filter by program
   python query.py "benefit calculation" --top 10        # More results
   python query.py "eligibility rules" --collection pages  # Search pages
   python query.py "income limits" --context             # Include parent page
   python query.py "work requirements" --json            # JSON output
-  python query.py "transfer cases" --full               # Full text
   python query.py --list-programs                       # Show programs
+
+  # FNS
+  python query.py "income deduction" --source fns       # Search FNS
+  python query.py "income" --source fns --collection chapters
+  python query.py "income" --source fns --context       # Parent chapter
+  python query.py --source fns --list-programs          # Show chapters
         """,
     )
     parser.add_argument(
@@ -706,13 +733,17 @@ Examples:
         help="Search query (natural language)",
     )
     parser.add_argument(
-        "--collection", "-c", choices=["sections", "pages"],
+        "--source", "-s", choices=["olg", "fns"], default="olg",
+        help="Which source to search (default: olg)",
+    )
+    parser.add_argument(
+        "--collection", "-c", choices=["sections", "pages", "chapters"],
         default=DEFAULT_COLLECTION,
         help=f"Which collection to search (default: {DEFAULT_COLLECTION})",
     )
     parser.add_argument(
         "--program", "-p",
-        help="Filter results by program (e.g., SNAP, TAFDC, EAEDC)",
+        help="Filter results by program (e.g., SNAP, TAFDC) — OLG only",
     )
     parser.add_argument(
         "--top", "-n", type=int, default=DEFAULT_TOP_N,
@@ -724,7 +755,7 @@ Examples:
     )
     parser.add_argument(
         "--context", action="store_true",
-        help="Include full parent page text for section results",
+        help="Include full parent document text for section results",
     )
     parser.add_argument(
         "--json", dest="output_json", action="store_true",
@@ -736,12 +767,22 @@ Examples:
     )
     parser.add_argument(
         "--list-programs", action="store_true",
-        help="List all available programs and exit",
+        help="List available programs (OLG) or chapters (FNS) and exit",
     )
     args = parser.parse_args()
 
+    # Validate --collection against --source
+    source_config = _resolve_source_config(args.source)
+    valid_collections = {source_config["broad_name"], source_config["granular_name"]}
+    if args.collection not in valid_collections:
+        print(f"Error: --collection {args.collection} is not valid for "
+              f"--source {args.source}.")
+        print(f"  Valid choices for {args.source}: "
+              f"{', '.join(sorted(valid_collections))}")
+        sys.exit(1)
+
     if args.list_programs:
-        _print_programs()
+        _print_info(args.source)
         return
 
     if not args.query:
@@ -749,6 +790,7 @@ Examples:
 
     run_query(
         query=args.query,
+        source=args.source,
         collection=args.collection,
         program=args.program,
         top_n=args.top,
