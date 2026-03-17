@@ -21,6 +21,7 @@ __pycache__/
 
 # Windows
 desktop.ini
+nul
 
 # IDE
 .vscode/

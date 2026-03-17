@@ -63,6 +63,11 @@ import voyageai
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_FILE = PROJECT_ROOT / "config.ini"
 
+# TODO: This module currently only queries OLG collections (pages, sections).
+# When FNS Phase 2 lands, it needs to become source-aware — e.g., a --source
+# CLI flag to select which collections to search, or an orchestration layer
+# that queries multiple sources and merges results.
+
 # Display defaults
 DEFAULT_TOP_N = 5
 DEFAULT_COLLECTION = "sections"

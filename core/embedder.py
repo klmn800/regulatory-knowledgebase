@@ -50,6 +50,10 @@ import voyageai
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_FILE = PROJECT_ROOT / "config.ini"
+
+# TODO: These paths are OLG-specific. When FNS Phase 2 lands, this module
+# needs to become source-aware (e.g., via a --source CLI flag or by reading
+# source-specific chunk paths from config.ini sections).
 PAGE_CHUNKS_FILE = PROJECT_ROOT / "data" / "olg" / "page_chunks.json"
 SECTION_CHUNKS_FILE = PROJECT_ROOT / "data" / "olg" / "section_chunks.json"
 
