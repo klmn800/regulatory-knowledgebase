@@ -1,0 +1,11 @@
+============================================================
+DTA Online Guide Scrape Report
+Generated: 2026-03-02 15:25:36
+============================================================
+
+Total pages in manifest:  1202
+Successfully scraped:     1202
+404 Not Found:            0
+Failed (other errors):    0
+Remaining (not yet run):  0
+Elapsed time:             0.3s

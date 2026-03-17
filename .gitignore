@@ -1,0 +1,30 @@
+# Secrets
+config.ini
+
+# Data (large, regeneratable)
+data/olg/scraped_pages/
+data/olg/page_chunks.json
+data/olg/section_chunks.json
+data/olg/scrape_progress.json
+data/fns/parsed_sections/
+data/fns/chapter_chunks.json
+data/fns/section_chunks.json
+data/cmr/parsed_sections/
+data/chroma_db/
+
+# Source files (large, not ours to redistribute)
+source_files/
+
+# Python
+__pycache__/
+*.pyc
+
+# Windows
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code
+.claude/
