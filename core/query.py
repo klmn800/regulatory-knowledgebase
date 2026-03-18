@@ -104,8 +104,18 @@ def _resolve_source_config(source: str) -> dict:
             "parent_id_field": "parent_chapter_id",
             "source_label": "FNS Handbook 310",
         }
+    elif source == "cmr":
+        return {
+            "broad_collection_key": "cmr_chapter_collection",
+            "granular_collection_key": "cmr_section_collection",
+            "broad_name": "chapters",
+            "granular_name": "sections",
+            "has_program_filter": True,
+            "parent_id_field": "parent_chapter_id",
+            "source_label": "106 CMR",
+        }
     else:
-        print(f"Error: Unknown source '{source}'. Use 'olg' or 'fns'.")
+        print(f"Error: Unknown source '{source}'. Use 'olg', 'fns', or 'cmr'.")
         sys.exit(1)
 
 
@@ -509,6 +519,8 @@ def format_result_text(
 
         if source == "olg":
             _format_olg_result(lines, result, meta, score, collection)
+        elif source == "cmr":
+            _format_cmr_result(lines, result, meta, score, collection)
         else:
             _format_fns_result(lines, result, meta, score, collection)
 
@@ -606,6 +618,30 @@ def _format_fns_result(lines: list[str], result: dict, meta: dict,
             lines.append(f"     Sections: {section_count}")
 
 
+def _format_cmr_result(lines: list[str], result: dict, meta: dict,
+                       score: float, collection: str) -> None:
+    """Format a single CMR result's header lines."""
+    chapter = meta.get("chapter", "")
+    chapter_title = meta.get("chapter_title", "")
+    program = meta.get("program", "")
+    context = f"106 CMR {chapter} ({program})"
+    lines.append(f"[{result['rank']}]  Score: {score:.2f}  |  {context}")
+
+    if collection == "sections":
+        sec_num = meta.get("section_number", "")
+        sec_title = meta.get("section_title", "")
+        if sec_num:
+            lines.append(f"     Section: {sec_num} {sec_title}")
+        if chapter_title:
+            lines.append(f"     Chapter: {chapter_title[:60]}")
+    else:
+        section_count = meta.get("section_count", "")
+        if section_count:
+            lines.append(f"     Sections: {section_count}")
+        if chapter_title:
+            lines.append(f"     Title:    {chapter_title[:60]}")
+
+
 def format_result_json(response: dict) -> str:
     """Format the full search response as indented JSON."""
     return json.dumps(response, indent=2, ensure_ascii=False)
@@ -662,6 +698,23 @@ def _print_info(source: str) -> None:
         print()
         for (ch, ch_title), count in sorted(chapters.items()):
             print(f"  Chapter {ch:>2}: {ch_title:50s} ({count} chunks)")
+        print()
+        print(f"Total: {sum(chapters.values()):,} chunks across "
+              f"{len(chapters)} chapters")
+
+    elif source == "cmr":
+        chapters = {}
+        for meta in all_meta["metadatas"]:
+            ch = meta.get("chapter", "")
+            ch_title = meta.get("chapter_title", "")
+            prog = meta.get("program", "")
+            key = (ch, ch_title, prog)
+            chapters[key] = chapters.get(key, 0) + 1
+
+        print(f"{source_config['source_label']} chapters:")
+        print()
+        for (ch, ch_title, prog), count in sorted(chapters.items()):
+            print(f"  CMR {ch:>3}: {ch_title[:45]:45s} {prog:>12s}  ({count} chunks)")
         print()
         print(f"Total: {sum(chapters.values()):,} chunks across "
               f"{len(chapters)} chapters")
@@ -733,7 +786,7 @@ Examples:
         help="Search query (natural language)",
     )
     parser.add_argument(
-        "--source", "-s", choices=["olg", "fns"], default="olg",
+        "--source", "-s", choices=["olg", "fns", "cmr"], default="olg",
         help="Which source to search (default: olg)",
     )
     parser.add_argument(

@@ -103,8 +103,19 @@ def _resolve_source_paths(source: str) -> dict:
             "broad_description": "FNS Handbook 310 - chapter-level documents",
             "granular_description": "FNS Handbook 310 - section-level chunks",
         }
+    elif source == "cmr":
+        return {
+            "broad_chunks_file": PROJECT_ROOT / "data" / "cmr" / "chapter_chunks.json",
+            "granular_chunks_file": PROJECT_ROOT / "data" / "cmr" / "section_chunks.json",
+            "broad_collection_key": "cmr_chapter_collection",
+            "granular_collection_key": "cmr_section_collection",
+            "broad_label": "chapters",
+            "granular_label": "sections",
+            "broad_description": "106 CMR - chapter-level documents",
+            "granular_description": "106 CMR - section-level chunks",
+        }
     else:
-        print(f"Error: Unknown source '{source}'. Use 'olg' or 'fns'.")
+        print(f"Error: Unknown source '{source}'. Use 'olg', 'fns', or 'cmr'.")
         sys.exit(1)
 
 
@@ -515,7 +526,7 @@ Examples:
         """,
     )
     parser.add_argument(
-        "--source", choices=["olg", "fns"], default="olg",
+        "--source", choices=["olg", "fns", "cmr"], default="olg",
         help="Which source to embed (default: olg)",
     )
     parser.add_argument(
