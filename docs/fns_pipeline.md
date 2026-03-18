@@ -139,48 +139,40 @@ comparator bridges both systems but neither depends on the other for core functi
 
 ---
 
-## Phase 2: Chunking & Embedding (NOT STARTED)
+## Phase 2: Chunking & Embedding (COMPLETE)
 
-### Plan
+### What was built
 
-Mirror the OLG chunker/embedder architecture:
+`sources/fns/chunker.py` — Self-contained chunker producing two-tier output.
 
-1. **Two-tier chunks**: Chapter-level documents (~14) for broad topic matching +
-   section-level chunks (~482, after merge/split) for specific answers
-2. **Merge/split rules**: Same as OLG — merge sections <200 chars with next sibling,
-   split sections >1,500 chars at paragraph boundaries
-3. **Context prefix**: `"FNS 310 > Chapter 10: Income > 1021.1 Positive Allegation"`
-4. **Tables rendered inline** as pipe-delimited text
-5. **Embed with Voyage AI** (voyage-3) into shared ChromaDB
-6. **Collections**: `fns_chapters` and `fns_sections` (alongside OLG's `pages` and `sections`)
+**Chunker**:
+- 14 chapter-level documents (13K-95K chars) for broad topic matching
+- 722 section-level chunks (median 835 chars) for specific answers
+- Context prefix: `"FNS 310 > Chapter 10: Income > 1021.1 Positive Allegation"`
+- Chunk IDs: `fns_ch10` (chapters), `fns_sec_1021_1__000` (sections)
+- Same merge/split thresholds as OLG (MIN=200, MAX=1500, TARGET=1000)
+- Tables rendered as pipe-delimited text and appended (22 sections have tables)
+- `example_text` field excluded — garbled OCR column-separation artifacts
 
-### Modules to build
+**Shared module updates**:
+- `core/embedder.py` — added `--source fns` flag with path routing to `fns_chapters`/`fns_sections` collections
+- `core/query.py` — added `--source fns` flag, FNS-specific display formatting, chapter listing via `--list-programs`
 
-| File | Purpose |
+### Embedding results
+
+| Metric | Value |
 |---|---|
-| `chunker.py` | Read `parsed_sections/`, produce chunks with merge/split |
-| `embedder.py` | Call Voyage AI API, store in ChromaDB |
-| `query.py` | Search interface — CLI, Python API, JSON output |
+| Chapter documents | 14 |
+| Section chunks | 722 |
+| Total tokens | 275,005 |
+| Total cost | $0.017 |
+| Collections | `fns_chapters`, `fns_sections` |
 
 ---
 
 ## Phase 3: Comparator Agent (NOT STARTED)
 
-### Plan
-
-Build `comparator.py` that:
-1. Iterates through FNS sections (configurable by chapter)
-2. Uses each section's text as a query against the OLG RAG
-3. Sends FNS text + OLG results to Claude for comparison
-4. Records: match / minor_difference / major_difference / no_state_equivalent
-5. Outputs structured report (JSON + Excel)
-
-### Key decisions still needed
-
-- Comparison prompt design (what types of differences to look for)
-- Whether to filter OLG to SNAP-only or include cross-program
-- Model choice (Haiku for bulk, Sonnet for flagged items?)
-- Report format and organization
+Now planned as a **source-pair-agnostic** comparison tool in `agents/comparator.py`, not FNS-specific. See the comparator discussion in CLAUDE.md.
 
 ---
 
@@ -208,20 +200,26 @@ Build `comparator.py` that:
 ## Running the tools
 
 ```bash
-# Phase 1 (complete)
-python fns_parser.py                    # Parse full handbook
-python fns_parser.py --chapter 10       # Parse one chapter
-python fns_parser.py --pages 195-200    # Parse specific PDF pages
-python fns_parser.py --dry-run          # Show sections found, don't write files
+# Parsing (complete)
+python sources/fns/parser.py                        # Parse full handbook
+python sources/fns/parser.py --chapter 10            # Parse one chapter
+python sources/fns/parser.py --pages 195-200         # Parse specific PDF pages
+python sources/fns/parser.py --dry-run               # Show sections found, don't write
 
-# Phase 2 (not yet built)
-python chunker.py                       # Generate chunks from parsed sections
-python embedder.py                      # Embed chunks and store in ChromaDB
-python query.py "income deduction"      # Search FNS handbook
+# Chunking (complete)
+python sources/fns/chunker.py                        # Generate chunks
+python sources/fns/chunker.py --stats                # Statistics only
+python sources/fns/chunker.py --preview 2            # Preview first 2 chapters
 
-# Phase 3 (not yet built)
-python comparator.py                    # Run comparison against OLG
-python comparator.py --chapter 10       # Compare one chapter
+# Embedding (complete)
+python core/embedder.py --source fns --dry-run       # Cost estimate
+python core/embedder.py --source fns                 # Embed into ChromaDB
+python core/embedder.py --source fns --force         # Re-embed from scratch
+
+# Querying (complete)
+python core/query.py "income deduction" --source fns
+python core/query.py "income" --source fns --collection chapters
+python core/query.py --source fns --list-programs
 ```
 
 ---
