@@ -82,11 +82,11 @@ Fully complete (parse, chunk, embed, query).
 | `core/embedder.py` | Batch embedding via Voyage AI → ChromaDB. `--source olg\|fns\|cmr` flag routes to correct chunk files and collections. Token-aware batching, resume support, cost estimation, `--dry-run`, `--force`, `--only`. |
 | `core/query.py` | Three interfaces: CLI, Python API (`search()` / `create_client(source)` + `search_with_client()`), JSON output. `--source olg\|fns\|cmr` flag. Program filtering (OLG/CMR), similarity scoring, parent context fetching, source-specific display formatting. |
 
-### Not Yet Built (Bigger Vision)
-- **Comparator agent**: Cross-source analysis — compares any two sources to find agreement, gaps, conflicts
-- **Orchestration layer**: Decides which sources to query and in what order based on the question
-- **Synthesis agent**: Reasons across results from multiple collections
-- **Web UI**: For policy staff (currently CLI-only)
+### Roadmap
+
+1. **Comparator agent** (in development): Purpose-built research tool for cross-source analysis — compares any two sources to find agreement, gaps, and conflicts. Lives in `agents/`.
+2. **Policy search engine**: The broad-use tool for policy analysts. Accepts a question, orchestrates queries across all sources in the right order, and returns well-organized results. This is the system's primary daily-use interface.
+3. **Web UI**: Frontend for the policy search engine. Key priority — the target audience is non-technical policy staff who need a clean, accessible interface.
 
 ## Commands
 
