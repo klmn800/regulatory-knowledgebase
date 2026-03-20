@@ -24,6 +24,7 @@ import argparse
 import configparser
 import csv
 import json
+import logging
 import re
 import sys
 import time
@@ -142,6 +143,103 @@ class CostTracker:
             f"      Cost:   ${self.total_cost():>8.4f}",
         ]
         return "\n".join(lines)
+
+
+# ============================================================
+# TRACE LOGGING
+# ============================================================
+
+class TraceLogger:
+    """Captures the full reasoning trace for each row — every API call,
+    tool use, search result, and intermediate reasoning step. Writes
+    one JSONL file alongside the output CSV for post-hoc review."""
+
+    def __init__(self, trace_path: Path):
+        self.trace_path = trace_path
+        self.current_row = None
+        self._logger = logging.getLogger("qc_trace")
+        self._logger.setLevel(logging.DEBUG)
+        handler = logging.FileHandler(trace_path, encoding="utf-8")
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        self._logger.addHandler(handler)
+        self._logger.propagate = False
+
+    def start_row(self, row_index: int, review_number: str, tao: str):
+        self.current_row = {
+            "row_index": row_index,
+            "review_number": review_number,
+            "tao": tao,
+            "timestamp_start": datetime.now().isoformat(),
+            "extractor": None,
+            "seed_search": None,
+            "judge": None,
+            "final_result": None,
+        }
+
+    def log_extractor(self, input_text: str, response_text: str,
+                      parsed_result: dict, tokens_in: int, tokens_out: int):
+        self.current_row["extractor"] = {
+            "input": input_text,
+            "raw_response": response_text,
+            "parsed": parsed_result,
+            "tokens": {"input": tokens_in, "output": tokens_out},
+        }
+
+    def log_seed_search(self, queries: list[str], result_count: int,
+                        results_summary: list[dict]):
+        self.current_row["seed_search"] = {
+            "queries": queries,
+            "total_results": result_count,
+            "results": results_summary,
+        }
+
+    def start_judge(self, user_message: str, tokens_in: int, tokens_out: int):
+        self.current_row["judge"] = {
+            "initial_prompt_length": len(user_message),
+            "turns": [],
+            "total_tokens": {"input": tokens_in, "output": tokens_out},
+        }
+
+    def log_judge_turn(self, turn_number: int, reasoning_text: str,
+                       tool_calls: list[dict], tool_results: list[dict],
+                       tokens_in: int, tokens_out: int, stop_reason: str):
+        turn = {
+            "turn": turn_number,
+            "stop_reason": stop_reason,
+            "tokens": {"input": tokens_in, "output": tokens_out},
+            "reasoning": reasoning_text,
+            "tool_calls": tool_calls,
+            "tool_results": tool_results,
+        }
+        self.current_row["judge"]["turns"].append(turn)
+        total = self.current_row["judge"]["total_tokens"]
+        total["input"] += tokens_in
+        total["output"] += tokens_out
+
+    def log_final_result(self, result: dict):
+        self.current_row["final_result"] = result
+        self.current_row["timestamp_end"] = datetime.now().isoformat()
+
+    def flush_row(self):
+        if self.current_row:
+            self._logger.debug(json.dumps(self.current_row, ensure_ascii=False))
+            self.current_row = None
+
+
+def _summarize_seed_results(results: list[dict]) -> list[dict]:
+    """Compact summary of seed search results for the trace."""
+    summaries = []
+    for r in results:
+        meta = r.get("metadata", {})
+        summaries.append({
+            "id": r.get("id", ""),
+            "score": round(r.get("score", 0), 3),
+            "page_title": meta.get("page_title", meta.get("title", "")),
+            "section_heading": meta.get("section_heading", ""),
+            "url": meta.get("url", ""),
+            "text_preview": r.get("text", "")[:200],
+        })
+    return summaries
 
 
 # ============================================================
@@ -307,7 +405,8 @@ def build_extractor_input(row: dict) -> str:
 
 def run_extractor(user_message: str, client: anthropic.Anthropic,
                   model: str, system_prompt: str,
-                  cost_tracker: CostTracker = None) -> dict:
+                  cost_tracker: CostTracker = None,
+                  trace: TraceLogger = None) -> dict:
     """Call 1: Extract policy issues and search queries from a QC finding."""
     max_retries = 3
     for attempt in range(max_retries):
@@ -321,7 +420,16 @@ def run_extractor(user_message: str, client: anthropic.Anthropic,
             if cost_tracker:
                 cost_tracker.add_extractor(response)
             text = response.content[0].text.strip()
-            return extract_json(text, fallback_classification="Partial")
+            parsed = extract_json(text, fallback_classification="Partial")
+            if trace:
+                trace.log_extractor(
+                    input_text=user_message,
+                    response_text=text,
+                    parsed_result=parsed,
+                    tokens_in=response.usage.input_tokens,
+                    tokens_out=response.usage.output_tokens,
+                )
+            return parsed
         except anthropic.RateLimitError:
             wait = 30 * (attempt + 1)
             print(f"\n    Rate limited, waiting {wait}s...")
@@ -395,7 +503,8 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
               model: str, system_prompt: str,
               max_searches: int = 10,
               results_per_search: int = 5,
-              cost_tracker: CostTracker = None) -> dict:
+              cost_tracker: CostTracker = None,
+              trace: TraceLogger = None) -> dict:
     """Call 2: Agentic OLG coverage assessment with iterative search."""
 
     seed_formatted = format_olg_results_for_prompt(seed_results)
@@ -421,6 +530,9 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
     searches_performed = 0
     all_search_queries = list(extractor_queries)
     max_turns = max_searches + 5
+
+    if trace:
+        trace.start_judge(user_message, tokens_in=0, tokens_out=0)
 
     for turn in range(max_turns):
         try:
@@ -467,8 +579,15 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
                 "all_search_queries": all_search_queries,
             }
 
+        reasoning_text = ""
+        for block in response.content:
+            if hasattr(block, "text") and block.text.strip():
+                reasoning_text = block.text.strip()
+
         if response.stop_reason == "tool_use":
             tool_results = []
+            trace_tool_calls = []
+            trace_tool_results = []
             assistant_content = response.content
 
             for block in response.content:
@@ -476,15 +595,18 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
                     query = block.input.get("query", "")
 
                     if searches_performed >= max_searches:
+                        budget_msg = (
+                            f"Search budget exhausted ({searches_performed} "
+                            f"searches used). Please provide your final "
+                            f"assessment now based on all results seen."
+                        )
                         tool_results.append({
                             "type": "tool_result",
                             "tool_use_id": block.id,
-                            "content": (
-                                f"Search budget exhausted ({searches_performed} "
-                                f"searches used). Please provide your final "
-                                f"assessment now based on all results seen."
-                            ),
+                            "content": budget_msg,
                         })
+                        trace_tool_calls.append({"query": query, "budget_exhausted": True})
+                        trace_tool_results.append({"status": "budget_exhausted"})
                         continue
 
                     searches_performed += 1
@@ -510,17 +632,42 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
                         "content": formatted,
                     })
 
+                    trace_tool_calls.append({
+                        "query": query,
+                        "search_number": searches_performed,
+                    })
+                    trace_tool_results.append({
+                        "result_count": len(search_response["results"]),
+                        "results": _summarize_search_results(search_response["results"]),
+                    })
+
+            if trace:
+                trace.log_judge_turn(
+                    turn_number=turn + 1,
+                    reasoning_text=reasoning_text,
+                    tool_calls=trace_tool_calls,
+                    tool_results=trace_tool_results,
+                    tokens_in=response.usage.input_tokens,
+                    tokens_out=response.usage.output_tokens,
+                    stop_reason="tool_use",
+                )
+
             messages.append({"role": "assistant", "content": assistant_content})
             messages.append({"role": "user", "content": tool_results})
             continue
 
-        text = ""
-        for block in response.content:
-            if hasattr(block, "text"):
-                text = block.text.strip()
-                break
+        if trace:
+            trace.log_judge_turn(
+                turn_number=turn + 1,
+                reasoning_text=reasoning_text,
+                tool_calls=[],
+                tool_results=[],
+                tokens_in=response.usage.input_tokens,
+                tokens_out=response.usage.output_tokens,
+                stop_reason=response.stop_reason,
+            )
 
-        result = extract_json(text, fallback_classification="Partial")
+        result = extract_json(reasoning_text, fallback_classification="Partial")
         result["searches_performed"] = searches_performed
         result["all_search_queries"] = all_search_queries
         return result
@@ -534,6 +681,22 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
         "searches_performed": searches_performed,
         "all_search_queries": all_search_queries,
     }
+
+
+def _summarize_search_results(results: list[dict]) -> list[dict]:
+    """Compact summary of OLG search results for the trace log."""
+    summaries = []
+    for r in results:
+        meta = r.get("metadata", {})
+        summaries.append({
+            "id": r.get("id", ""),
+            "score": round(r.get("score", 0), 3),
+            "page_title": meta.get("page_title", meta.get("title", "")),
+            "section_heading": meta.get("section_heading", ""),
+            "url": meta.get("url", ""),
+            "text_preview": r.get("text", "")[:300],
+        })
+    return summaries
 
 
 # ============================================================
@@ -637,6 +800,17 @@ def analyze_csv(
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+    if sample or row_indices:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+        trace_suffix = f"_sample{len(selected)}_{timestamp}"
+    else:
+        trace_suffix = f"_{datetime.now().strftime('%Y%m%d_%H%M')}"
+
+    trace_path = OUTPUT_DIR / f"{csv_path.stem}_trace{trace_suffix}.jsonl"
+    trace = TraceLogger(trace_path)
+    print(f"  Trace log:        {trace_path.name}")
+    print()
+
     processed_indices = set()
     output_rows = []
     if resume:
@@ -666,12 +840,14 @@ def analyze_csv(
             print(f"  SKIP: empty QC Findings field")
             continue
 
+        trace.start_row(row_idx, review, tao)
+
         # === Call 1: Extractor ===
         print(f"  Extractor...", end="", flush=True)
         extractor_input = build_extractor_input(row)
         extractor_result = run_extractor(
             extractor_input, claude, extractor_model, extractor_prompt,
-            cost_tracker=cost_tracker
+            cost_tracker=cost_tracker, trace=trace,
         )
         policy_issues = extractor_result.get("policy_issues", "extraction failed")
         queries = extractor_result.get("search_queries", [])
@@ -687,6 +863,11 @@ def analyze_csv(
             queries, olg_clients, results_per_query=seed_results_per_query
         )
         print(f" {len(seed_results)} OLG results")
+        trace.log_seed_search(
+            queries=queries,
+            result_count=len(seed_results),
+            results_summary=_summarize_seed_results(seed_results),
+        )
 
         # === Call 2: Judge ===
         print(f"  Judge", end="", flush=True)
@@ -696,6 +877,7 @@ def analyze_csv(
             max_searches=max_judge_searches,
             results_per_search=olg_results_per_search,
             cost_tracker=cost_tracker,
+            trace=trace,
         )
         coverage = judge_result.get("coverage", "Unknown")
         searches = judge_result.get("searches_performed", 0)
@@ -718,6 +900,14 @@ def analyze_csv(
         output_row = build_output_row(row, extractor_result, judge_result)
         output_rows.append(output_row)
 
+        trace.log_final_result({
+            "coverage": judge_result.get("coverage", "Unknown"),
+            "searches_performed": judge_result.get("searches_performed", 0),
+            "olg_references": judge_result.get("olg_references", []),
+            "gap_description": judge_result.get("gap_description", ""),
+        })
+        trace.flush_row()
+
         processed_indices.add(row_idx)
         save_checkpoint(sorted(processed_indices), output_rows, str(csv_path))
         print()
@@ -725,12 +915,7 @@ def analyze_csv(
     elapsed = time.time() - start_time
     elapsed_min = elapsed / 60
 
-    if sample or row_indices:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-        suffix = f"_sample{len(selected)}_{timestamp}"
-    else:
-        suffix = ""
-
+    suffix = trace_suffix
     stem = csv_path.stem
     output_path = OUTPUT_DIR / f"{stem}_analyzed{suffix}.csv"
     write_output_csv(fieldnames, output_rows, output_path)
@@ -746,6 +931,7 @@ def analyze_csv(
     if len(output_rows) > 0:
         print(f"    Avg cost/row: ${cost_tracker.total_cost() / len(output_rows):.4f}")
     print(f"\n  Output: {output_path}")
+    print(f"  Trace:  {trace_path}")
 
     if CHECKPOINT_FILE.exists():
         CHECKPOINT_FILE.unlink()
