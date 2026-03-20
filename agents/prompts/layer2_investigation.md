@@ -8,12 +8,16 @@ Layer 1 triage flagged this item for deeper review. The initial assessment was n
 
 ## Your Tools
 
-You have access to `search_olg` — a semantic search tool that queries the OLG knowledge base. Use it as many times as needed. Try:
+You have two tools:
+
+**`search_olg`** — Semantic search of the OLG knowledge base. Use it as many times as needed. Try:
 - The exact topic (e.g., "earned income deduction")
 - Synonyms or alternate phrasing (e.g., "work income", "employment earnings")
 - Broader topics (e.g., "income verification")
 - Related procedures (e.g., "BEACON income entry")
 - Specific terms from the FNS text that might appear in OLG
+
+**`lookup_fns_section`** — Look up a specific FNS section by number. Use this when the section you're analyzing cross-references another FNS section (e.g., "See Section 512"). This helps you understand what the cross-reference actually requires before searching the OLG for coverage.
 
 Search until you are confident you've either found the relevant OLG content or confirmed it doesn't exist. Typically 3-6 searches is sufficient, but use more if needed.
 

@@ -89,6 +89,50 @@ CHECKPOINT_FILE = OUTPUT_DIR / "checkpoint.json"
 CLASSIFY_CSV = OUTPUT_DIR / "layer0_classifications.csv"
 CLASSIFY_JSON = OUTPUT_DIR / "layer0_classifications.json"
 
+# Haiku pricing per million tokens (as of 2025)
+PRICING = {
+    "claude-haiku-4-5-20251001": {"input": 0.80, "output": 4.00},
+    "claude-sonnet-4-5-20250929": {"input": 3.00, "output": 15.00},
+}
+
+
+class TokenTracker:
+    """Tracks API token usage and estimated cost per section and overall."""
+
+    def __init__(self):
+        self.total_input = 0
+        self.total_output = 0
+        self.section_input = 0
+        self.section_output = 0
+
+    def record(self, response):
+        self.total_input += response.usage.input_tokens
+        self.total_output += response.usage.output_tokens
+        self.section_input += response.usage.input_tokens
+        self.section_output += response.usage.output_tokens
+
+    def reset_section(self):
+        self.section_input = 0
+        self.section_output = 0
+
+    def _estimate_cost(self, input_tokens, output_tokens, model=None):
+        rates = PRICING.get(model, {"input": 0.80, "output": 4.00})
+        return (input_tokens * rates["input"] + output_tokens * rates["output"]) / 1_000_000
+
+    def section_cost(self, model=None):
+        return self._estimate_cost(self.section_input, self.section_output, model)
+
+    def total_cost(self, model=None):
+        return self._estimate_cost(self.total_input, self.total_output, model)
+
+    def section_summary(self):
+        return f"{self.section_input:,} in / {self.section_output:,} out"
+
+    def total_summary(self, model=None):
+        cost = self.total_cost(model)
+        return (f"{self.total_input:,} in / {self.total_output:,} out "
+                f"(${cost:.4f})")
+
 
 def load_config() -> configparser.ConfigParser:
     config = configparser.ConfigParser()
@@ -451,14 +495,20 @@ def query_cmr(fns_section: dict, cmr_clients: dict,
 # RESULT FORMATTING FOR PROMPTS
 # ============================================================
 
-def format_fns_for_prompt(section: dict) -> str:
-    """Format an FNS section for inclusion in a prompt."""
+def format_fns_for_prompt(section: dict, fns_by_number: dict = None) -> str:
+    """Format an FNS section for inclusion in a prompt.
+    If fns_by_number is provided and the section has a parent, includes the
+    parent section title for context."""
     lines = [
         f"FNS Section {section['section_number']}: {section['section_title']}",
-        f"Chapter {section['chapter']}: {section['chapter_title']}",
-        "",
-        section["text"][:3000],
     ]
+    parent_num = section.get("parent_section")
+    if parent_num and fns_by_number and parent_num in fns_by_number:
+        parent = fns_by_number[parent_num]
+        lines.append(f"Parent: {parent_num} {parent['section_title']}")
+    lines.append(f"Chapter {section['chapter']}: {section['chapter_title']}")
+    lines.append("")
+    lines.append(section["text"][:3000])
     if len(section["text"]) > 3000:
         lines.append("... (truncated)")
     return "\n".join(lines)
@@ -519,11 +569,12 @@ def format_cmr_results_for_prompt(results: list[dict]) -> str:
 
 def run_layer1(fns_section: dict, olg_results: list[dict],
                client: anthropic.Anthropic, model: str,
-               system_prompt: str) -> dict:
+               system_prompt: str, fns_by_number: dict = None,
+               tracker: TokenTracker = None) -> dict:
     """Run Layer 1 triage on a single FNS section."""
     user_message = (
         f"## FNS Requirement\n\n"
-        f"{format_fns_for_prompt(fns_section)}\n\n"
+        f"{format_fns_for_prompt(fns_section, fns_by_number)}\n\n"
         f"## OLG Matches\n\n"
         f"{format_olg_results_for_prompt(olg_results)}"
     )
@@ -534,6 +585,8 @@ def run_layer1(fns_section: dict, olg_results: list[dict],
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
     )
+    if tracker:
+        tracker.record(response)
 
     text = response.content[0].text.strip()
     return extract_json(text, fallback_classification="no_match")
@@ -542,6 +595,36 @@ def run_layer1(fns_section: dict, olg_results: list[dict],
 # ============================================================
 # LAYER 2: DEEP INVESTIGATION
 # ============================================================
+
+def lookup_fns_section(section_number: str) -> dict | None:
+    """Load a single FNS section by number from parsed JSON files."""
+    normalized = section_number.replace(".", "_")
+    matches = list(FNS_PARSED_DIR.glob(f"ch*_{normalized}.json"))
+    if not matches:
+        return None
+    with open(matches[0], "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+LOOKUP_FNS_TOOL = {
+    "name": "lookup_fns_section",
+    "description": (
+        "Look up a specific FNS Handbook 310 section by its number. "
+        "Use this when the section you're analyzing cross-references "
+        "another FNS section (e.g., 'See Section 512'). Returns the "
+        "full text of that section."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "section_number": {
+                "type": "string",
+                "description": "The FNS section number to look up (e.g., '512', '1021.1')",
+            },
+        },
+        "required": ["section_number"],
+    },
+}
 
 SEARCH_OLG_TOOL = {
     "name": "search_olg",
@@ -567,14 +650,16 @@ SEARCH_OLG_TOOL = {
 def run_layer2(fns_section: dict, layer1_result: dict,
                olg_clients: dict, client: anthropic.Anthropic,
                model: str, system_prompt: str,
-               max_results: int = 10) -> dict:
+               max_results: int = 10,
+               fns_by_number: dict = None,
+               tracker: TokenTracker = None) -> dict:
     """
     Run Layer 2 agentic investigation. Claude can use the search_olg
-    tool to query the OLG multiple times.
+    tool to query the OLG and lookup_fns_section to follow cross-references.
     """
     user_message = (
         f"## FNS Requirement\n\n"
-        f"{format_fns_for_prompt(fns_section)}\n\n"
+        f"{format_fns_for_prompt(fns_section, fns_by_number)}\n\n"
         f"## Layer 1 Finding\n\n"
         f"Classification: {layer1_result['classification']}\n"
         f"Confidence: {layer1_result['confidence']}\n"
@@ -583,6 +668,7 @@ def run_layer2(fns_section: dict, layer1_result: dict,
     )
 
     messages = [{"role": "user", "content": user_message}]
+    tools = [SEARCH_OLG_TOOL, LOOKUP_FNS_TOOL]
 
     max_turns = 15
     for _ in range(max_turns):
@@ -591,15 +677,20 @@ def run_layer2(fns_section: dict, layer1_result: dict,
             max_tokens=1500,
             system=system_prompt,
             messages=messages,
-            tools=[SEARCH_OLG_TOOL],
+            tools=tools,
         )
+        if tracker:
+            tracker.record(response)
 
         if response.stop_reason == "tool_use":
             tool_results = []
             assistant_content = response.content
 
             for block in response.content:
-                if block.type == "tool_use" and block.name == "search_olg":
+                if block.type != "tool_use":
+                    continue
+
+                if block.name == "search_olg":
                     query = block.input.get("query", "")
                     search_response = search_with_client(
                         query, olg_clients,
@@ -607,10 +698,22 @@ def run_layer2(fns_section: dict, layer1_result: dict,
                         program="SNAP",
                         top_n=max_results,
                     )
-
                     formatted = format_olg_results_for_prompt(
                         search_response["results"]
                     )
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": formatted,
+                    })
+
+                elif block.name == "lookup_fns_section":
+                    sec_num = block.input.get("section_number", "")
+                    fns_ref = lookup_fns_section(sec_num)
+                    if fns_ref:
+                        formatted = format_fns_for_prompt(fns_ref, fns_by_number)
+                    else:
+                        formatted = f"Section {sec_num} not found."
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": block.id,
@@ -644,11 +747,13 @@ def run_layer2(fns_section: dict, layer1_result: dict,
 
 def run_layer3(fns_section: dict, layer2_result: dict,
                cmr_results: list[dict], client: anthropic.Anthropic,
-               model: str, system_prompt: str) -> dict:
+               model: str, system_prompt: str,
+               fns_by_number: dict = None,
+               tracker: TokenTracker = None) -> dict:
     """Run Layer 3 CMR cross-check for a confirmed gap."""
     user_message = (
         f"## FNS Requirement\n\n"
-        f"{format_fns_for_prompt(fns_section)}\n\n"
+        f"{format_fns_for_prompt(fns_section, fns_by_number)}\n\n"
         f"## Gap Finding (Layer 2)\n\n"
         f"Classification: {layer2_result['classification']}\n"
         f"Note: {layer2_result['note']}\n\n"
@@ -662,6 +767,8 @@ def run_layer3(fns_section: dict, layer2_result: dict,
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
     )
+    if tracker:
+        tracker.record(response)
 
     text = response.content[0].text.strip()
     return extract_json(text, fallback_classification="state_silent")
@@ -710,13 +817,28 @@ CSV_COLUMNS = [
     "cmr_section",
     "action_needed",
     "priority",
+    "tokens_in",
+    "tokens_out",
+    "est_cost",
 ]
+
+
+def _build_display_title(section: dict, fns_by_number: dict = None) -> str:
+    """Build a human-readable title that includes parent context for subsections."""
+    title = section["section_title"]
+    parent_num = section.get("parent_section")
+    if parent_num and fns_by_number and parent_num in fns_by_number:
+        parent_title = fns_by_number[parent_num]["section_title"]
+        title = f"{parent_title} > {title}"
+    return title
 
 
 def build_csv_row(fns_section: dict, layer1: dict,
                   olg_results: list[dict],
                   layer2: dict | None = None,
-                  layer3: dict | None = None) -> dict:
+                  layer3: dict | None = None,
+                  fns_by_number: dict = None,
+                  tracker: TokenTracker = None) -> dict:
     """Build a CSV row dict from layer results."""
     olg_titles = []
     olg_urls = []
@@ -754,7 +876,7 @@ def build_csv_row(fns_section: dict, layer1: dict,
     return {
         "fns_chapter": fns_section["chapter"],
         "fns_section": fns_section["section_number"],
-        "fns_title": fns_section["section_title"],
+        "fns_title": _build_display_title(fns_section, fns_by_number),
         "fns_summary": fns_section["text"][:200].replace("\n", " "),
         "classification": final_classification,
         "confidence": final_confidence,
@@ -766,6 +888,9 @@ def build_csv_row(fns_section: dict, layer1: dict,
         "cmr_section": "; ".join(layer3.get("cmr_sections", [])) if layer3 else "",
         "action_needed": action,
         "priority": priority,
+        "tokens_in": tracker.section_input if tracker else "",
+        "tokens_out": tracker.section_output if tracker else "",
+        "est_cost": f"${tracker.section_cost():.4f}" if tracker else "",
     }
 
 
@@ -786,6 +911,7 @@ def run_comparison(
     layer1_only: bool = False,
     dry_run: bool = False,
     resume: bool = False,
+    section_filter: set[str] = None,
 ) -> None:
     """Run the full comparison pipeline."""
     config = load_config()
@@ -816,6 +942,7 @@ def run_comparison(
     print()
 
     fns_sections = load_fns_sections(chapters)
+    fns_by_number = {s["section_number"]: s for s in fns_sections}
     print(f"Loaded {len(fns_sections)} FNS sections")
 
     classifications = load_classifications()
@@ -841,6 +968,11 @@ def run_comparison(
         print("No Layer 0 classifications found — processing all sections")
         print("  (Run --classify first to filter non-policy sections)")
 
+    if section_filter:
+        fns_sections = [s for s in fns_sections
+                        if s["section_number"] in section_filter]
+        print(f"Section filter: {len(fns_sections)} sections selected")
+
     if dry_run:
         print("\nDry run — sections that would be processed:")
         for s in fns_sections:
@@ -865,6 +997,7 @@ def run_comparison(
     layer1_counts = {"match": 0, "partial_match": 0, "no_match": 0, "not_applicable": 0}
     layer2_count = 0
     layer3_count = 0
+    tracker = TokenTracker()
 
     total = len(fns_sections)
     start_time = time.time()
@@ -885,8 +1018,10 @@ def run_comparison(
         )
         print(f"  RAG: {len(olg_results)} OLG matches")
 
+        tracker.reset_section()
         layer1 = run_layer1(fns_section, olg_results, claude,
-                            layer1_model, layer1_prompt)
+                            layer1_model, layer1_prompt, fns_by_number,
+                            tracker)
         cls = layer1["classification"]
         conf = layer1["confidence"]
         layer1_counts[cls] = layer1_counts.get(cls, 0) + 1
@@ -907,7 +1042,9 @@ def run_comparison(
             print(f"  L2: Investigating...")
             layer2 = run_layer2(fns_section, layer1, olg_clients,
                                 claude, layer2_model, layer2_prompt,
-                                max_results=olg_max_results)
+                                max_results=olg_max_results,
+                                fns_by_number=fns_by_number,
+                                tracker=tracker)
             l2_cls = layer2["classification"]
             searches = layer2.get("searches_performed", "?")
             print(f"  L2: {l2_cls} ({searches} searches) — {layer2['note'][:80]}")
@@ -921,12 +1058,16 @@ def run_comparison(
                 print(f"  L3: Checking CMR...")
                 cmr_results = query_cmr(fns_section, cmr_clients, cmr_max_results)
                 layer3 = run_layer3(fns_section, layer2, cmr_results,
-                                    claude, layer3_model, layer3_prompt)
+                                    claude, layer3_model, layer3_prompt,
+                                    fns_by_number, tracker)
                 action = layer3.get("action_recommended", "?")
                 priority = layer3.get("priority", "?")
                 print(f"  L3: {layer3['classification']} — {action} ({priority})")
 
-        row = build_csv_row(fns_section, layer1, olg_results, layer2, layer3)
+        print(f"  Tokens: {tracker.section_summary()} (${tracker.section_cost():.4f})")
+
+        row = build_csv_row(fns_section, layer1, olg_results, layer2, layer3,
+                            fns_by_number, tracker)
         all_rows.append(row)
 
         processed_ids.add(sec_id)
@@ -955,6 +1096,7 @@ def run_comparison(
     print(f"  Escalated to Layer 2: {layer2_count}")
     print(f"  Escalated to Layer 3: {layer3_count}")
     print()
+    print(f"  Tokens: {tracker.total_summary()}")
     print(f"  Report: {csv_path}")
 
     if CHECKPOINT_FILE.exists():
@@ -1010,6 +1152,10 @@ Examples:
         "--resume", action="store_true",
         help="Resume from last checkpoint",
     )
+    parser.add_argument(
+        "--sections", type=str, default=None,
+        help="Comma-separated section numbers to process (e.g., '1013.4,1021.1,1042')",
+    )
     args = parser.parse_args()
 
     if args.sync:
@@ -1025,6 +1171,10 @@ Examples:
                                   fallback="7,8,9,10,11")
         chapters = [int(c.strip()) for c in chapters_str.split(",")]
 
+    section_filter = None
+    if args.sections:
+        section_filter = set(s.strip() for s in args.sections.split(","))
+
     if args.classify:
         classify_sections(chapters, dry_run=args.dry_run, force=args.force)
         return
@@ -1034,6 +1184,7 @@ Examples:
         layer1_only=args.layer1_only,
         dry_run=args.dry_run,
         resume=args.resume,
+        section_filter=section_filter,
     )
 
 
