@@ -3,8 +3,10 @@ Comparator Agent — Cross-source policy analysis.
 
 Compares FNS Handbook 310 (federal SNAP standard) against the
 Massachusetts DTA Online Guide (OLG) to identify gaps, differences,
-and missing procedures. Three-layer architecture:
+and missing procedures. Four-layer architecture:
 
+  Layer 0 (Haiku):  Pre-classification — filter out non-policy FNS
+                    sections (QC procedures, overviews, glossaries).
   Layer 1 (Haiku):  Bulk triage — classify each FNS section against
                     pre-fetched OLG matches. Fast, cheap.
   Layer 2 (Sonnet): Deep investigation — agentic search of OLG for
@@ -17,6 +19,9 @@ Output: CSV report with classifications, notes, and action items.
 Usage:
     python comparator.py                          # Full run, chapters 7-11
     python comparator.py --chapter 10             # One chapter only
+    python comparator.py --classify               # Run Layer 0 classification only
+    python comparator.py --classify --force       # Re-classify all sections
+    python comparator.py --sync                   # Rebuild JSON from edited CSV
     python comparator.py --layer1-only            # Triage only, skip layers 2-3
     python comparator.py --dry-run                # Show what would be processed
     python comparator.py --resume                 # Resume from last checkpoint
@@ -29,6 +34,7 @@ import json
 import re
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 import anthropic
@@ -80,6 +86,8 @@ FNS_PARSED_DIR = PROJECT_ROOT / "data" / "fns" / "parsed_sections"
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 OUTPUT_DIR = PROJECT_ROOT / "data" / "comparator"
 CHECKPOINT_FILE = OUTPUT_DIR / "checkpoint.json"
+CLASSIFY_CSV = OUTPUT_DIR / "layer0_classifications.csv"
+CLASSIFY_JSON = OUTPUT_DIR / "layer0_classifications.json"
 
 
 def load_config() -> configparser.ConfigParser:
@@ -88,10 +96,16 @@ def load_config() -> configparser.ConfigParser:
     return config
 
 
-def load_prompt(name: str) -> str:
+def load_prompt(name: str, with_preamble: bool = False) -> str:
     filepath = PROMPTS_DIR / f"{name}.md"
     with open(filepath, "r", encoding="utf-8") as f:
-        return f.read()
+        prompt = f.read()
+    if with_preamble:
+        preamble_path = PROMPTS_DIR / "domain_preamble.md"
+        with open(preamble_path, "r", encoding="utf-8") as f:
+            preamble = f.read()
+        prompt = preamble + "\n\n---\n\n" + prompt
+    return prompt
 
 
 # ============================================================
@@ -107,6 +121,267 @@ def load_fns_sections(chapters: list[int]) -> list[dict]:
         if section["chapter"] in chapters:
             sections.append(section)
     return sections
+
+
+# ============================================================
+# LAYER 0: PRE-CLASSIFICATION
+# ============================================================
+
+CLASSIFY_CSV_COLUMNS = [
+    "section", "title", "chapter", "chapter_title", "label", "reason",
+]
+
+
+def _build_section_families(sections: list[dict]) -> dict:
+    """Build a lookup of section families: {parent_number: [child_sections]}.
+    Also index by section_number for quick parent lookup."""
+    by_number = {s["section_number"]: s for s in sections}
+    children = {}
+    for s in sections:
+        parent = s.get("parent_section")
+        if parent:
+            children.setdefault(parent, []).append(s)
+    return by_number, children
+
+
+def _format_section_context(section: dict, by_number: dict,
+                            children: dict) -> str:
+    """Format a section with its parent and sibling context for Layer 0."""
+    sec_num = section["section_number"]
+    parent_num = section.get("parent_section")
+
+    # Find the family: parent + all children of that parent
+    family = []
+    if parent_num and parent_num in by_number:
+        family.append(by_number[parent_num])
+        for child in children.get(parent_num, []):
+            family.append(child)
+    else:
+        # This section IS the parent — show it + its children
+        family.append(section)
+        for child in children.get(sec_num, []):
+            family.append(child)
+
+    # Build the context block
+    parts = []
+    parts.append(f"Chapter {section['chapter']}: {section['chapter_title']}")
+    parts.append("")
+
+    if len(family) > 1:
+        parts.append("## Full Section (for context — do NOT classify these)")
+        parts.append("")
+        for member in family:
+            m_num = member["section_number"]
+            m_title = member["section_title"]
+            m_text = member["text"][:1500]
+            if m_num == sec_num:
+                continue
+            parts.append(f"  {m_num}: {m_title}")
+            parts.append(f"  {m_text}")
+            if len(member["text"]) > 1500:
+                parts.append("  ... (truncated)")
+            parts.append("")
+
+    parts.append("## Classify This Section")
+    parts.append("")
+    parts.append(f"Section {sec_num}: {section['section_title']}")
+    parts.append("")
+    parts.append(section["text"][:3000])
+    if len(section["text"]) > 3000:
+        parts.append("... (truncated)")
+
+    return "\n".join(parts)
+
+
+def run_layer0(fns_section: dict, client: anthropic.Anthropic,
+               model: str, system_prompt: str,
+               by_number: dict = None, children: dict = None) -> dict:
+    """Classify a single FNS section as compare/skip/reference."""
+    if by_number and children:
+        user_message = _format_section_context(
+            fns_section, by_number, children)
+    else:
+        user_message = (
+            f"Section {fns_section['section_number']}: "
+            f"{fns_section['section_title']}\n"
+            f"Chapter {fns_section['chapter']}: "
+            f"{fns_section['chapter_title']}\n\n"
+            f"{fns_section['text'][:3000]}"
+        )
+        if len(fns_section["text"]) > 3000:
+            user_message += "\n... (truncated)"
+
+    response = client.messages.create(
+        model=model,
+        max_tokens=200,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_message}],
+    )
+
+    text = response.content[0].text.strip()
+    result = extract_json(text, fallback_classification="compare")
+    if "label" not in result:
+        result["label"] = result.pop("classification", "compare")
+    if "reason" not in result:
+        result["reason"] = result.pop("note", "")
+    return result
+
+
+def classify_sections(chapters: list[int], dry_run: bool = False,
+                      force: bool = False) -> None:
+    """Run Layer 0 classification on FNS sections. Writes CSV + JSON."""
+    config = load_config()
+    layer0_model = config.get("comparator", "layer0_model")
+
+    fns_sections = load_fns_sections(chapters)
+    print(f"Layer 0: FNS Section Pre-Classification")
+    print(f"=" * 50)
+    print(f"Chapters: {chapters}")
+    print(f"Model: {layer0_model}")
+    print(f"Sections loaded: {len(fns_sections)}")
+
+    existing = {}
+    if CLASSIFY_CSV.exists() and not force:
+        with open(CLASSIFY_CSV, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                existing[row["section"]] = row
+        print(f"Existing classifications: {len(existing)}")
+
+    to_classify = [s for s in fns_sections
+                   if s["section_number"] not in existing]
+    print(f"Sections to classify: {len(to_classify)}")
+
+    if dry_run:
+        print("\nDry run — sections that would be classified:")
+        for s in to_classify:
+            print(f"  {s['section_number']}: {s['section_title']}")
+        print(f"\nTotal: {len(to_classify)} sections")
+        if existing:
+            print(f"Already classified: {len(existing)} (use --force to redo)")
+        return
+
+    if not to_classify:
+        print("\nAll sections already classified. Use --force to re-classify.")
+        return
+
+    api_key = config.get("api", "anthropic_api_key")
+    claude = anthropic.Anthropic(api_key=api_key)
+    layer0_prompt = load_prompt("layer0_classify")
+
+    by_number, children_map = _build_section_families(fns_sections)
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    counts = {"compare": 0, "skip": 0, "reference": 0}
+    start_time = time.time()
+
+    for idx, section in enumerate(to_classify):
+        sec_num = section["section_number"]
+        pct = (idx + 1) / len(to_classify) * 100
+        print(f"  [{idx+1}/{len(to_classify)}] ({pct:.0f}%) "
+              f"{sec_num}: {section['section_title'][:50]}",
+              end="", flush=True)
+
+        result = run_layer0(section, claude, layer0_model, layer0_prompt,
+                            by_number, children_map)
+        label = result.get("label", "compare")
+        reason = result.get("reason", "")
+        counts[label] = counts.get(label, 0) + 1
+
+        print(f" -> {label}")
+
+        existing[sec_num] = {
+            "section": sec_num,
+            "title": section["section_title"],
+            "chapter": section["chapter"],
+            "chapter_title": section["chapter_title"],
+            "label": label,
+            "reason": reason,
+        }
+
+    _write_classification_files(existing)
+
+    elapsed = time.time() - start_time
+    print(f"\n{'=' * 50}")
+    print(f"Classification complete! ({elapsed:.1f}s)")
+    print(f"  Newly classified: {len(to_classify)}")
+    for label, count in sorted(counts.items()):
+        print(f"    {label:12s} {count}")
+    total_all = len(existing)
+    total_compare = sum(1 for r in existing.values() if r["label"] == "compare")
+    total_skip = sum(1 for r in existing.values() if r["label"] == "skip")
+    total_ref = sum(1 for r in existing.values() if r["label"] == "reference")
+    print(f"  Total classifications: {total_all}")
+    print(f"    compare:   {total_compare}")
+    print(f"    skip:      {total_skip}")
+    print(f"    reference: {total_ref}")
+    print(f"\n  CSV: {CLASSIFY_CSV}")
+    print(f"  JSON: {CLASSIFY_JSON}")
+
+
+def _write_classification_files(classifications: dict) -> None:
+    """Write both CSV and JSON from a {section_number: row_dict} mapping.
+    Also saves a timestamped archive copy of the CSV."""
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    sorted_rows = sorted(classifications.values(),
+                         key=lambda r: (int(r["chapter"]), r["section"]))
+
+    with open(CLASSIFY_CSV, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=CLASSIFY_CSV_COLUMNS)
+        writer.writeheader()
+        writer.writerows(sorted_rows)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    archive_csv = OUTPUT_DIR / f"layer0_classifications_{timestamp}.csv"
+    with open(archive_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=CLASSIFY_CSV_COLUMNS)
+        writer.writeheader()
+        writer.writerows(sorted_rows)
+
+    json_data = {row["section"]: {"label": row["label"], "reason": row["reason"]}
+                 for row in sorted_rows}
+    with open(CLASSIFY_JSON, "w", encoding="utf-8") as f:
+        json.dump(json_data, f, indent=2)
+
+    print(f"  Archive: {archive_csv}")
+
+
+def load_classifications() -> dict:
+    """Load Layer 0 classifications from JSON. Returns {section_number: {label, reason}}."""
+    if CLASSIFY_JSON.exists():
+        with open(CLASSIFY_JSON, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def sync_csv_to_json() -> None:
+    """Regenerate JSON from CSV after manual edits."""
+    if not CLASSIFY_CSV.exists():
+        print(f"No CSV found at {CLASSIFY_CSV}")
+        return
+
+    classifications = {}
+    with open(CLASSIFY_CSV, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            classifications[row["section"]] = row
+
+    json_data = {}
+    for sec_num, row in classifications.items():
+        json_data[sec_num] = {"label": row["label"], "reason": row["reason"]}
+
+    with open(CLASSIFY_JSON, "w", encoding="utf-8") as f:
+        json.dump(json_data, f, indent=2)
+
+    counts = {}
+    for entry in json_data.values():
+        counts[entry["label"]] = counts.get(entry["label"], 0) + 1
+
+    print(f"Synced {len(json_data)} classifications from CSV to JSON")
+    for label, count in sorted(counts.items()):
+        print(f"  {label:12s} {count}")
+    print(f"\n  JSON: {CLASSIFY_JSON}")
 
 
 # ============================================================
@@ -526,9 +801,9 @@ def run_comparison(
                                fallback="MEDIUM,LOW")
     escalate_levels = set(s.strip() for s in escalate_conf.split(","))
 
-    layer1_prompt = load_prompt("layer1_triage")
-    layer2_prompt = load_prompt("layer2_investigation")
-    layer3_prompt = load_prompt("layer3_validation")
+    layer1_prompt = load_prompt("layer1_triage", with_preamble=True)
+    layer2_prompt = load_prompt("layer2_investigation", with_preamble=True)
+    layer3_prompt = load_prompt("layer3_validation", with_preamble=True)
 
     print(f"SNAP Policy Comparator — FNS vs OLG")
     print(f"=" * 50)
@@ -542,6 +817,29 @@ def run_comparison(
 
     fns_sections = load_fns_sections(chapters)
     print(f"Loaded {len(fns_sections)} FNS sections")
+
+    classifications = load_classifications()
+    if classifications:
+        before = len(fns_sections)
+        unclassified = []
+        filtered_sections = []
+        for s in fns_sections:
+            sec_num = s["section_number"]
+            if sec_num not in classifications:
+                unclassified.append(sec_num)
+                filtered_sections.append(s)
+            elif classifications[sec_num]["label"] == "compare":
+                filtered_sections.append(s)
+        skipped = before - len(filtered_sections)
+        print(f"Layer 0 filter: {len(filtered_sections)} compare, "
+              f"{skipped} skipped/reference")
+        if unclassified:
+            print(f"  WARNING: {len(unclassified)} unclassified sections "
+                  f"included by default")
+        fns_sections = filtered_sections
+    else:
+        print("No Layer 0 classifications found — processing all sections")
+        print("  (Run --classify first to filter non-policy sections)")
 
     if dry_run:
         print("\nDry run — sections that would be processed:")
@@ -676,6 +974,9 @@ def main():
 Examples:
   python comparator.py                    # Full run, chapters 7-11
   python comparator.py --chapter 10       # One chapter only
+  python comparator.py --classify         # Layer 0: classify sections
+  python comparator.py --classify --force # Re-classify all sections
+  python comparator.py --sync             # Rebuild JSON from edited CSV
   python comparator.py --layer1-only      # Triage only
   python comparator.py --dry-run          # Preview sections
   python comparator.py --resume           # Resume interrupted run
@@ -684,6 +985,18 @@ Examples:
     parser.add_argument(
         "--chapter", type=int, default=None,
         help="Process only this FNS chapter",
+    )
+    parser.add_argument(
+        "--classify", action="store_true",
+        help="Run Layer 0 pre-classification only",
+    )
+    parser.add_argument(
+        "--sync", action="store_true",
+        help="Regenerate JSON from manually edited CSV",
+    )
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Re-classify all sections (with --classify)",
     )
     parser.add_argument(
         "--layer1-only", action="store_true",
@@ -699,6 +1012,10 @@ Examples:
     )
     args = parser.parse_args()
 
+    if args.sync:
+        sync_csv_to_json()
+        return
+
     config = load_config()
 
     if args.chapter:
@@ -707,6 +1024,10 @@ Examples:
         chapters_str = config.get("comparator", "fns_chapters_to_compare",
                                   fallback="7,8,9,10,11")
         chapters = [int(c.strip()) for c in chapters_str.split(",")]
+
+    if args.classify:
+        classify_sections(chapters, dry_run=args.dry_run, force=args.force)
+        return
 
     run_comparison(
         chapters=chapters,
