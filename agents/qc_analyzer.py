@@ -76,6 +76,75 @@ def load_prompt(name: str, with_preamble: bool = False) -> str:
 
 
 # ============================================================
+# COST TRACKING
+# ============================================================
+
+# Per-million-token rates (USD)
+MODEL_PRICING = {
+    "claude-haiku-4-5-20251001": {"input": 1.00, "output": 5.00},
+    "claude-sonnet-4-5-20250929": {"input": 3.00, "output": 15.00},
+    "claude-opus-4-20250805": {"input": 5.00, "output": 25.00},
+}
+
+
+class CostTracker:
+    """Accumulate API token usage and calculate costs."""
+
+    def __init__(self):
+        self.extractor_input = 0
+        self.extractor_output = 0
+        self.judge_input = 0
+        self.judge_output = 0
+        self.extractor_model = None
+        self.judge_model = None
+
+    def add_extractor(self, response):
+        self.extractor_input += response.usage.input_tokens
+        self.extractor_output += response.usage.output_tokens
+
+    def add_judge(self, response):
+        self.judge_input += response.usage.input_tokens
+        self.judge_output += response.usage.output_tokens
+
+    def _cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
+        rates = MODEL_PRICING.get(model, {"input": 3.00, "output": 15.00})
+        return (input_tokens * rates["input"] + output_tokens * rates["output"]) / 1_000_000
+
+    def extractor_cost(self) -> float:
+        return self._cost(self.extractor_model, self.extractor_input, self.extractor_output)
+
+    def judge_cost(self) -> float:
+        return self._cost(self.judge_model, self.judge_input, self.judge_output)
+
+    def total_cost(self) -> float:
+        return self.extractor_cost() + self.judge_cost()
+
+    def total_input(self) -> int:
+        return self.extractor_input + self.judge_input
+
+    def total_output(self) -> int:
+        return self.extractor_output + self.judge_output
+
+    def summary(self) -> str:
+        lines = [
+            f"  Cost breakdown:",
+            f"    Extractor ({self.extractor_model}):",
+            f"      Input:  {self.extractor_input:>10,} tokens",
+            f"      Output: {self.extractor_output:>10,} tokens",
+            f"      Cost:   ${self.extractor_cost():>8.4f}",
+            f"    Judge ({self.judge_model}):",
+            f"      Input:  {self.judge_input:>10,} tokens",
+            f"      Output: {self.judge_output:>10,} tokens",
+            f"      Cost:   ${self.judge_cost():>8.4f}",
+            f"    Total:",
+            f"      Input:  {self.total_input():>10,} tokens",
+            f"      Output: {self.total_output():>10,} tokens",
+            f"      Cost:   ${self.total_cost():>8.4f}",
+        ]
+        return "\n".join(lines)
+
+
+# ============================================================
 # UTILITIES
 # ============================================================
 
@@ -237,7 +306,8 @@ def build_extractor_input(row: dict) -> str:
 
 
 def run_extractor(user_message: str, client: anthropic.Anthropic,
-                  model: str, system_prompt: str) -> dict:
+                  model: str, system_prompt: str,
+                  cost_tracker: CostTracker = None) -> dict:
     """Call 1: Extract policy issues and search queries from a QC finding."""
     max_retries = 3
     for attempt in range(max_retries):
@@ -248,6 +318,8 @@ def run_extractor(user_message: str, client: anthropic.Anthropic,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_message}],
             )
+            if cost_tracker:
+                cost_tracker.add_extractor(response)
             text = response.content[0].text.strip()
             return extract_json(text, fallback_classification="Partial")
         except anthropic.RateLimitError:
@@ -322,7 +394,8 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
               olg_clients: dict, client: anthropic.Anthropic,
               model: str, system_prompt: str,
               max_searches: int = 10,
-              results_per_search: int = 5) -> dict:
+              results_per_search: int = 5,
+              cost_tracker: CostTracker = None) -> dict:
     """Call 2: Agentic OLG coverage assessment with iterative search."""
 
     seed_formatted = format_olg_results_for_prompt(seed_results)
@@ -358,6 +431,8 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
                 messages=messages,
                 tools=[SEARCH_OLG_TOOL],
             )
+            if cost_tracker:
+                cost_tracker.add_judge(response)
         except anthropic.RateLimitError:
             print(f"\n    Rate limited, waiting 60s...")
             time.sleep(60)
@@ -369,6 +444,8 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
                     messages=messages,
                     tools=[SEARCH_OLG_TOOL],
                 )
+                if cost_tracker:
+                    cost_tracker.add_judge(response)
             except anthropic.APIError as e:
                 return {
                     "coverage": "Partial",
@@ -570,6 +647,9 @@ def analyze_csv(
 
     start_time = time.time()
     coverage_counts = {"Adequate": 0, "Partial": 0, "Gap": 0}
+    cost_tracker = CostTracker()
+    cost_tracker.extractor_model = extractor_model
+    cost_tracker.judge_model = judge_model
 
     for progress_idx, (row_idx, row) in enumerate(selected):
         if row_idx in processed_indices:
@@ -590,7 +670,8 @@ def analyze_csv(
         print(f"  Extractor...", end="", flush=True)
         extractor_input = build_extractor_input(row)
         extractor_result = run_extractor(
-            extractor_input, claude, extractor_model, extractor_prompt
+            extractor_input, claude, extractor_model, extractor_prompt,
+            cost_tracker=cost_tracker
         )
         policy_issues = extractor_result.get("policy_issues", "extraction failed")
         queries = extractor_result.get("search_queries", [])
@@ -614,6 +695,7 @@ def analyze_csv(
             claude, judge_model, judge_prompt,
             max_searches=max_judge_searches,
             results_per_search=olg_results_per_search,
+            cost_tracker=cost_tracker,
         )
         coverage = judge_result.get("coverage", "Unknown")
         searches = judge_result.get("searches_performed", 0)
@@ -659,6 +741,10 @@ def analyze_csv(
     for cov, count in sorted(coverage_counts.items()):
         if count > 0:
             print(f"    {cov:12s} {count}")
+    print()
+    print(cost_tracker.summary())
+    if len(output_rows) > 0:
+        print(f"    Avg cost/row: ${cost_tracker.total_cost() / len(output_rows):.4f}")
     print(f"\n  Output: {output_path}")
 
     if CHECKPOINT_FILE.exists():
