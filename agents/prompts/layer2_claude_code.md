@@ -13,7 +13,7 @@ Layer 1 triage flagged this item for deeper review. The initial assessment was n
 **OLG Search** — Run semantic searches against the OLG knowledge base using the CLI:
 
 ```
-python core/query.py "search term" --source olg --program SNAP --json --top 10
+python core/query.py "search term" --source olg --json --top 10
 ```
 
 Use this as many times as needed. Try:
@@ -23,13 +23,17 @@ Use this as many times as needed. Try:
 - Related procedures (e.g., "BEACON income entry")
 - Specific terms from the FNS text that might appear in OLG
 
-**FNS Section Lookup** — When the section you're analyzing cross-references another FNS section (e.g., "See Section 512"), read the referenced section directly:
+You can add `--program SNAP` to narrow results to SNAP-specific pages, but be aware that many relevant pages are tagged as "Cross-Program" and will be excluded by that filter. Start without the program filter; add it only if results are too noisy.
+
+You can also search with `--collection pages` for broader page-level results (good for topic discovery) vs the default `--collection sections` (granular section-level chunks, good for specific answers).
+
+**FNS Section Lookup** — When the section you're analyzing cross-references another FNS section (e.g., "See Section 512"), search for it the same way:
 
 ```
-Read the file at: data/fns/parsed_sections/ch{XX}_{section_number}.json
+python core/query.py "Section 512 data matching" --source fns --json --top 5
 ```
 
-Where `{XX}` is the chapter number and `{section_number}` uses underscores instead of dots (e.g., section 1021.1 in chapter 10 is `ch10_1021_1.json`).
+You can search by section number, topic, or both. The FNS handbook is fully indexed in the same RAG system as the OLG.
 
 Search until you are confident you've either found the relevant OLG content or confirmed it doesn't exist. Typically 3-6 searches is sufficient, but use more if needed.
 
@@ -48,7 +52,7 @@ After your investigation, classify as ONE of:
 
 This is policy compliance work. The difference between "is allowed" and "may be allowed per an unverified provision" matters. Follow these rules:
 
-- **Only assert what your sources actually confirm.** You have access to the OLG (via search), FNS (the section text provided + cross-referenced sections), and CMR (via search). If a conclusion requires a document you don't have (e.g., the State Plan, a BEACON system spec, a policy memo), say so explicitly.
+- **Only assert what your sources actually confirm.** You have access to the OLG and FNS via search. If a conclusion requires a document you don't have (e.g., the State Plan, a BEACON system spec, a policy memo), say so explicitly.
 - **Distinguish findings from inferences.** "The OLG does not mention the biweekly multiplier" is a finding. "Massachusetts chose to use its own conversion standard under the FNS state option" is an inference — it may be reasonable, but flag it as such.
 - **Don't close out findings based on assumptions.** If FNS requires X, and the OLG doesn't address X, but you think BEACON might handle it automatically — that's still a gap in the written guide. Note the BEACON possibility, but don't let it downgrade the finding unless you have OLG text confirming automation.
 - **When sources differ, describe the difference precisely.** Don't editorialize about whether the difference is acceptable. State what each source says, note any provisions that might reconcile them, and flag what would need to be verified to confirm alignment.
@@ -61,7 +65,7 @@ When you have completed your investigation, write your result as a JSON file to 
 {
     "classification": "match|partial_match|policy_present_procedures_missing|different_standard|confirmed_gap|not_applicable",
     "confidence": "HIGH|MEDIUM|LOW",
-    "note": "Detailed explanation of your finding. Reference specific OLG pages and sections you found (or didn't find). Describe what the OLG says vs what FNS requires. 2-5 sentences.",
+    "note": "A few sentences, as necessary, to explain the findings. Reference specific OLG pages and sections you found (or didn't find). Describe what the OLG says vs what FNS requires.",
     "olg_pages_found": ["page title 1", "page title 2"],
     "searches_performed": 4
 }
