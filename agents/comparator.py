@@ -1206,6 +1206,7 @@ def run_comparison(
     section_filter: set[str] = None,
     engine: str = "api",
     windowed: bool = False,
+    parallel: int = 1,
 ) -> None:
     """Run the full comparison pipeline."""
     config = load_config()
@@ -1237,6 +1238,8 @@ def run_comparison(
     print(f"Layer 3 model: {layer3_model}")
     print(f"OLG similarity threshold: {similarity_threshold}")
     print(f"Escalate on confidence: {escalate_levels}")
+    if parallel > 1:
+        print(f"Parallel L2 workers: {parallel}")
     print()
 
     fns_sections = load_fns_sections(chapters)
@@ -1300,6 +1303,13 @@ def run_comparison(
     total = len(fns_sections)
     start_time = time.time()
 
+    # ── Phase 1: L0/L1 triage (sequential) ──────────────────
+    # Collect RAG results and L1 verdicts for all sections.
+    # Build the L2 queue for sections that need escalation.
+
+    l1_results = []  # (fns_section, layer1, olg_results, needs_l2)
+    l2_queue = []    # indices into l1_results that need L2
+
     for idx, fns_section in enumerate(fns_sections):
         sec_id = fns_section["section_number"]
 
@@ -1325,19 +1335,39 @@ def run_comparison(
         layer1_counts[cls] = layer1_counts.get(cls, 0) + 1
         print(f"  L1: {cls} ({conf}) — {layer1['note'][:80]}")
 
-        layer2 = None
-        layer3 = None
-
         needs_escalation = (
             not layer1_only
             and (cls in ("partial_match", "no_match")
                  or (cls == "match" and conf in escalate_levels))
         )
         skip_escalation = cls in ("not_applicable", "match") and conf == "HIGH"
+        needs_l2 = needs_escalation and not skip_escalation
 
-        if needs_escalation and not skip_escalation:
-            layer2_count += 1
-            layer2 = investigate_section(
+        entry_idx = len(l1_results)
+        l1_results.append((fns_section, layer1, olg_results, needs_l2))
+        if needs_l2:
+            l2_queue.append(entry_idx)
+
+    print(f"\n{'=' * 50}")
+    print(f"Phase 1 complete: {len(l1_results)} sections triaged, "
+          f"{len(l2_queue)} need L2 investigation")
+    print(f"{'=' * 50}")
+
+    if layer1_only or not l2_queue:
+        # Build rows from L1 results only
+        for fns_section, layer1, olg_results, _ in l1_results:
+            row = build_csv_row(fns_section, layer1, olg_results, None, None,
+                                fns_by_number, tracker)
+            all_rows.append(row)
+    else:
+        # ── Phase 2: L2 deep investigation (parallel) ──────────
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        l2_results = {}  # entry_idx → layer2 dict
+
+        def _run_l2(entry_idx):
+            fns_section, layer1, olg_results, _ = l1_results[entry_idx]
+            return entry_idx, investigate_section(
                 fns_section, layer1, olg_results,
                 engine=engine,
                 olg_clients=olg_clients,
@@ -1350,38 +1380,73 @@ def run_comparison(
                 windowed=windowed,
             )
 
-            l2_cls = layer2["classification"]
-            searches = layer2.get("searches_performed", "?")
-            if layer2.get("_cached"):
-                print(f"  L2: {l2_cls} ({searches} searches) — cached")
-            else:
-                l2_elapsed = layer2.get("_elapsed")
-                l2_error = layer2.get("_error")
-                if l2_elapsed is not None:
-                    status = "OK" if not l2_error else f"FAILED: {l2_error}"
-                    print(f"  L2: {l2_cls} ({searches} searches, "
-                          f"{l2_elapsed:.0f}s) — {status}")
-                else:
-                    print(f"  L2: {l2_cls} ({searches} searches)")
-                l2_session = layer2.get("_session_id")
-                if l2_session:
-                    print(f"  L2 session: {l2_session}")
-            print(f"  L2: {layer2['note'][:100]}")
+        workers = min(parallel, len(l2_queue))
+        print(f"\nStarting L2 with {workers} parallel workers "
+              f"({len(l2_queue)} sections)...\n")
 
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {pool.submit(_run_l2, idx): idx for idx in l2_queue}
+            done_count = 0
+
+            for future in as_completed(futures):
+                entry_idx, layer2 = future.result()
+                l2_results[entry_idx] = layer2
+                done_count += 1
+
+                fns_section = l1_results[entry_idx][0]
+                sec_id = fns_section["section_number"]
+                l2_cls = layer2["classification"]
+                searches = layer2.get("searches_performed", "?")
+
+                if layer2.get("_cached"):
+                    print(f"  [{done_count}/{len(l2_queue)}] {sec_id}: "
+                          f"{l2_cls} ({searches} searches) — cached")
+                else:
+                    l2_elapsed = layer2.get("_elapsed")
+                    l2_error = layer2.get("_error")
+                    if l2_elapsed is not None:
+                        status = "OK" if not l2_error else f"FAILED: {l2_error}"
+                        print(f"  [{done_count}/{len(l2_queue)}] {sec_id}: "
+                              f"{l2_cls} ({searches} searches, "
+                              f"{l2_elapsed:.0f}s) — {status}")
+                    else:
+                        print(f"  [{done_count}/{len(l2_queue)}] {sec_id}: "
+                              f"{l2_cls} ({searches} searches)")
+                    l2_session = layer2.get("_session_id")
+                    if l2_session:
+                        print(f"    session: {l2_session}")
+                print(f"    {layer2['note'][:100]}")
+
+        # ── Phase 3: L3 CMR cross-check (sequential) ──────────
+        print(f"\nPhase 2 complete. Checking for L3 escalations...\n")
+
+        l3_results = {}  # entry_idx → layer3 dict
+
+        for entry_idx in l2_queue:
+            layer2 = l2_results.get(entry_idx)
+            if not layer2:
+                continue
+
+            l2_cls = layer2["classification"]
             needs_layer3 = l2_cls in (
                 "confirmed_gap", "different_standard",
                 "policy_present_procedures_missing",
             )
             if needs_layer3 and cmr_clients:
+                fns_section = l1_results[entry_idx][0]
+                sec_id = fns_section["section_number"]
                 layer3_count += 1
-                print(f"  L3: Checking CMR...")
+                print(f"  L3: {sec_id} — Checking CMR...")
+                tracker.reset_section()
                 cmr_results = query_cmr(fns_section, cmr_clients, cmr_max_results)
                 layer3 = run_layer3(fns_section, layer2, cmr_results,
                                     claude, layer3_model, layer3_prompt,
                                     fns_by_number, tracker)
+                l3_results[entry_idx] = layer3
                 action = layer3.get("action_recommended", "?")
                 priority = layer3.get("priority", "?")
-                print(f"  L3: {layer3['classification']} — {action} ({priority})")
+                print(f"  L3: {sec_id} — {layer3['classification']} — "
+                      f"{action} ({priority})")
 
                 # Persist L3 results into the result JSON
                 result_file = RESULTS_DIR / f"{sec_id}.json"
@@ -1395,19 +1460,20 @@ def run_comparison(
                     except (json.JSONDecodeError, OSError):
                         pass
 
-        print(f"  API tokens: {tracker.section_summary()} (${tracker.section_cost():.4f})")
+        # ── Phase 4: Build rows (in order) ─────────────────────
+        for entry_idx, (fns_section, layer1, olg_results, needs_l2) in enumerate(l1_results):
+            layer2 = l2_results.get(entry_idx) if needs_l2 else None
+            layer3 = l3_results.get(entry_idx)
+            if layer2:
+                layer2_count += 1
+            row = build_csv_row(fns_section, layer1, olg_results, layer2, layer3,
+                                fns_by_number, tracker)
+            all_rows.append(row)
 
-        row = build_csv_row(fns_section, layer1, olg_results, layer2, layer3,
-                            fns_by_number, tracker)
-        all_rows.append(row)
+            sec_id = fns_section["section_number"]
+            processed_ids.add(sec_id)
 
-        processed_ids.add(sec_id)
         save_checkpoint(all_rows, processed_ids)
-
-        if (idx + 1) % 20 == 0:
-            interim_path = OUTPUT_DIR / "comparison_interim.csv"
-            write_csv(all_rows, interim_path)
-            print(f"\n  Interim results saved ({len(all_rows)} rows)")
 
     elapsed = time.time() - start_time
     elapsed_min = elapsed / 60
@@ -1503,6 +1569,10 @@ Examples:
         help="Open each Claude Code session in a visible console window (with --engine claude-code)",
     )
     parser.add_argument(
+        "--parallel", type=int, default=1,
+        help="Number of parallel L2 workers (default: 1 = sequential)",
+    )
+    parser.add_argument(
         "--compile", action="store_true",
         help="Compile result JSONs from Claude Code sessions into CSV",
     )
@@ -1548,6 +1618,7 @@ Examples:
         section_filter=section_filter,
         engine=args.engine,
         windowed=args.windowed,
+        parallel=args.parallel,
     )
 
 
