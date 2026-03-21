@@ -157,7 +157,10 @@ def embed_query(query_text: str, client: voyageai.Client,
 # CHROMADB SEARCH
 # ============================================================
 
-def _build_where_filter(program: str | None = None) -> dict | None:
+def _build_where_filter(
+    program: str | None = None,
+    exclude_programs: list[str] | None = None,
+) -> dict | None:
     """
     Build a ChromaDB where filter from query parameters.
 
@@ -167,6 +170,8 @@ def _build_where_filter(program: str | None = None) -> dict | None:
 
     if program:
         conditions.append({"program": program})
+    elif exclude_programs:
+        conditions.append({"program": {"$nin": exclude_programs}})
 
     if not conditions:
         return None
@@ -321,6 +326,7 @@ def search_with_client(
     clients: dict,
     collection: str = DEFAULT_COLLECTION,
     program: str | None = None,
+    exclude_programs: list[str] | None = None,
     top_n: int = DEFAULT_TOP_N,
     threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
     include_context: bool = False,
@@ -337,6 +343,9 @@ def search_with_client(
         collection: Which collection to search ('sections', 'pages',
                     or 'chapters').
         program: Filter by program (e.g., 'SNAP'). OLG only.
+        exclude_programs: Exclude these programs from results (e.g.,
+                         ['TAFDC', 'EAEDC']). OLG only. Ignored if
+                         program is set.
         top_n: Maximum number of results to return.
         threshold: Minimum similarity score (0-1). 0 = no threshold.
         include_context: If True and searching sections, include the
@@ -364,6 +373,7 @@ def search_with_client(
 
     # Handle program filter
     resolved_program = None
+    resolved_excludes = None
     if program:
         if not source_config["has_program_filter"]:
             print(f"Note: Program filtering is not available for {source_config['source_label']} "
@@ -372,6 +382,12 @@ def search_with_client(
             resolved_program = _resolve_program_name(
                 program, clients["granular_collection"]
             )
+    elif exclude_programs and source_config["has_program_filter"]:
+        resolved_excludes = [
+            _resolve_program_name(p, clients["granular_collection"])
+            for p in exclude_programs
+        ]
+        resolved_excludes = [p for p in resolved_excludes if p]
 
     # Embed the query
     query_embedding = embed_query(
@@ -379,7 +395,10 @@ def search_with_client(
     )
 
     # Build filter and search
-    where = _build_where_filter(program=resolved_program)
+    where = _build_where_filter(
+        program=resolved_program,
+        exclude_programs=resolved_excludes,
+    )
     results = query_collection(
         query_embedding, coll,
         n_results=top_n, where=where,
@@ -405,6 +424,8 @@ def search_with_client(
     filters = {}
     if resolved_program:
         filters["program"] = resolved_program
+    if resolved_excludes:
+        filters["exclude_programs"] = resolved_excludes
 
     return {
         "query": query,
@@ -421,6 +442,7 @@ def search(
     source: str = "olg",
     collection: str = DEFAULT_COLLECTION,
     program: str | None = None,
+    exclude_programs: list[str] | None = None,
     top_n: int = DEFAULT_TOP_N,
     threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
     include_context: bool = False,
@@ -437,6 +459,7 @@ def search(
         query, clients,
         collection=collection,
         program=program,
+        exclude_programs=exclude_programs,
         top_n=top_n,
         threshold=threshold,
         include_context=include_context,
@@ -725,6 +748,7 @@ def run_query(
     source: str = "olg",
     collection: str = DEFAULT_COLLECTION,
     program: str | None = None,
+    exclude_programs: list[str] | None = None,
     top_n: int = DEFAULT_TOP_N,
     threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
     include_context: bool = False,
@@ -742,6 +766,7 @@ def run_query(
         query, clients,
         collection=collection,
         program=program,
+        exclude_programs=exclude_programs,
         top_n=top_n,
         threshold=threshold,
         include_context=include_context,
@@ -799,6 +824,10 @@ Examples:
         help="Filter results by program (e.g., SNAP, TAFDC) — OLG only",
     )
     parser.add_argument(
+        "--exclude-programs",
+        help="Exclude programs from results (comma-separated, e.g., TAFDC,EAEDC) — OLG only",
+    )
+    parser.add_argument(
         "--top", "-n", type=int, default=DEFAULT_TOP_N,
         help=f"Number of results to return (default: {DEFAULT_TOP_N})",
     )
@@ -841,11 +870,16 @@ Examples:
     if not args.query:
         parser.error("Search query is required (or use --list-programs)")
 
+    exclude = None
+    if args.exclude_programs:
+        exclude = [p.strip() for p in args.exclude_programs.split(",")]
+
     run_query(
         query=args.query,
         source=args.source,
         collection=args.collection,
         program=args.program,
+        exclude_programs=exclude,
         top_n=args.top,
         threshold=args.threshold,
         include_context=args.context,

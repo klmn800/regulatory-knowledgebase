@@ -463,7 +463,7 @@ def multi_query_olg(fns_section: dict, olg_clients: dict,
         response = search_with_client(
             query, olg_clients,
             collection="sections",
-            program="SNAP",
+            exclude_programs=["TAFDC", "EAEDC"],
             top_n=max_results,
             threshold=similarity_threshold,
         )

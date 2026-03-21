@@ -13,8 +13,10 @@ Layer 1 triage flagged this item for deeper review. The initial assessment was n
 **OLG Search** — Run semantic searches against the OLG knowledge base using the CLI:
 
 ```
-python core/query.py "search term" --source olg --json --top 10
+python core/query.py "search term" --source olg --exclude-programs "TAFDC,EAEDC" --json --top 10
 ```
+
+The `--exclude-programs` flag filters out TAFDC-only and EAEDC-only pages while keeping SNAP and Cross-Program pages (which often contain SNAP-relevant content). You can also use `--program SNAP` for a stricter filter, but be aware this excludes Cross-Program pages that may cover SNAP topics.
 
 Use this as many times as needed. Try:
 - The exact topic (e.g., "earned income deduction")
@@ -22,8 +24,6 @@ Use this as many times as needed. Try:
 - Broader topics (e.g., "income verification")
 - Related procedures (e.g., "BEACON income entry")
 - Specific terms from the FNS text that might appear in OLG
-
-You can add `--program SNAP` to narrow results to SNAP-specific pages, but be aware that many relevant pages are tagged as "Cross-Program" and will be excluded by that filter. Start without the program filter; add it only if results are too noisy.
 
 You can also search with `--collection pages` for broader page-level results (good for topic discovery) vs the default `--collection sections` (granular section-level chunks, good for specific answers).
 

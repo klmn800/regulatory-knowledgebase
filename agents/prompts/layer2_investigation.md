@@ -17,7 +17,7 @@ You have two tools:
 - Related procedures (e.g., "BEACON income entry")
 - Specific terms from the FNS text that might appear in OLG
 
-Note: the default search returns section-level chunks (granular). Many relevant OLG pages are tagged as "Cross-Program" rather than "SNAP", so don't assume missing results mean missing coverage — try different search terms.
+Note: the default search covers all OLG programs. Many SNAP-relevant pages are tagged as "Cross-Program" rather than "SNAP" (e.g., verification procedures, interview requirements). Don't assume missing results mean missing coverage — try different search terms and broader topics.
 
 **`lookup_fns_section`** — Look up a specific FNS section by number. Use this when the section you're analyzing cross-references another FNS section (e.g., "See Section 512"). This helps you understand what the cross-reference actually requires before searching the OLG for coverage.
 
