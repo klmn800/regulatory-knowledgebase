@@ -848,6 +848,78 @@ def run_layer2_claude_code(
 
 
 # ============================================================
+# LAYER 2: UNIFIED DISPATCH
+# ============================================================
+
+def investigate_section(
+    fns_section: dict,
+    layer1_result: dict,
+    olg_results: list[dict],
+    engine: str = "api",
+    olg_clients: dict = None,
+    client: anthropic.Anthropic = None,
+    model: str = None,
+    system_prompt: str = None,
+    max_results: int = 10,
+    fns_by_number: dict = None,
+    tracker: TokenTracker = None,
+    windowed: bool = False,
+) -> dict:
+    """
+    Run Layer 2 investigation for a single section.
+
+    Checks for a cached result file first (shared for both engines).
+    On cache miss, dispatches to the API tool-use loop or Claude Code CLI.
+    Writes result to RESULTS_DIR/{section_number}.json for both engines.
+
+    Returns the L2 result dict. Metadata fields:
+        _session_id  — Claude Code session UUID, or "" for API
+        _cached      — True if loaded from existing result file
+        _elapsed     — Wall-clock seconds (fresh Claude Code runs)
+        _error       — Error message (failed runs only)
+    """
+    sec_id = fns_section["section_number"]
+    result_file = RESULTS_DIR / f"{sec_id}.json"
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Check cache — shared for both engines
+    if result_file.exists():
+        try:
+            with open(result_file, "r", encoding="utf-8") as f:
+                cached = json.load(f)
+            cached["_cached"] = True
+            return cached
+        except (json.JSONDecodeError, OSError):
+            pass  # Corrupt file — fall through to fresh run
+
+    # Dispatch to engine
+    if engine == "claude-code":
+        result = run_layer2_claude_code(
+            fns_section, layer1_result, olg_results,
+            fns_by_number=fns_by_number,
+            windowed=windowed,
+        )
+        # run_layer2_claude_code() writes the result file and sets
+        # _session_id, _elapsed, _error
+    else:
+        result = run_layer2(
+            fns_section, layer1_result, olg_clients,
+            client, model, system_prompt,
+            max_results=max_results,
+            fns_by_number=fns_by_number,
+            tracker=tracker,
+            olg_results=olg_results,
+        )
+        result["_session_id"] = ""
+        result_file.write_text(
+            json.dumps(result, indent=4), encoding="utf-8"
+        )
+
+    result["_cached"] = False
+    return result
+
+
+# ============================================================
 # LAYER 3: CMR CROSS-CHECK
 # ============================================================
 
@@ -1011,16 +1083,16 @@ def write_csv(rows: list[dict], filepath: Path) -> None:
 
 
 # ============================================================
-# COMPILE RESULTS (CLAUDE CODE MODE)
+# COMPILE RESULTS FROM RESULT JSONs
 # ============================================================
 
 def compile_results(chapters: list[int] = None) -> None:
     """
-    Compile individual result JSONs from Claude Code sessions into a CSV.
+    Compile individual result JSONs into a CSV.
 
     Each file in data/comparator/results/{section_number}.json contains
-    the Layer 2 verdict for that section. This function loads them all,
-    enriches with FNS metadata, and produces the final comparison CSV.
+    the Layer 2 verdict for that section (from any engine). This function
+    loads them all, enriches with FNS metadata, and produces a comparison CSV.
     """
     if not RESULTS_DIR.exists():
         print(f"No results directory found at {RESULTS_DIR}")
@@ -1107,7 +1179,7 @@ def compile_results(chapters: list[int] = None) -> None:
     rows.sort(key=lambda r: (int(r["fns_chapter"]), r["fns_section"]))
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-    csv_path = OUTPUT_DIR / f"comparison_claude-code_{timestamp}.csv"
+    csv_path = OUTPUT_DIR / f"comparison_compiled_{timestamp}.csv"
     write_csv(rows, csv_path)
 
     print(f"\nCompile Results")
@@ -1265,53 +1337,36 @@ def run_comparison(
 
         if needs_escalation and not skip_escalation:
             layer2_count += 1
+            layer2 = investigate_section(
+                fns_section, layer1, olg_results,
+                engine=engine,
+                olg_clients=olg_clients,
+                client=claude,
+                model=layer2_model,
+                system_prompt=layer2_prompt,
+                max_results=olg_max_results,
+                fns_by_number=fns_by_number,
+                tracker=tracker,
+                windowed=windowed,
+            )
 
-            if engine == "claude-code":
-                result_file = RESULTS_DIR / f"{sec_id}.json"
-                if result_file.exists():
-                    print(f"  L2: Result file exists, loading cached result")
-                    try:
-                        with open(result_file, "r", encoding="utf-8") as f:
-                            layer2 = json.load(f)
-                    except (json.JSONDecodeError, OSError):
-                        layer2 = None
-
-                if layer2 is None:
-                    mode = "windowed" if windowed else "headless"
-                    print(f"  L2: Investigating via Claude Code ({mode})...")
-                    layer2 = run_layer2_claude_code(
-                        fns_section, layer1, olg_results,
-                        fns_by_number=fns_by_number,
-                        windowed=windowed,
-                    )
-                    l2_elapsed = layer2.pop("_elapsed", 0)
-                    l2_error = layer2.pop("_error", None)
-                    l2_session = layer2.get("_session_id")
-                    l2_cls = layer2["classification"]
-                    searches = layer2.get("searches_performed", "?")
+            l2_cls = layer2["classification"]
+            searches = layer2.get("searches_performed", "?")
+            if layer2.get("_cached"):
+                print(f"  L2: {l2_cls} ({searches} searches) — cached")
+            else:
+                l2_elapsed = layer2.get("_elapsed")
+                l2_error = layer2.get("_error")
+                if l2_elapsed is not None:
                     status = "OK" if not l2_error else f"FAILED: {l2_error}"
                     print(f"  L2: {l2_cls} ({searches} searches, "
                           f"{l2_elapsed:.0f}s) — {status}")
-                    if l2_session:
-                        print(f"  L2 session: {l2_session}")
-                    print(f"  L2: {layer2['note'][:100]}")
                 else:
-                    l2_cls = layer2["classification"]
-                    searches = layer2.get("searches_performed", "?")
-                    print(f"  L2: {l2_cls} ({searches} searches) — cached")
-                    print(f"  L2: {layer2['note'][:100]}")
-
-            else:
-                print(f"  L2: Investigating...")
-                layer2 = run_layer2(fns_section, layer1, olg_clients,
-                                    claude, layer2_model, layer2_prompt,
-                                    max_results=olg_max_results,
-                                    fns_by_number=fns_by_number,
-                                    tracker=tracker,
-                                    olg_results=olg_results)
-                l2_cls = layer2["classification"]
-                searches = layer2.get("searches_performed", "?")
-                print(f"  L2: {l2_cls} ({searches} searches) — {layer2['note'][:80]}")
+                    print(f"  L2: {l2_cls} ({searches} searches)")
+                l2_session = layer2.get("_session_id")
+                if l2_session:
+                    print(f"  L2 session: {l2_session}")
+            print(f"  L2: {layer2['note'][:100]}")
 
             needs_layer3 = l2_cls in (
                 "confirmed_gap", "different_standard",
@@ -1328,8 +1383,8 @@ def run_comparison(
                 priority = layer3.get("priority", "?")
                 print(f"  L3: {layer3['classification']} — {action} ({priority})")
 
-                # Persist L3 results into the result JSON for compile_results()
-                result_file = RESULTS_DIR / f"{sec_num}.json"
+                # Persist L3 results into the result JSON
+                result_file = RESULTS_DIR / f"{sec_id}.json"
                 if result_file.exists():
                     try:
                         data = json.loads(result_file.read_text(encoding="utf-8"))
@@ -1340,10 +1395,7 @@ def run_comparison(
                     except (json.JSONDecodeError, OSError):
                         pass
 
-        if engine == "api":
-            print(f"  Tokens: {tracker.section_summary()} (${tracker.section_cost():.4f})")
-        else:
-            print(f"  Tokens (L1 only): {tracker.section_summary()} (${tracker.section_cost():.4f})")
+        print(f"  API tokens: {tracker.section_summary()} (${tracker.section_cost():.4f})")
 
         row = build_csv_row(fns_section, layer1, olg_results, layer2, layer3,
                             fns_by_number, tracker)
@@ -1362,13 +1414,8 @@ def run_comparison(
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
 
-    if engine == "claude-code" and layer2_count > 0:
-        print(f"\nCompiling Claude Code results...")
-        compile_results(chapters)
-        csv_path = sorted(OUTPUT_DIR.glob("comparison_claude-code_*.csv"))[-1]
-    else:
-        csv_path = OUTPUT_DIR / f"comparison_api_{timestamp}.csv"
-        write_csv(all_rows, csv_path)
+    csv_path = OUTPUT_DIR / f"comparison_{engine}_{timestamp}.csv"
+    write_csv(all_rows, csv_path)
 
     print(f"\n{'=' * 50}")
     print(f"Comparison complete!")
