@@ -1,0 +1,23 @@
+{
+    "classification": "different_standard",
+    "confidence": "HIGH",
+    "note": "The OLG and FNS take directly opposing positions on verification of educational income. FNS Section 1044 mandates verification of source, amount, period, earmarked amounts, amounts used for allowable expenses (tuition, fees, books, supplies, transportation), and origination fees/insurance premiums on loans \u2014 and explicitly requires documentation on Form FNS-380 'even if it is waived from counting as income.' The OLG (Students > Educational Loans, Grants, Scholarships, and Reimbursements) states the opposite: 'When a client indicates that they are a student, you must not request verification of any type of educational income.' This appears to flow from Massachusetts's broader state policy choice: 106 CMR 363.230(D) excludes ALL educational financial assistance as noncountable income (a blanket exclusion), whereas the federal framework only excludes portions used for tuition, mandatory fees, books, supplies, and transportation \u2014 requiring verification to distinguish excluded educational expenses from countable living expenses. Because Massachusetts treats all educational income as noncountable regardless of use, the detailed verification FNS requires becomes operationally unnecessary from the state's perspective. However, the FNS requirement to verify and document even waived income is unambiguous. Notably, 106 CMR 365.740 preserves the traditional federal framework of excluding educational income only 'to the extent that it is made available for tuition, mandatory school fees, origination fees,' etc., creating an internal tension with 363.230(D). The OLG also omits any reference to Form FNS-380 documentation requirements.",
+    "olg_pages_found": [
+        "Students",
+        "Noncountable Income",
+        "Unearned Income Overview"
+    ],
+    "searches_performed": 5,
+    "_layer3": {
+        "classification": "state_requires",
+        "note": "106 CMR 365.740(B) explicitly requires educational income to be excluded 'to the extent that it is made available for' specific allowable expenses (tuition, fees, books, supplies, transportation, etc.) \u2014 mirroring the federal framework. This means the state regulation requires workers to distinguish between excluded educational expenses and countable living expenses, which necessitates verification. Additionally, 106 CMR 361.610(K)(1) and 366.320(8)(a) classify 'loans' and 'student eligibility' as 'other eligibility factors' that must be verified when information is 'questionable and affects the household's eligibility or benefit level.' The CMR's exclusion formula in 365.740(B) depends on knowing the amounts used for allowable vs. non-allowable purposes \u2014 a determination that requires the verification FNS mandates. The OLG's blanket prohibition on verification contradicts both the conditional exclusion in 365.740(B) and the verification requirements in 361.610(K) and 366.320(8).",
+        "cmr_sections": [
+            "365.740(B)",
+            "361.610(K)(1)",
+            "366.320(8)(a)",
+            "363.230(D)"
+        ],
+        "action_recommended": "update_olg",
+        "priority": "HIGH"
+    }
+}

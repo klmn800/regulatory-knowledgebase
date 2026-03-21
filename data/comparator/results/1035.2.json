@@ -1,0 +1,7 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG Unearned Income Overview page lists workers' compensation as a type of unearned income and notes it is 'verifiable via SDX for clients who receive SSI' with an overnight SVES Request in BEACON. The page also includes a general instruction that 'Staff must always use the electronic databases available as the primary source of verification for unearned income' including DUA, External SSA Data Screen, SAVE, and MobiusView. However, the OLG does not specifically address the negative allegation scenario — what a worker should do when a household denies receiving workers' compensation income. FNS 1035.2 cross-references Section 512 (data matching), which requires IEVS verification including investigation of leads up to three quarters prior to the review date. The OLG provides no explicit guidance on using IEVS/data matching to investigate denied workers' compensation, nor any procedures for handling negative allegations of this income type. The general electronic database instruction partially covers the concept but lacks the specificity FNS requires for negative allegations.",
+    "olg_pages_found": ["Unearned Income Overview", "Garnishments from Social Security Benefits (RSDI & SSI)", "SNAP Asset Guide"],
+    "searches_performed": 6
+}

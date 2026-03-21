@@ -1,0 +1,7 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG adequately covers all substantive requirements from FNS 1022. Self-employment income types are well addressed: farming (with annualization rules and farm loss offset provisions on 'Self-Employment SNAP' page, plus a dedicated 'Migrant Farm Laborers' page), rental property (20-hour management threshold explicitly stated with earned/unearned distinction on 'Rental, Roomer, and Boarder Income SNAP' page), roomer/boarder income (dedicated sections with examples), and gig/freelance work (Uber/Lyft 1099 examples, freelance mentioned in SE determination criteria). Income averaging and annualization methods are covered across 'Determining Eligibility and Benefit Level,' 'Income Averaging,' and 'Income from Seasonal Employment' sections. State-specific SE definitions are documented including the cash-only/no-business-expenses carve-out. The FNS instruction that 'reviewers must ask all households' about SE income is QC-reviewer framing, not a caseworker procedure gap — the OLG's interview guidance covers income screening generally through the BEACON application workflow.",
+    "olg_pages_found": ["Self-Employment SNAP", "Rental, Roomer, and Boarder Income SNAP", "Migrant Farm Laborers", "Types of Earned Income", "The Application Interview"],
+    "searches_performed": 6
+}

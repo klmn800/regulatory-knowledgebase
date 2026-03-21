@@ -1,0 +1,7 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS Section 1040 is a parent header section containing only the title 'VERIFICATION STANDARDS FOR OTHER UNEARNED INCOME.' with no substantive policy requirements of its own. All actual verification standards are in its child sections: 1041 (Contributions/Income-In-Kind), 1042 (Deemed Income), 1043 (PA/GA), 1044 (Educational Grants/Scholarships/Loans), 1045 (Other Unearned Income types including foster care, dividends, rental, pensions), and 1046 (TANF). Each subsection contains specific verification procedures and should be evaluated individually. The OLG does address unearned income verification broadly — the Unearned Income Overview page directs staff to use electronic databases (DUA, SSA, SAVE, MobiusView) as primary verification sources, and specific income types like contributions, sponsor deeming, and pensions have dedicated OLG pages with verification procedures — but the granular gap assessment belongs at the subsection level.",
+    "olg_pages_found": ["Unearned Income Overview", "Contribution Income", "Sponsor Deeming", "Noncountable Income", "Simplified Reporting – Interim Report"],
+    "searches_performed": 5
+}

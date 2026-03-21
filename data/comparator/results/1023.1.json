@@ -1,0 +1,7 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG's 'Types of Earned Income > Verification of Income' page states that 'the amount of all gross countable earned income must be verified prior to certifying a household,' which functionally captures the positive allegation principle — if a household acknowledges earnings, they must be verified. However, the OLG's acceptable verification list for earned income (pay stubs, pay envelopes, employer statements; business records and tax returns for self-employment) does not include 'receipts and statements by collateral contacts' that FNS 1023.1 explicitly permits for 'other earned income.' The OLG covers standard employment and self-employment verification well but does not address the broader category of miscellaneous other earned income (e.g., odd jobs, informal work) or the expanded verification methods FNS allows for those sources. The gap is narrow but real: a worker encountering non-standard earned income would not find guidance on using receipts or collateral contacts as verification.",
+    "olg_pages_found": ["Types of Earned Income", "Simplified Reporting – Interim Report", "How to Read a 1040 Federal Income Tax Form"],
+    "searches_performed": 5
+}

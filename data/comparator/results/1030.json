@@ -1,0 +1,7 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG thoroughly covers unearned income types and verification, directing staff to use electronic databases (DUA, SDX, BENDEX, SAVE, MobiusView) as the primary verification source and only requesting client documentation when information is discrepant (Unearned Income Overview > Types of Unearned Income). However, the OLG does not address the FNS Section 1030 requirement to evaluate negative allegations of unearned income in context of the household's complete circumstances and history. FNS specifically requires that when a household denies receipt of benefits, the reviewer must consider contextual indicators (e.g., employment history suggesting possible unemployment compensation or veterans' benefits eligibility) and document a basis for accepting or rejecting the denial. The OLG's 'Unclear Information' policy (Case Maintenance > Unclear Information) addresses conflicting information received during case maintenance but is reactive — it applies when discrepant information surfaces, not when a worker should proactively investigate a denial based on household circumstances. No OLG content was found guiding workers to scrutinize negative allegations or cross-reference household history against possible benefit eligibility.",
+    "olg_pages_found": ["Unearned Income Overview", "Entering, Changing, and Ending Other (Unearned) Income Data", "Unclear Information", "Simplified Reporting – Interim Report", "Simplified Reporting – Recertification"],
+    "searches_performed": 5
+}

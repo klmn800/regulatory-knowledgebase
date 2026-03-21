@@ -1,0 +1,21 @@
+{
+    "classification": "confirmed_gap",
+    "confidence": "HIGH",
+    "note": "FNS Section 1036 (under parent 1030 'Verification Standards for Unearned Government Benefits') identifies Black Lung Benefits, Railroad Retirement payments, and USDA payments to farmers as 'Other Government Benefits' requiring verification. The OLG does not provide verification standards or acceptable documentation for any of these income types. Railroad Retirement appears in the OLG only in two narrow contexts: (1) as a disability verification criterion on the 'SNAP Disability Requirements and Verifications' page (verifying Railroad Retirement Act disability annuity for disability status, not income verification), and (2) as a recognized income type in BEACON's Other Income data entry requiring a claim number. Black Lung Benefits and USDA payments to farmers do not appear in the OLG at all. The Unearned Income Overview page lists income types generically but provides no source-specific verification guidance for these government benefits.",
+    "olg_pages_found": [
+        "SNAP Disability Requirements and Verifications",
+        "Entering, Changing, and Ending Other (Unearned) Income Data",
+        "Unearned Income Overview"
+    ],
+    "searches_performed": 6,
+    "_layer3": {
+        "classification": "state_silent",
+        "note": "106 CMR does not establish verification standards for Black Lung Benefits, Railroad Retirement payments, or USDA payments to farmers as income sources. CMR 363.230(I) mentions Railroad Retirement only in the context of excluding nonrecurring lump sum retroactive benefits from countable income\u2014not as ongoing income verification. The CMR is silent on verification procedures for these 'Other Government Benefits' identified in FNS 1036. Since Massachusetts has not promulgated specific state regulatory requirements for verifying these income types, the federal FNS standard applies by default, but the lack of state guidance means workers have no written procedural reference.",
+        "cmr_sections": [
+            "363.230(I)",
+            "360.800"
+        ],
+        "action_recommended": "update_olg",
+        "priority": "MEDIUM"
+    }
+}

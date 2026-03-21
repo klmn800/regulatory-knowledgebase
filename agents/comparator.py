@@ -41,6 +41,7 @@ import anthropic
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core.query import create_client, search_with_client
+from core.claude_code_runner import run_claude_task
 
 
 def extract_json(text: str, fallback_classification: str = "no_match") -> dict:
@@ -652,20 +653,33 @@ def run_layer2(fns_section: dict, layer1_result: dict,
                model: str, system_prompt: str,
                max_results: int = 10,
                fns_by_number: dict = None,
-               tracker: TokenTracker = None) -> dict:
+               tracker: TokenTracker = None,
+               olg_results: list[dict] = None) -> dict:
     """
     Run Layer 2 agentic investigation. Claude can use the search_olg
     tool to query the OLG and lookup_fns_section to follow cross-references.
     """
-    user_message = (
+    parts = [
         f"## FNS Requirement\n\n"
         f"{format_fns_for_prompt(fns_section, fns_by_number)}\n\n"
         f"## Layer 1 Finding\n\n"
         f"Classification: {layer1_result['classification']}\n"
         f"Confidence: {layer1_result['confidence']}\n"
-        f"Note: {layer1_result['note']}\n\n"
-        f"Please investigate this further using the search_olg tool."
-    )
+        f"Note: {layer1_result['note']}",
+    ]
+    if olg_results:
+        parts.append(
+            f"\n\n## OLG Content Already Found\n\n"
+            f"{format_olg_results_for_prompt(olg_results)}\n\n"
+            f"The above OLG matches were already retrieved. Use them as a "
+            f"starting point — search for additional angles the initial "
+            f"queries may have missed."
+        )
+    else:
+        parts.append(
+            "\n\nPlease investigate this further using the search_olg tool."
+        )
+    user_message = "".join(parts)
 
     messages = [{"role": "user", "content": user_message}]
     tools = [SEARCH_OLG_TOOL, LOOKUP_FNS_TOOL]
@@ -738,6 +752,98 @@ def run_layer2(fns_section: dict, layer1_result: dict,
         "note": "Layer 2 exhausted maximum tool-use turns without conclusion.",
         "olg_pages_found": [],
         "searches_performed": max_turns,
+    }
+
+
+# ============================================================
+# LAYER 2 (CLAUDE CODE): CLI-BASED INVESTIGATION
+# ============================================================
+
+RESULTS_DIR = OUTPUT_DIR / "results"
+SESSIONS_DIR = OUTPUT_DIR / "sessions"
+
+
+def run_layer2_claude_code(
+    fns_section: dict,
+    layer1_result: dict,
+    olg_results: list[dict],
+    fns_by_number: dict = None,
+    windowed: bool = False,
+) -> dict:
+    """
+    Run Layer 2 investigation via Claude Code CLI instead of the API.
+
+    Builds a self-contained prompt with domain preamble, investigation
+    instructions, and all context. The Claude Code session uses the
+    project's query.py and file system to search autonomously.
+
+    Returns the parsed result dict, or an error fallback.
+    """
+    domain_preamble = load_prompt("domain_preamble")
+    l2_instructions = load_prompt("layer2_claude_code")
+
+    sec_num = fns_section["section_number"]
+    result_file = RESULTS_DIR / f"{sec_num}.json"
+
+    fns_block = format_fns_for_prompt(fns_section, fns_by_number)
+    olg_block = format_olg_results_for_prompt(olg_results)
+
+    l1_summary = (
+        f"Layer 1 Classification: {layer1_result['classification']}\n"
+        f"Confidence: {layer1_result['confidence']}\n"
+        f"Note: {layer1_result['note']}"
+    )
+
+    prompt = (
+        f"{domain_preamble}\n\n"
+        f"---\n\n"
+        f"{l2_instructions}\n\n"
+        f"---\n\n"
+        f"## FNS Requirement\n\n"
+        f"{fns_block}\n\n"
+        f"## Layer 1 Finding\n\n"
+        f"{l1_summary}\n\n"
+        f"## OLG Content Already Found (Layer 1)\n\n"
+        f"{olg_block}\n\n"
+        f"The above OLG matches were already retrieved. Use them as a "
+        f"starting point — search for additional angles the initial "
+        f"queries may have missed.\n\n"
+        f"## Your Task\n\n"
+        f"Investigate whether the OLG adequately covers this FNS requirement.\n"
+        f"Write your result as JSON to: {result_file}\n"
+    )
+
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    task_result = run_claude_task(
+        prompt=prompt,
+        result_file=result_file,
+        timeout=1800,
+        cwd=PROJECT_ROOT,
+        log_dir=SESSIONS_DIR,
+        task_id=f"L2_{sec_num}",
+        windowed=windowed,
+    )
+
+    if task_result["success"]:
+        result = task_result["result"]
+        result["_elapsed"] = task_result["elapsed"]
+        result["_session_id"] = task_result.get("session_id")
+        # Write session_id back to the result file for compile_results()
+        if task_result.get("session_id"):
+            result_file.write_text(
+                json.dumps(result, indent=4), encoding="utf-8"
+            )
+        return result
+
+    return {
+        "classification": "error",
+        "confidence": "LOW",
+        "note": f"Claude Code session failed: {task_result['error']}",
+        "olg_pages_found": [],
+        "searches_performed": 0,
+        "_elapsed": task_result["elapsed"],
+        "_error": task_result["error"],
     }
 
 
@@ -817,6 +923,7 @@ CSV_COLUMNS = [
     "cmr_section",
     "action_needed",
     "priority",
+    "session_id",
     "tokens_in",
     "tokens_out",
     "est_cost",
@@ -888,6 +995,7 @@ def build_csv_row(fns_section: dict, layer1: dict,
         "cmr_section": "; ".join(layer3.get("cmr_sections", [])) if layer3 else "",
         "action_needed": action,
         "priority": priority,
+        "session_id": layer2.get("_session_id", "") if layer2 else "",
         "tokens_in": tracker.section_input if tracker else "",
         "tokens_out": tracker.section_output if tracker else "",
         "est_cost": f"${tracker.section_cost():.4f}" if tracker else "",
@@ -903,6 +1011,118 @@ def write_csv(rows: list[dict], filepath: Path) -> None:
 
 
 # ============================================================
+# COMPILE RESULTS (CLAUDE CODE MODE)
+# ============================================================
+
+def compile_results(chapters: list[int] = None) -> None:
+    """
+    Compile individual result JSONs from Claude Code sessions into a CSV.
+
+    Each file in data/comparator/results/{section_number}.json contains
+    the Layer 2 verdict for that section. This function loads them all,
+    enriches with FNS metadata, and produces the final comparison CSV.
+    """
+    if not RESULTS_DIR.exists():
+        print(f"No results directory found at {RESULTS_DIR}")
+        return
+
+    result_files = sorted(RESULTS_DIR.glob("*.json"))
+    if not result_files:
+        print(f"No result files found in {RESULTS_DIR}")
+        return
+
+    config = load_config()
+    if chapters is None:
+        chapters_str = config.get("comparator", "fns_chapters_to_compare",
+                                  fallback="7,8,9,10,11")
+        chapters = [int(c.strip()) for c in chapters_str.split(",")]
+
+    fns_sections = load_fns_sections(chapters)
+    fns_by_number = {s["section_number"]: s for s in fns_sections}
+
+    rows = []
+    counts = {}
+    errors = 0
+
+    for filepath in result_files:
+        sec_num = filepath.stem
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                result = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"  WARNING: Could not read {filepath.name}: {e}")
+            errors += 1
+            continue
+
+        fns_section = fns_by_number.get(sec_num)
+        if not fns_section:
+            print(f"  WARNING: No FNS section found for {sec_num}, skipping")
+            continue
+
+        cls = result.get("classification", "error")
+        counts[cls] = counts.get(cls, 0) + 1
+
+        # Read L3 results if persisted
+        layer3 = result.get("_layer3")
+
+        action = "none"
+        priority = "LOW"
+        if layer3:
+            action = layer3.get("action_recommended", "investigate")
+            priority = layer3.get("priority", "MEDIUM")
+        elif cls in ("confirmed_gap", "different_standard"):
+            action = "investigate"
+            priority = "HIGH"
+        elif cls == "policy_present_procedures_missing":
+            action = "write_procedure"
+            priority = "MEDIUM"
+        elif cls == "partial_match":
+            action = "update_olg"
+            priority = "MEDIUM"
+
+        olg_pages = result.get("olg_pages_found", [])
+
+        row = {
+            "fns_chapter": fns_section["chapter"],
+            "fns_section": sec_num,
+            "fns_title": _build_display_title(fns_section, fns_by_number),
+            "fns_summary": fns_section["text"][:200].replace("\n", " "),
+            "classification": cls,
+            "confidence": result.get("confidence", ""),
+            "olg_matches": "; ".join(olg_pages),
+            "olg_urls": "",
+            "layer1_note": "",
+            "layer2_note": result.get("note", ""),
+            "layer3_note": layer3.get("note", "") if layer3 else "",
+            "cmr_section": "; ".join(layer3.get("cmr_sections", [])) if layer3 else "",
+            "action_needed": action,
+            "priority": priority,
+            "session_id": result.get("_session_id", ""),
+            "tokens_in": "",
+            "tokens_out": "",
+            "est_cost": "$0.0000",
+        }
+        rows.append(row)
+
+    rows.sort(key=lambda r: (int(r["fns_chapter"]), r["fns_section"]))
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    csv_path = OUTPUT_DIR / f"comparison_claude-code_{timestamp}.csv"
+    write_csv(rows, csv_path)
+
+    print(f"\nCompile Results")
+    print(f"{'=' * 50}")
+    print(f"  Result files found: {len(result_files)}")
+    print(f"  Rows written: {len(rows)}")
+    if errors:
+        print(f"  Errors: {errors}")
+    print(f"\n  Classifications:")
+    for cls, count in sorted(counts.items()):
+        print(f"    {cls:35s} {count}")
+    print(f"\n  Report: {csv_path}")
+
+
+# ============================================================
 # MAIN ORCHESTRATOR
 # ============================================================
 
@@ -912,6 +1132,8 @@ def run_comparison(
     dry_run: bool = False,
     resume: bool = False,
     section_filter: set[str] = None,
+    engine: str = "api",
+    windowed: bool = False,
 ) -> None:
     """Run the full comparison pipeline."""
     config = load_config()
@@ -934,8 +1156,12 @@ def run_comparison(
     print(f"SNAP Policy Comparator — FNS vs OLG")
     print(f"=" * 50)
     print(f"FNS chapters: {chapters}")
+    print(f"Layer 2 engine: {engine}")
     print(f"Layer 1 model: {layer1_model}")
-    print(f"Layer 2 model: {layer2_model}")
+    if engine == "api":
+        print(f"Layer 2 model: {layer2_model}")
+    else:
+        print(f"Layer 2: Claude Code CLI (subscription)")
     print(f"Layer 3 model: {layer3_model}")
     print(f"OLG similarity threshold: {similarity_threshold}")
     print(f"Escalate on confidence: {escalate_levels}")
@@ -1032,26 +1258,64 @@ def run_comparison(
 
         needs_escalation = (
             not layer1_only
-            and cls in ("partial_match", "no_match")
-            or conf in escalate_levels
+            and (cls in ("partial_match", "no_match")
+                 or (cls == "match" and conf in escalate_levels))
         )
-        skip_escalation = cls == "not_applicable" or (cls == "match" and conf == "HIGH")
+        skip_escalation = cls in ("not_applicable", "match") and conf == "HIGH"
 
         if needs_escalation and not skip_escalation:
             layer2_count += 1
-            print(f"  L2: Investigating...")
-            layer2 = run_layer2(fns_section, layer1, olg_clients,
-                                claude, layer2_model, layer2_prompt,
-                                max_results=olg_max_results,
-                                fns_by_number=fns_by_number,
-                                tracker=tracker)
-            l2_cls = layer2["classification"]
-            searches = layer2.get("searches_performed", "?")
-            print(f"  L2: {l2_cls} ({searches} searches) — {layer2['note'][:80]}")
+
+            if engine == "claude-code":
+                result_file = RESULTS_DIR / f"{sec_id}.json"
+                if result_file.exists():
+                    print(f"  L2: Result file exists, loading cached result")
+                    try:
+                        with open(result_file, "r", encoding="utf-8") as f:
+                            layer2 = json.load(f)
+                    except (json.JSONDecodeError, OSError):
+                        layer2 = None
+
+                if layer2 is None:
+                    mode = "windowed" if windowed else "headless"
+                    print(f"  L2: Investigating via Claude Code ({mode})...")
+                    layer2 = run_layer2_claude_code(
+                        fns_section, layer1, olg_results,
+                        fns_by_number=fns_by_number,
+                        windowed=windowed,
+                    )
+                    l2_elapsed = layer2.pop("_elapsed", 0)
+                    l2_error = layer2.pop("_error", None)
+                    l2_session = layer2.get("_session_id")
+                    l2_cls = layer2["classification"]
+                    searches = layer2.get("searches_performed", "?")
+                    status = "OK" if not l2_error else f"FAILED: {l2_error}"
+                    print(f"  L2: {l2_cls} ({searches} searches, "
+                          f"{l2_elapsed:.0f}s) — {status}")
+                    if l2_session:
+                        print(f"  L2 session: {l2_session}")
+                    print(f"  L2: {layer2['note'][:100]}")
+                else:
+                    l2_cls = layer2["classification"]
+                    searches = layer2.get("searches_performed", "?")
+                    print(f"  L2: {l2_cls} ({searches} searches) — cached")
+                    print(f"  L2: {layer2['note'][:100]}")
+
+            else:
+                print(f"  L2: Investigating...")
+                layer2 = run_layer2(fns_section, layer1, olg_clients,
+                                    claude, layer2_model, layer2_prompt,
+                                    max_results=olg_max_results,
+                                    fns_by_number=fns_by_number,
+                                    tracker=tracker,
+                                    olg_results=olg_results)
+                l2_cls = layer2["classification"]
+                searches = layer2.get("searches_performed", "?")
+                print(f"  L2: {l2_cls} ({searches} searches) — {layer2['note'][:80]}")
 
             needs_layer3 = l2_cls in (
                 "confirmed_gap", "different_standard",
-                "policy_present_procedures_missing", "partial_match",
+                "policy_present_procedures_missing",
             )
             if needs_layer3 and cmr_clients:
                 layer3_count += 1
@@ -1064,7 +1328,22 @@ def run_comparison(
                 priority = layer3.get("priority", "?")
                 print(f"  L3: {layer3['classification']} — {action} ({priority})")
 
-        print(f"  Tokens: {tracker.section_summary()} (${tracker.section_cost():.4f})")
+                # Persist L3 results into the result JSON for compile_results()
+                result_file = RESULTS_DIR / f"{sec_num}.json"
+                if result_file.exists():
+                    try:
+                        data = json.loads(result_file.read_text(encoding="utf-8"))
+                        data["_layer3"] = layer3
+                        result_file.write_text(
+                            json.dumps(data, indent=4), encoding="utf-8"
+                        )
+                    except (json.JSONDecodeError, OSError):
+                        pass
+
+        if engine == "api":
+            print(f"  Tokens: {tracker.section_summary()} (${tracker.section_cost():.4f})")
+        else:
+            print(f"  Tokens (L1 only): {tracker.section_summary()} (${tracker.section_cost():.4f})")
 
         row = build_csv_row(fns_section, layer1, olg_results, layer2, layer3,
                             fns_by_number, tracker)
@@ -1081,12 +1360,20 @@ def run_comparison(
     elapsed = time.time() - start_time
     elapsed_min = elapsed / 60
 
-    csv_path = OUTPUT_DIR / "fns_vs_olg_snap_comparison.csv"
-    write_csv(all_rows, csv_path)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+
+    if engine == "claude-code" and layer2_count > 0:
+        print(f"\nCompiling Claude Code results...")
+        compile_results(chapters)
+        csv_path = sorted(OUTPUT_DIR.glob("comparison_claude-code_*.csv"))[-1]
+    else:
+        csv_path = OUTPUT_DIR / f"comparison_api_{timestamp}.csv"
+        write_csv(all_rows, csv_path)
 
     print(f"\n{'=' * 50}")
     print(f"Comparison complete!")
     print(f"{'=' * 50}")
+    print(f"  Engine: {engine}")
     print(f"  Sections processed: {len(all_rows)}")
     print(f"  Time: {elapsed_min:.1f} minutes")
     print()
@@ -1096,7 +1383,9 @@ def run_comparison(
     print(f"  Escalated to Layer 2: {layer2_count}")
     print(f"  Escalated to Layer 3: {layer3_count}")
     print()
-    print(f"  Tokens: {tracker.total_summary()}")
+    print(f"  API tokens: {tracker.total_summary()}")
+    if engine == "claude-code":
+        print(f"  L2 cost: $0 (Claude Code subscription)")
     print(f"  Report: {csv_path}")
 
     if CHECKPOINT_FILE.exists():
@@ -1114,14 +1403,16 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python comparator.py                    # Full run, chapters 7-11
-  python comparator.py --chapter 10       # One chapter only
-  python comparator.py --classify         # Layer 0: classify sections
-  python comparator.py --classify --force # Re-classify all sections
-  python comparator.py --sync             # Rebuild JSON from edited CSV
-  python comparator.py --layer1-only      # Triage only
-  python comparator.py --dry-run          # Preview sections
-  python comparator.py --resume           # Resume interrupted run
+  python comparator.py                              # Full run, chapters 7-11
+  python comparator.py --chapter 10                 # One chapter only
+  python comparator.py --classify                   # Layer 0: classify sections
+  python comparator.py --classify --force           # Re-classify all sections
+  python comparator.py --sync                       # Rebuild JSON from edited CSV
+  python comparator.py --layer1-only                # Triage only
+  python comparator.py --dry-run                    # Preview sections
+  python comparator.py --resume                     # Resume interrupted run
+  python comparator.py --engine claude-code         # L2 via Claude Code CLI
+  python comparator.py --compile                    # Compile result JSONs to CSV
         """,
     )
     parser.add_argument(
@@ -1156,7 +1447,30 @@ Examples:
         "--sections", type=str, default=None,
         help="Comma-separated section numbers to process (e.g., '1013.4,1021.1,1042')",
     )
+    parser.add_argument(
+        "--engine", type=str, default="api", choices=["api", "claude-code"],
+        help="Layer 2 engine: 'api' (Anthropic API) or 'claude-code' (CLI sessions)",
+    )
+    parser.add_argument(
+        "--windowed", action="store_true",
+        help="Open each Claude Code session in a visible console window (with --engine claude-code)",
+    )
+    parser.add_argument(
+        "--compile", action="store_true",
+        help="Compile result JSONs from Claude Code sessions into CSV",
+    )
     args = parser.parse_args()
+
+    if args.compile:
+        config = load_config()
+        if args.chapter:
+            chapters = [args.chapter]
+        else:
+            chapters_str = config.get("comparator", "fns_chapters_to_compare",
+                                      fallback="7,8,9,10,11")
+            chapters = [int(c.strip()) for c in chapters_str.split(",")]
+        compile_results(chapters)
+        return
 
     if args.sync:
         sync_csv_to_json()
@@ -1185,6 +1499,8 @@ Examples:
         dry_run=args.dry_run,
         resume=args.resume,
         section_filter=section_filter,
+        engine=args.engine,
+        windowed=args.windowed,
     )
 
 

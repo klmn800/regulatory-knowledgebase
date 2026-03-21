@@ -1,0 +1,7 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "FNS 1011 is an introductory framing section stating that households may receive income from multiple types/sources (wages, PA grants, self-employment, alimony) and that verification procedures vary by source and budgeting/reporting type. The OLG covers this comprehensively through its distributed structure: the 'Types of Earned Income > Verification of Income' page details earned income verification (pay stubs, employer statements, business records, tax returns); the 'Unearned Income Overview' page lists 15+ unearned income types (TAFDC, EAEDC, pensions, veterans' benefits, RSDI, SSI, UC, alimony, etc.) with source-specific verification systems (SDX, BENDEX, SVES, DUA, The Work Number); and separate Simplified Reporting sections address how verification requirements differ at initial certification, Interim Report, and recertification. The OLG also states that 'Staff must always use the electronic databases available as the primary source of verification for unearned income,' reinforcing that procedures vary by source. While the OLG does not have a single overarching statement mirroring FNS 1011's framing, the practical content — verification for each income type and context-dependent procedures — is thoroughly addressed.",
+    "olg_pages_found": ["Types of Earned Income", "Unearned Income Overview", "Simplified Reporting – Interim Report", "How to Read a 1040 Federal Income Tax Form", "Simplified Reporting – Recertification", "Vendor Payments"],
+    "searches_performed": 6
+}

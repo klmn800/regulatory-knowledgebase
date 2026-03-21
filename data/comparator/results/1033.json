@@ -1,0 +1,7 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers SSI verification through scattered references but lacks a dedicated SSI income verification standard matching FNS 1033. The Unearned Income Overview page identifies SSI as 'verifiable via SDX' with SVES Request in BEACON and instructs staff to 'always use the electronic databases available as the primary source of verification for unearned income.' The SNAP Disability Requirements page instructs workers to 'first check BENDEX, SDX or BEACON' and lists 'a copy of an award or benefits letter or a copy of a benefits check' as fallback documents — but this is in the context of verifying disability status, not SSI income amounts. FNS 1033's requirement to check SSA's data exchange for ALL household members (positive and negative allegations) is not explicitly stated for SSI income. The specific fallback documents FNS lists (current SSA award letter, other SSA correspondence, direct contact with SSA district office) are not enumerated in an SSI income verification context. The Simplified Reporting Recertification page provides SVES timing guidance for SSI but only at recertification, not as a general verification standard.",
+    "olg_pages_found": ["Unearned Income Overview", "SNAP Disability Requirements and Verifications", "Simplified Reporting - Recertification", "Simplified Reporting - Examples", "Garnishments from Social Security Benefits (RSDI & SSI)"],
+    "searches_performed": 5
+}

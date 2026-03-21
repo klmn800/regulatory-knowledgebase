@@ -1,0 +1,7 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG adequately covers TANF (TAFDC) as countable unearned income for SNAP purposes. The Unearned Income Overview page explicitly lists 'Assistance Payments such as TAFDC, EAEDC, or other assistance programs based on need' as countable unearned income, with multiple examples showing TAFDC grants counted in SNAP benefit calculations (e.g., Examples of Countable and Noncountable Recoupments, mixed noncitizen household calculations). Verification is addressed through the general unearned income verification standard — 'Staff must always use the electronic databases available as the primary source of verification for unearned income' — and since DTA administers both TAFDC and SNAP, the TAFDC grant amount is already available in BEACON without external contact. The FNS note about the state option to count TANF prospectively in retrospective budgeting systems is not applicable to Massachusetts, which uses prospective budgeting (Simplified Reporting) for virtually all SNAP households.",
+    "olg_pages_found": ["Unearned Income Overview", "Entering, Changing, and Ending Other (Unearned) Income Data", "Categorical Eligibility", "Change Reporting – Overview", "Transitional Benefits Alternative (TBA) Overview", "Calculation Rules and Attribution of Income for Mixed Noncitizen Households"],
+    "searches_performed": 5
+}

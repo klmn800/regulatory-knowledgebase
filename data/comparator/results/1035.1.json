@@ -1,0 +1,7 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG Unearned Income Overview page lists Workers' Compensation as a type of countable unearned income and notes it is 'verifiable via SDX for clients who receive SSI' with an overnight SVES Request in BEACON. However, the OLG does not specify the verification hierarchy that FNS 1035.1 requires: the Workers' Compensation award notice as best evidence, with collateral contact to the Workers' Compensation office as the fallback when the award notice is unavailable. The OLG provides only a general directive to use electronic databases as the primary verification source for all unearned income types, without Workers' Compensation-specific document standards. A worker processing a Workers' Compensation case would not know from the OLG what acceptable verification documents to request.",
+    "olg_pages_found": ["Unearned Income Overview"],
+    "searches_performed": 7
+}

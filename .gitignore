@@ -10,7 +10,16 @@ data/fns/parsed_sections/
 data/fns/chapter_chunks.json
 data/fns/section_chunks.json
 data/cmr/parsed_sections/
+data/cmr/chapter_chunks.json
+data/cmr/section_chunks.json
 data/chroma_db/
+
+# Comparator outputs (session logs are large, lock files are temp)
+data/comparator/sessions/
+data/comparator/.~lock.*
+
+# QC analysis (lock files)
+data/qc_analysis/.~lock.*
 
 # Source files (large, not ours to redistribute)
 source_files/
@@ -22,6 +31,9 @@ __pycache__/
 # Windows
 desktop.ini
 nul
+
+# Binaries
+*.exe
 
 # IDE
 .vscode/

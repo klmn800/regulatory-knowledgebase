@@ -1,0 +1,7 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 1063.3 is a QC error determination procedure, not SNAP policy requiring caseworker action. It instructs QC reviewers on how to handle earned income sources that were never reported or never processed when calculating the correct allotment during a review: use verified sample-month income, apply Section 1065 annualization/proration procedures, and exclude sources that began within exclusionary timeframes. These are audit calculation steps with no caseworker equivalent. The OLG appropriately covers the caseworker-facing side — reporting requirements (Change Reporting Overview, Simplified Reporting), procedures for handling reported income changes (Interim Report processing, BEACON data entry), and the earned income deduction denial for failure to report timely (Earned Income Deduction page). The concept of 'exclusionary timeframes' and the instruction to use Section 1065 procedures for unreported income are QC-specific review methodology.",
+    "olg_pages_found": ["Earned Income Deduction", "Simplified Reporting – Interim Report", "Change Reporting – Overview", "Simplified Reporting – Examples", "Unclear Information"],
+    "searches_performed": 5
+}

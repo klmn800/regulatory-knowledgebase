@@ -1,0 +1,7 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers UC verification extensively but primarily within the Simplified Reporting context (case maintenance, PI Checklists, DUA matches). The Unearned Income Overview page states 'Staff must always use the electronic databases available as the primary source of verification for unearned income. These databases include DUA' — this establishes DUA as the standard verification method for UC, which functionally maps to FNS's 'direct contact with the appropriate agency.' However, the OLG does not explicitly list the three FNS standard verification methods (current award certificate, official correspondence, direct agency contact) as a standalone verification standard applicable to all certification actions. The Q&A content in Simplified Reporting Examples references DUA screens, pretax UC amounts, and claim/payment history, but this guidance is scenario-specific rather than a general verification policy. A worker processing an initial application would not find a clear, consolidated statement of what documents or sources are acceptable for verifying UC amount and date received.",
+    "olg_pages_found": ["Simplified Reporting – Examples (Unemployment Compensation section)", "Unearned Income Overview (Types of Unearned Income)", "The General Work Rules (UC exemption verification)", "Entering, Changing, and Ending Other (Unearned) Income Data"],
+    "searches_performed": 6
+}

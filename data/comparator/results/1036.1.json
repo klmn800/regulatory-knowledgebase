@@ -1,0 +1,7 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG's Unearned Income Overview page lists government benefit types (pensions, veterans' benefits, Railroad Retirement, SSI, RSDI, workers compensation) and directs staff to use electronic databases (BENDEX, SDX, SVES, DUA) as the primary verification source, with client-provided documentation only required when information is discrepant. The Disability Requirements page mentions 'a copy of an award or benefits letter or a copy of a benefits check' as acceptable verification when electronic data is unavailable, which partially aligns with FNS's 'current award certificate' and 'official correspondence.' However, the OLG lacks a centralized verification standard for the broader 'other government benefits' category (Black Lung, Railroad Retirement payments, USDA farmer payments) that explicitly lists FNS's three verification methods: current award certificate, official correspondence, and direct contact with the paying agency. The OLG's database-first approach is functionally sound but does not articulate the full FNS verification hierarchy for cases where electronic databases don't cover the benefit type.",
+    "olg_pages_found": ["Unearned Income Overview", "SNAP Disability Requirements and Verifications", "Garnishments from Social Security Benefits (RSDI & SSI)", "Entering, Changing, and Ending Other (Unearned) Income Data"],
+    "searches_performed": 7
+}

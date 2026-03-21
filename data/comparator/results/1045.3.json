@@ -1,0 +1,7 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG has a dedicated page 'Rental, Roomer, and Boarder Income SNAP' under SNAP > Eligibility Requirements > Income > Self Employment that thoroughly covers this FNS requirement. The OLG explains that gross rental income must be determined from tenants, and that the Cost of Doing Business (CODB) must be subtracted and prorated by unit count, with a detailed worked example. The OLG also classifies rental income as earned (20+ hrs/wk management) or unearned (<20 hrs/wk), which goes beyond what FNS 1045.3 specifies. BEACON procedures for entering rental income (Other Income page, Source Tab, Expenses Tab for CODB) are documented on the 'Entering, Changing, and Ending Other (Unearned) Income Data' page. While the rental income page itself does not restate verification requirements, the OLG's general self-employment income verification standards (business records, tax returns, appropriate documents showing gross income and total business expenses) apply and are documented on the 'Types of Earned Income' page under 'Verification of Income.'",
+    "olg_pages_found": ["Rental, Roomer, and Boarder Income SNAP", "Entering, Changing, and Ending Other (Unearned) Income Data", "Types of Earned Income", "Unearned Income Overview"],
+    "searches_performed": 5
+}

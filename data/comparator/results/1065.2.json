@@ -1,0 +1,7 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG adequately covers the core policy rule from FNS 1065.2. The 'Types of Earned Income > Mandatory Income Averaging' section states: 'Households that derive their annual income in a period of time shorter than one year must have their income averaged over a twelve month period, provided the income is not received on an hourly or piecework basis' — which is essentially the same requirement as FNS 1065.2's contract income rule. The OLG applies this through specific categories (school employees, sharecroppers, farmers, self-employed households) with detailed procedures and examples, particularly in the School Employees and Self-Employment SNAP pages. The hourly/piecework exclusion is also covered separately under 'Income from Hourly and Piecework Employment.' The remaining FNS text about correcting EW amounts for incorrect/unreported contract income sources ('the reviewer must...') describes QC review methodology for error determination, not caseworker policy — these are instructions for auditors measuring variances AORD, not procedures workers would follow.",
+    "olg_pages_found": ["Types of Earned Income", "School Employees", "Self-Employment SNAP", "Migrant Farm Laborers"],
+    "searches_performed": 4
+}
