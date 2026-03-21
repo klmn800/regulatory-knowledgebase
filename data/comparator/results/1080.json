@@ -1,7 +1,13 @@
 {
     "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "The OLG's SNAP Attributed Amount (Riverside Rule) page thoroughly covers the core FNS 1080 mandatory requirement: SNAP benefits must not increase when cash assistance under a means-tested program is reduced or suspended due to non-compliance. The OLG explains the mechanism (Attributed Amount added as unearned income), lists specific TAFDC and EAEDC sanction triggers, documents duration rules, and confirms BEACON automation. However, the OLG does not mention the FNS optional provision allowing states to reduce the SNAP allotment by up to 25% — Massachusetts appears to have chosen not to exercise this option, using the Attributed Amount mechanism instead, but the OLG does not document this policy choice. Additionally, FNS 1080 explicitly distinguishes means-tested programs from non-means-tested ones (RSDI, Railroad Retirement, Unemployment Compensation); the OLG handles this only by reference to 106 CMR 360.030(G) without explaining the distinction or listing excluded programs. The CMR at 363.220(C)(5) confirms MA's implementation aligns with the mandatory FNS requirement and adds conditions (good faith effort to obtain information, adjusting benefits for added eligible members, adjusting for unrelated household changes) not mentioned in FNS 1080.",
-    "olg_pages_found": ["SNAP Attributed Amount (Riverside Rule)", "Entering SNAP Disqualification and Sanction Data", "SNAP Disqualifications and Sanctions", "Garnishments from Social Security Benefits (RSDI & SSI)"],
-    "searches_performed": 5
+    "note": "The OLG has a dedicated page 'SNAP Attributed Amount (Riverside Rule)' that clearly covers the core FNS requirement: SNAP benefits must not increase when a household's benefits under another means-tested program are decreased or suspended due to fraud or non-compliance. The OLG explains the mechanism (SNAP Attributed Amount added as unearned income equal to the difference between the pre-sanction and post-sanction cash benefit), lists specific TAFDC and EAEDC sanction types that trigger it, describes duration rules, and notes that BEACON automates the calculation. However, the OLG does not mention the FNS provision allowing the state to reduce SNAP benefits by up to 25% as an additional consequence. Massachusetts appears to implement only the 'hold harmless' approach (preventing SNAP from increasing) without the optional 25% reduction, but the OLG does not explicitly acknowledge this FNS option or state that Massachusetts chose not to exercise it. The omission of the 25% reduction provision is a minor gap \u2014 it may reflect an intentional state policy choice, but the OLG does not document it either way.",
+    "olg_pages_found": [
+        "SNAP Attributed Amount (Riverside Rule)",
+        "Unearned Income Overview",
+        "Entering SNAP Disqualification and Sanction Data"
+    ],
+    "searches_performed": 4,
+    "_elapsed": 184.20295977592468,
+    "_session_id": "5dd8b474-cc1a-430b-92a6-9f519a2c4c26"
 }

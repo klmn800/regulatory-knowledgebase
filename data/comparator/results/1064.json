@@ -1,7 +1,14 @@
 {
     "classification": "match",
     "confidence": "HIGH",
-    "note": "The OLG adequately covers the policy substance of FNS 1064. FNS requires status reporting households to report earned income changes only when there is a change in source, hourly rate/salary, or employment status (PT/FT). The OLG's 'Simplified Reporting – Interim Report > Verifying Earned Income at Interim Report' explicitly states clients must verify earned income changes due to 'pay per hour, salary amount, source of income, starting, stopping or changing full-time or part-time status' — a direct match to the FNS criteria. The 'Simplified Reporting – Examples > Reporting Requirements' Q&A reinforces the same list. The OLG also correctly notes that the $125 reporting threshold applies only to unearned income, consistent with FNS's earned-income-specific triggers. The OLG additionally covers BEACON procedures for processing these changes (Work Number verification, VC-1 issuance, Earnings tab updates). Steps 1-5 of FNS 1064 describe QC variance determination procedures for reviewers, not caseworker policy, and are appropriately outside the OLG's scope.",
-    "olg_pages_found": ["Simplified Reporting – Interim Report", "Simplified Reporting – Examples", "Simplified Reporting – Reporting Requirements During Case Maintenance", "Simplified Reporting – Overview", "Change Reporting – Overview"],
-    "searches_performed": 5
+    "note": "FNS 1064 has two components: (1) the substantive policy rule that status reporting households must only report earned income changes involving source, hourly rate/salary, or employment status (part-time/full-time), and (2) a 5-step QC variance determination procedure for reviewing earned income in these cases. The OLG adequately covers component (1). The Simplified Reporting Examples page (Q1/A1) explicitly states that Simplified Reporting households must report 'any change in earned income (i.e. change in pay per hour, salary amount, starting, stopping or changing full-time or part-time status)' \u2014 which maps directly to the FNS triggers of source, hourly rate/salary, and employment status. The Change Reporting Overview page also covers income-related reporting requirements ($125+ threshold). The Interim Report pages provide detailed BEACON procedures for processing earned income changes at IR. Component (2) \u2014 the 5-step QC variance determination procedure \u2014 is purely QC methodology (how reviewers compare verified income to EW amounts, apply corrections, and determine excludable changes). This is not caseworker policy and has no OLG equivalent, which is expected.",
+    "olg_pages_found": [
+        "Simplified Reporting \u2013 Examples",
+        "Change Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Simplified Reporting \u2013 Interim Report"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 221.6791479587555,
+    "_session_id": "185cb1cd-f245-4e03-8b59-858eb700ee54"
 }

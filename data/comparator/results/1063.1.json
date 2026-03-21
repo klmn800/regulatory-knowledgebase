@@ -1,7 +1,13 @@
 {
     "classification": "not_applicable",
     "confidence": "HIGH",
-    "note": "FNS 1063.1 is entirely a QC review procedure. It instructs QC reviewers on how to evaluate earned income during the first and second effective months of a certification action using Comparison I (verify sample month income) and Comparison II (correct EW worksheet for errors, then apply AORD change logic). The concepts of Comparison I vs II allotment tests, error thresholds, AORD change-inclusion timing, and correcting EW worksheets are all QC audit methodology with no caseworker equivalent. The underlying caseworker policies this section references — income determination at certification, prospective budgeting, income conversion, and change processing — are covered in separate FNS sections and have corresponding OLG coverage (e.g., 'Types of Earned Income > Income from Steady Employment', 'Entering, Changing, and Ending Earned Income in BEACON', interim report processing procedures). No OLG content about QC comparison tests or error determination was found, which is expected since QC procedures are not part of the staff guide.",
-    "olg_pages_found": [],
-    "searches_performed": 4
+    "note": "FNS 1063.1 is entirely a QC review procedure, not caseworker policy. It describes the Comparison I / Comparison II framework that QC reviewers use to determine whether income errors occurred during the first and second effective months of a certification. The concepts of 'Comparison I allotment test,' 'Comparison II corrected worksheet,' 'error threshold,' and 'AORD review date' are audit methodology \u2014 they instruct reviewers on how to evaluate whether the eligibility worker's actions were correct, not how workers should process cases. The underlying caseworker-facing policies (prospective budgeting, income calculation using four consecutive weeks, BEACON prospective income entry) ARE covered in the OLG under 'Types of Earned Income > Income from Steady Employment,' 'Entering, Changing, and Ending Earned Income in BEACON > Prospective Tab,' and related pages. But the QC testing framework itself has no caseworker equivalent and would not be expected in the OLG.",
+    "olg_pages_found": [
+        "Types of Earned Income",
+        "Entering, Changing, and Ending Earned Income in BEACON",
+        "Simplified Reporting \u2013 Interim Report"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 271.36862230300903,
+    "_session_id": "4a22bf63-3e16-47f2-8b64-0b2baaa964fa"
 }

@@ -1,7 +1,14 @@
 {
     "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "The OLG's Unearned Income Overview page lists government benefit types (pensions, veterans' benefits, Railroad Retirement, SSI, RSDI, workers compensation) and directs staff to use electronic databases (BENDEX, SDX, SVES, DUA) as the primary verification source, with client-provided documentation only required when information is discrepant. The Disability Requirements page mentions 'a copy of an award or benefits letter or a copy of a benefits check' as acceptable verification when electronic data is unavailable, which partially aligns with FNS's 'current award certificate' and 'official correspondence.' However, the OLG lacks a centralized verification standard for the broader 'other government benefits' category (Black Lung, Railroad Retirement payments, USDA farmer payments) that explicitly lists FNS's three verification methods: current award certificate, official correspondence, and direct contact with the paying agency. The OLG's database-first approach is functionally sound but does not articulate the full FNS verification hierarchy for cases where electronic databases don't cover the benefit type.",
-    "olg_pages_found": ["Unearned Income Overview", "SNAP Disability Requirements and Verifications", "Garnishments from Social Security Benefits (RSDI & SSI)", "Entering, Changing, and Ending Other (Unearned) Income Data"],
-    "searches_performed": 7
+    "note": "FNS 1036.1 requires verification of other government benefits via: (1) current award certificate, (2) official correspondence, or (3) direct contact with the appropriate agency. The OLG Verification Chart covers documentary options well \u2014 listing 'Benefit or award letter', 'Statement from agency making payments', and 'Copy of payment document or check' for government benefits. These align with FNS items 1 and 2. However, the OLG does not list direct agency contact as an accepted verification method specifically for government benefits. The OLG Collateral Contact page (Cross Programs > Verifications > Verification Methods > Collateral Contact) establishes a general framework for third-party contacts but explicitly states collateral contact 'must not be used as the first method of verification' and frames it as a fallback when documentary evidence is unavailable. FNS 1036.1, by contrast, lists direct agency contact as a co-equal standard verification method, not a fallback. The gap is that a worker verifying government benefits would not know from the OLG that directly contacting the paying agency is an accepted standard method \u2014 they would only reach collateral contact after the client reports difficulty obtaining documents.",
+    "olg_pages_found": [
+        "Verification Chart",
+        "Collateral Contact",
+        "Documentary Evidence",
+        "Unearned Income Overview"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 153.09257221221924,
+    "_session_id": "64d11646-f5b2-4bd6-9691-fe0130d3d282"
 }

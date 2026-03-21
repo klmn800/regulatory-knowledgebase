@@ -1,7 +1,13 @@
 {
     "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "The OLG covers the core SE income averaging rules well: annualization over 12 months for annual income earned in a shorter period (Self-Employment SNAP > Averaging Self-Employment Income), prorating for income covering only part of the year (Anticipating Self-Employment Income), and the anticipated income calculation method with capital gains. The OLG also addresses fluctuating income averaging generally (Types of Earned Income > Income Averaging: 'if the income fluctuates, the household may elect to average the income over the certification period'). However, several FNS requirements lack explicit OLG coverage: (1) the 'steady SE income' exception — FNS explicitly states no averaging/annualizing/prorating is needed for steady SE income that can be anticipated month-to-month, while the OLG only implies this through its 'Anticipating Self-Employment Income' section for non-averaged SE income; (2) no guidance on handling unreported SE income sources discovered post-certification; (3) no procedures for correcting SE income when the household reported incorrectly, policy was misapplied, or a computation error occurred. Items 2 and 3 are framed as QC reviewer tasks in FNS but have caseworker relevance when errors are discovered during case maintenance. SE income verification is addressed in the Types of Earned Income page (business records, tax returns, documents showing gross income and expenses) but not on the SE-specific OLG page itself.",
-    "olg_pages_found": ["Self-Employment SNAP", "Types of Earned Income", "Migrant Farm Laborers", "Simplified Reporting – Examples", "Capital Gains"],
-    "searches_performed": 6
+    "note": "The OLG covers the core SE income budgeting scenarios well: (1) 12-month annualization for annual income earned in a shorter period (Self-Employment SNAP > Averaging Self-Employment Income), (2) elective averaging for fluctuating earned income over the certification period (Types of Earned Income > Income Averaging), and (3) proration for partial-year SE income (Self-Employment SNAP > Example, covering summer vendors and new businesses). The OLG also has an 'Anticipating Self-Employment Income' section for non-averaged SE income. However, the OLG does not explicitly state the FNS rule that steady SE income 'that can be reasonably anticipated month to month' does not need to be annualized, averaged, or prorated \u2014 the existence of the anticipation section implies this pathway but never articulates the condition clearly. Additionally, the OLG's fluctuating income averaging guidance is in the general earned income section (Types of Earned Income > Income Averaging), not in the Self-Employment SNAP page itself, which could cause workers to miss that SE income can be electively averaged when it fluctuates. The FNS provisions regarding unreported SE income sources and QC reviewer correction procedures are QC-specific and not applicable to the OLG's caseworker audience.",
+    "olg_pages_found": [
+        "Self-Employment SNAP",
+        "Types of Earned Income",
+        "Unearned Income Overview"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 276.2644045352936,
+    "_session_id": "7c33f417-8490-492f-8e45-b387a7d89c00"
 }

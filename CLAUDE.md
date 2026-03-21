@@ -19,10 +19,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Source | Parse | Chunk | Embed | Query | Comparator |
 |--------|-------|-------|-------|-------|------------|
 | OLG | COMPLETE (1,202 pages) | COMPLETE (1,202 + 6,785) | COMPLETE | COMPLETE | N/A |
-| FNS | COMPLETE (482 sections) | COMPLETE (14 + 722) | COMPLETE | COMPLETE | NOT STARTED |
-| CMR | COMPLETE (592 sections) | COMPLETE (18 + 1,275) | COMPLETE | COMPLETE | NOT STARTED |
+| FNS | COMPLETE (482 sections) | COMPLETE (14 + 722) | COMPLETE | COMPLETE | Ch10 COMPLETE (62 sections) |
+| CMR | COMPLETE (592 sections) | COMPLETE (18 + 1,275) | COMPLETE | COMPLETE | Used in L3 cross-check |
 
-**All three sources are fully indexed and searchable.** Next: comparator agent for cross-source analysis.
+**All three sources are fully indexed and searchable.** Comparator agent complete — FNS vs OLG Chapter 10 done, remaining chapters ready to run.
 
 ## Architecture
 
@@ -80,11 +80,12 @@ Fully complete (parse, chunk, embed, query).
 | Module | Role |
 |--------|------|
 | `core/embedder.py` | Batch embedding via Voyage AI → ChromaDB. `--source olg\|fns\|cmr` flag routes to correct chunk files and collections. Token-aware batching, resume support, cost estimation, `--dry-run`, `--force`, `--only`. |
-| `core/query.py` | Three interfaces: CLI, Python API (`search()` / `create_client(source)` + `search_with_client()`), JSON output. `--source olg\|fns\|cmr` flag. Program filtering (OLG/CMR), similarity scoring, parent context fetching, source-specific display formatting. |
+| `core/query.py` | Three interfaces: CLI, Python API (`search()` / `create_client(source)` + `search_with_client()`), JSON output. `--source olg\|fns\|cmr` flag. Program filtering (OLG/CMR), `--exclude-programs` filter, similarity scoring, parent context fetching, source-specific display formatting. |
+| `core/claude_code_runner.py` | Generic subprocess wrapper for Claude Code CLI. Spawns sessions via `claude -p`, captures session IDs for resume, returns structured results. Used by comparator L2. |
 
 ### Roadmap
 
-1. **Comparator agent** (in development): Purpose-built research tool for cross-source analysis — compares any two sources to find agreement, gaps, and conflicts. Lives in `agents/`.
+1. **Comparator agent** (complete): Purpose-built research tool for cross-source analysis. Four-layer pipeline (L0 classify → L1 triage → L2 deep investigation → L3 CMR cross-check). Supports parallel execution and Claude Code CLI engine. See `docs/comparator.md`. Remaining FNS chapters ready to run.
 2. **Policy search engine**: The broad-use tool for policy analysts. Accepts a question, orchestrates queries across all sources in the right order, and returns well-organized results. This is the system's primary daily-use interface.
 3. **Web UI**: Frontend for the policy search engine. Key priority — the target audience is non-technical policy staff who need a clean, accessible interface.
 

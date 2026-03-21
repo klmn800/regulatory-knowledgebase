@@ -70,12 +70,12 @@ Batch-classifies all FNS sections before the main run. Labels each section as:
 - **skip** -- Introductory text, definitions, or chapter headers with no testable requirements
 - **reference** -- Cross-references to other sections (e.g., "See Section 512")
 
-Output: `data/comparator/layer0_classifications_v2.csv` + `.json`
+Output: Classification stored in memory during the run (used to filter sections for L1)
 
 ### Layer 1: Triage (`run_layer1`)
 
 For each section that passes L0:
-1. `multi_query_olg()` generates 2-3 search queries from the FNS text and searches ChromaDB
+1. `multi_query_olg()` generates 2-3 search queries from the FNS text and searches ChromaDB (excludes TAFDC/EAEDC programs to focus on SNAP while retaining Cross-Program content)
 2. Haiku classifies based on the FNS text + top OLG matches
 3. HIGH confidence `match` or `not_applicable` stops here; everything else escalates to L2
 
@@ -90,7 +90,8 @@ The most expensive layer. An agentic search loop that autonomously queries the O
 - The session uses `python core/query.py` to search the OLG and `Read` to check FNS cross-references
 - Writes its result JSON to `data/comparator/results/{section_number}.json`
 - Session ID captured for later conversation resume via `claude --resume {id}`
-- Cost: $0 marginal (subscription), ~2.5 min per section
+- Parallel execution: `--parallel N` runs N concurrent L2 sessions
+- Cost: $0 marginal (subscription), ~2.5 min per section sequential, ~1 min/section at parallel 5
 
 **API engine** (`run_layer2`):
 - Haiku/Sonnet with `search_olg` and `lookup_fns_section` tools
@@ -125,6 +126,9 @@ Prompt: `agents/prompts/layer3_validation.md`
 # Full comparison run (Claude Code engine)
 python agents/comparator.py --chapter 10 --engine claude-code
 
+# Parallel execution (5 concurrent L2 workers)
+python agents/comparator.py --chapter 10 --engine claude-code --parallel 5
+
 # Full comparison run (API engine)
 python agents/comparator.py --chapter 10 --engine api
 
@@ -153,15 +157,12 @@ python agents/comparator.py --chapter 10 --engine claude-code --resume
 data/comparator/
 ├── results/                              # Per-section L2 verdicts (JSON)
 │   ├── 1013.4.json                       #   Also serves as resume markers
-│   ├── 1036.json                         #   L3 results backfilled here too
+│   ├── 1036.json                         #   L3 results stored as _layer3 key
 │   └── ...
 ├── sessions/                             # Prompt files and batch scripts
 │   ├── prompt_L2_1013.4.txt
 │   └── ...
-├── comparison_claude-code_20260320.csv    # Final compiled report
-├── comparison_api_20260320.csv           # API engine report
-├── comparison_interim.csv                # In-progress checkpoint
-└── layer0_classifications_v2.csv         # L0 pre-classification results
+└── comparison_{engine}_{timestamp}.csv   # Final compiled report
 ```
 
 ## Resume Agent Conversations

@@ -57,9 +57,13 @@ pip install -r requirements.txt
 python core/query.py "income verification" --source olg
 python core/query.py "income deduction" --source fns
 python core/query.py "work requirements" --source cmr --program SNAP
+python core/query.py "income verification" --source olg --exclude-programs "TAFDC,EAEDC"
 
 # Run comparator (Claude Code engine, recommended)
 python agents/comparator.py --chapter 10 --engine claude-code
+
+# Run comparator with parallel L2 (5 concurrent workers)
+python agents/comparator.py --chapter 10 --engine claude-code --parallel 5
 
 # Run comparator (API engine)
 python agents/comparator.py --chapter 10 --engine api

@@ -1,7 +1,14 @@
 {
     "classification": "not_applicable",
     "confidence": "HIGH",
-    "note": "FNS Section 1066 is entirely a QC variance determination procedure — it describes how a QC reviewer must evaluate a case when a household has more than one TYPE of income (earned, unearned, annualized/prorated). The Comparison I / Comparison II framework is audit methodology: Comparison I tests total income against the allotment, and Comparison II requires the reviewer to evaluate each income type separately using type-specific procedures from Sections 1062-1065. This has no caseworker equivalent. The underlying substantive policy — that different income types exist, each has its own rules, and all countable income is added together — IS covered in the OLG across multiple pages: 'How SNAP Benefits are Calculated' (Step One: 'Add together the household's countable earned and unearned income'), 'Types of Earned Income' (wages, steady employment, income averaging, mandatory annualization), 'Unearned Income Overview', and BEACON data entry procedures for each income type. The OLG adequately guides workers on handling multiple income types; the Comparison I/II QC review framework is not something caseworkers need.",
-    "olg_pages_found": ["How SNAP Benefits are Calculated", "Types of Earned Income", "Unearned Income Overview", "Entering, Changing, and Ending Other (Unearned) Income Data", "Self-Employment SNAP"],
-    "searches_performed": 6
+    "note": "FNS Section 1066 is a QC review procedure under '1060 VARIANCE DETERMINATIONS' that prescribes how QC reviewers should audit households with multiple income types (Comparison I: total all income and test against error threshold; Comparison II: evaluate each type separately if Comparison I exceeds threshold). This is audit methodology for error determination, not caseworker policy. The underlying SNAP policy\u2014that all income types must be counted and each type has its own rules\u2014is already covered by the OLG through separate pages for earned income, unearned income, and self-employment (annualized) income, plus the 'How SNAP Benefits are Calculated' page which instructs workers to add together countable earned and unearned income. Workers do not need a Comparison I/II framework; they simply enter all income correctly and BEACON calculates the allotment.",
+    "olg_pages_found": [
+        "How SNAP Benefits are Calculated",
+        "Unearned Income Overview",
+        "Self-Employment SNAP",
+        "Entering, Changing, and Ending Other (Unearned) Income Data"
+    ],
+    "searches_performed": 3,
+    "_elapsed": 142.31756567955017,
+    "_session_id": "102303df-8001-4a0e-9600-68dd4fc03eeb"
 }

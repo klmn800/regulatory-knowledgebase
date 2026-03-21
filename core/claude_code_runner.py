@@ -110,6 +110,7 @@ def _run_piped(prompt, result_file, timeout, cwd, log_dir, task_id, start):
             input=prompt,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=timeout,
             cwd=str(cwd),
         )
