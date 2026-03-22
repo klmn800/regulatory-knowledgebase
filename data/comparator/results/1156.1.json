@@ -1,0 +1,18 @@
+{
+    "classification": "partial_match",
+    "confidence": "MEDIUM",
+    "note": "FNS 1156.1 is primarily a QC reviewer documentation checklist specifying what must be in the case record when reviewing utility deductions (type, amounts, companies, time periods, verification dates, variance explanations). The OLG covers the underlying policy well: utility verification requirements are addressed in 'Verification of Utility Expenses' and 'Verification of Non-Heating SUA' (self-declaration acceptable, specific bill types listed for further verification), and BEACON procedures for entering SUA data are documented in 'Entering Standard Utility Allowance Data.' However, the OLG does not instruct workers to systematically document utility company names, time periods covered by bills, or dates verification was obtained \u2014 these are elements a QC reviewer would expect to find in the case record. For the LIHEAP/elderly/disabled note, the OLG's 'Home Energy Assistance Program Payments (Regular Fuel Assistance)' page thoroughly covers this: BEACON automatically assigns HCSUA to qualifying elderly/disabled households via an EOHLC data exchange, and workers are explicitly told NOT to request HEAP verification from clients. The documentary evidence of HEAP receipt is maintained through the automated data exchange rather than worker-collected documents, which differs from the FNS expectation of 'documentary evidence in the record' but reflects Massachusetts's automated implementation. The gap is in explicit case-record documentation standards (what to record beyond entering data in BEACON), not in the underlying policy coverage.",
+    "olg_pages_found": [
+        "Verification of Utility Expenses",
+        "Verification of Non-Heating SUA",
+        "Verification Chart",
+        "Entering Standard Utility Allowance Data",
+        "Standard Utility Allowance Page",
+        "Home Energy Assistance Program Payments (Regular Fuel Assistance)",
+        "Heat and Eat (H-EAT)",
+        "Heating/Cooling Standard Utility Allowance (HCSUA)"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 281.9851453304291,
+    "_session_id": "2df06b87-bdaa-45bb-a7da-247c4721ae39"
+}

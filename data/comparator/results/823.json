@@ -1,0 +1,15 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS Section 823 is entirely a QC reviewer procedure: when the reviewer identifies undocumented non-citizens during a quality control review, the reviewer must check for USCIS deportation decline documentation, enter findings on FNS-Form 380 Column 3, forward a report to the local agency, and not contact USCIS. These are audit mechanics \u2014 the FNS-Form 380, worksheet columns, and forwarding reports to the local agency are QC review steps, not caseworker obligations. The OLG appropriately covers the underlying caseworker-relevant policy: undocumented/nonimmigrant noncitizens are ineligible and treated as non-household members (Nonimmigrants page, Nonhousehold Members page), and workers must not pursue documentation from persons unable or unwilling to provide noncitizen status verification (Permanent Verifications page, Mandatory Verifications page). No caseworker-actionable content from this FNS section is missing from the OLG.",
+    "olg_pages_found": [
+        "Nonimmigrants",
+        "Nonhousehold Members",
+        "Permanent Verifications",
+        "Mandatory Verifications",
+        "Entering Noncitizen Data - Noncitizen Policy - SNAP"
+    ],
+    "searches_performed": 3,
+    "_elapsed": 146.77569460868835,
+    "_session_id": "835bb5ab-0a0d-4e83-8339-620d9d62c11d"
+}

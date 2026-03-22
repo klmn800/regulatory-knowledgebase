@@ -1,0 +1,15 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers all four FNS documentation elements substantively but does not present them as explicit documentation requirements for the case record. (1) Homeless status: well-covered \u2014 the OLG defines 'homeless individual' on 'Shelter Deduction for Homeless Households' and provides BEACON procedures for setting the Homeless Indicator on the Address page ('Entering Homeless Households Data'). (2) Shelter expenses during budget month: covered \u2014 the OLG states households must 'incur or reasonably expect to incur shelter or utility expenses' to qualify. (3) Amount declared: partially covered \u2014 the 'Verification of Shelter Expenses' section on 'Shelter Expenses Deduction' states self-declaration is acceptable verification and workers enter expenses in BEACON, but there is no explicit instruction to document the amount the household declares. (4) Decision to use actual expenses: handled differently \u2014 BEACON automatically compares the standard homeless shelter/utility deduction against actual shelter expenses and applies whichever is higher, so the household does not make an explicit choice. The OLG instructs workers to verify actual expenses only when they exceed the standard deduction. This automation-based approach functionally satisfies the requirement but the OLG does not instruct workers to document the household's preference or the basis for which deduction was applied. The gap is in documentation framing: the OLG tells workers what to do in BEACON but does not instruct them to ensure the case record evidences these four elements for QC audit purposes.",
+    "olg_pages_found": [
+        "Shelter Deduction for Homeless Households",
+        "Entering Homeless Households Data",
+        "Shelter Expenses Deduction",
+        "Standard Utility Allowance Expense Introduction",
+        "VC-1 Q and A"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 184.88309359550476,
+    "_session_id": "637f09ee-872e-4fc7-8a7b-e3d8191fb19d"
+}

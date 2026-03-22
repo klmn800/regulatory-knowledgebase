@@ -1,0 +1,14 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "FNS 732.1 is a cross-reference section directing QC reviewers to use Section 722 procedures for elements subject to change reporting requirements. The substantive requirement \u2014 which elements must be reported \u2014 is well covered by the OLG. The 'Change Reporting \u2013 Overview' page explicitly enumerates reportable elements: change in income source (with income change), earned/unearned income changes over $125/month, household composition changes, residence and shelter cost changes, child support obligation changes, and countable asset changes reaching resource limits. These align with the federal reportable changes listed in FNS Sections 223.1 and 223.2. The OLG also specifies the 10-day reporting timeframe and identifies which households are subject to change reporting (Public Assistance households receiving TAFDC, EAEDC, and/or SSI). Section 722 itself describes QC review procedures (time periods for evaluating state agency action on changes), which are not caseworker-facing and do not require OLG coverage.",
+    "olg_pages_found": [
+        "Change Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Simplified Reporting \u2013 Examples",
+        "Verifications at Case Maintenance"
+    ],
+    "searches_performed": 4,
+    "_elapsed": 137.3814079761505,
+    "_session_id": "fce48e1c-1bd0-41d5-b377-6a349bbeca74"
+}

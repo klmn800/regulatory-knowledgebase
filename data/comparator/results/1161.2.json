@@ -1,0 +1,15 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The underlying caseworker-relevant policy \u2014 that change reporting households must report shelter expenses only when they move \u2014 is present in the OLG. The Change Reporting Overview page lists 'change in residence and the resulting change in shelter cost' as a required report, effectively tying shelter reporting to moves. The Simplified Reporting Interim Report page similarly notes that 'Housing expense changes (unless the household moved)' do not need to be verified. However, the FNS section's specific focus is on QC variance treatment: when to include vs. exclude variances for unreported shelter changes based on whether a move occurred. This QC classification framework (excludable vs. includable variances for unreported changes) is not addressed in the OLG, which is expected since QC variance classification is not a caseworker function. The OLG also does not explicitly state the negative case \u2014 that shelter cost changes without a move are NOT reportable \u2014 though this can be inferred from the reporting requirements list. The Expenses/Deductions Introduction page addresses what to do when a household reports a shelter change due to a change of address but does not verify it (zero out the deduction), and notes special handling for SR and TBA households, but does not address the scenario where shelter costs change without a move during case maintenance.",
+    "olg_pages_found": [
+        "Change Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Interim Report",
+        "Expenses/Deductions Introduction",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Change Reporting \u2013 Examples"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 403.13744258880615,
+    "_session_id": "da041c3a-1e98-4b5d-bc60-92742e8cc713"
+}

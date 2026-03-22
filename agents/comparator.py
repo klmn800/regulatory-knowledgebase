@@ -1417,6 +1417,16 @@ def run_comparison(
                         print(f"    session: {l2_session}")
                 print(f"    {layer2['note'][:100]}")
 
+                # Write interim CSV with all completed rows so far
+                interim_rows = []
+                for i, (fs, l1, olg, needs) in enumerate(l1_results):
+                    l2 = l2_results.get(i) if needs else None
+                    if not needs or l2 is not None:
+                        interim_rows.append(build_csv_row(
+                            fs, l1, olg, l2, None, fns_by_number, tracker))
+                interim_path = OUTPUT_DIR / "comparison_interim.csv"
+                write_csv(interim_rows, interim_path)
+
         # ── Phase 3: L3 CMR cross-check (sequential) ──────────
         print(f"\nPhase 2 complete. Checking for L3 escalations...\n")
 
@@ -1501,6 +1511,10 @@ def run_comparison(
         print(f"  L2 cost: $0 (Claude Code subscription)")
     print(f"  Report: {csv_path}")
 
+    # Clean up interim/checkpoint files
+    interim_path = OUTPUT_DIR / "comparison_interim.csv"
+    if interim_path.exists():
+        interim_path.unlink()
     if CHECKPOINT_FILE.exists():
         CHECKPOINT_FILE.unlink()
         print(f"  Checkpoint cleared.")

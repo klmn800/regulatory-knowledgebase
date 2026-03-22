@@ -1,0 +1,9 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 712.2 prescribes QC reviewer procedures for verifying income and deductions in retrospective budgeting cases, including Comparison I and Comparison II computations. This is QC audit methodology, not caseworker policy. Moreover, Massachusetts does not use retrospective budgeting \u2014 all OLG income processing references prospective budgeting exclusively (e.g., 'Prospective Expense Tab', 'Calculate the Monthly Prospective Amount' across earned income, unearned income, and child support pages). FNS 222.2 confirms retrospective budgeting is a state option where agencies use prior-month circumstances to determine current benefits. Since MA uses prospective budgeting, this entire section is inapplicable both as QC procedure and as underlying policy.",
+    "olg_pages_found": [],
+    "searches_performed": 3,
+    "_elapsed": 171.69204807281494,
+    "_session_id": "9e5a27dc-c16c-4f28-b3cd-0459055f9a03"
+}

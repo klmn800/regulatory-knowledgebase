@@ -1,0 +1,16 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG 'SNAP Disability Requirements and Verifications' page provides a detailed table matching each disability criterion to its required verification source, and in practice routes workers to the correct government agency for each type (BENDEX/SDX for SSA-based disabilities, Railroad Retirement Board documentation, VA documentation, MassHealth/NewMMIS, PRO decisions from DES). This functionally satisfies the FNS 870.1 principle that verification must originate with the agency that made the disability determination. However, two specific elements are missing: (1) The OLG never explicitly states the overarching FNS principle that 'verification must originate with the government agency that provided the basis for the disability determination' \u2014 instead it embeds this principle implicitly through its per-criterion verification requirements. (2) The OLG does not mention collateral contacts with SSA or other government agencies as an acceptable alternative verification method for disability. FNS 870.1 lists three acceptable forms \u2014 documentation, computer listings, and collateral contacts \u2014 but the OLG covers only the first two (award letters/benefit checks and BENDEX/SDX database checks). The general OLG 'Collateral Contact' page (Cross Programs > Verifications > Verification Methods) describes collateral contact procedures broadly but does not connect them to disability verification specifically.",
+    "olg_pages_found": [
+        "SNAP Disability Requirements and Verifications",
+        "Processing a Claim of Disability to Qualify for SNAP Eligibility",
+        "Entering SNAP Disability Information for NPA Cases",
+        "External Databases",
+        "Collateral Contact",
+        "Mandatory Verifications"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 205.66357040405273,
+    "_session_id": "86f65e05-debe-4d04-8268-138ab17cdf1b"
+}

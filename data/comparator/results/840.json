@@ -1,0 +1,18 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG adequately covers all substantive elements of FNS 840. Household composition definitions (person living alone, separate purchase/prepare, group living together) are on the 'Household Composition - SNAP' page. Mandatory household members (spouses, under-22 with parents, under-18 under parental control) are explicitly listed. The elderly/disabled separate household exception with 165% FPL threshold is covered on 'Separate Household Status for Elderly and Disabled' with examples. Nonhousehold members (roomers, live-in attendants, students) are covered on the 'Nonhousehold Members' page. Critically, the OLG does address verification of relationships and living arrangements: 'The Application Interview' instructs workers to ask about each member's relationship to the applicant and whether they purchase and prepare meals together. The 'Recertification Interview' page similarly requires asking about each person's relationship and meal arrangements. The 'VC-1 Q and A' page provides scenario-based guidance for ambiguous household composition situations. BEACON procedures for entering household members and relationships are on 'Add a New Person as a SNAP Household Member' and 'Entering SNAP Household Composition Data'. While FNS 840 frames this as QC verification/documentation requirements, the OLG's interview guidance and BEACON data entry procedures effectively address the same substantive requirements from a caseworker perspective.",
+    "olg_pages_found": [
+        "Household Composition - SNAP",
+        "Nonhousehold Members",
+        "The Application Interview",
+        "The Recertification Interview",
+        "Separate Household Status for Elderly and Disabled",
+        "Add a New Person as a SNAP Household Member",
+        "Entering SNAP Household Composition Data",
+        "VC-1 Q and A"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 263.9748766422272,
+    "_session_id": "8fbbc23e-18fc-4a12-8a72-8929be4ae5db"
+}

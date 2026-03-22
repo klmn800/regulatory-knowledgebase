@@ -1,0 +1,13 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 722.2 is entirely about QC review methodology \u2014 it defines rules for when QC reviewers must include or exclude variances from error determinations based on a 30-day rule and retrospective budgeting exceptions. The language is directed at reviewers ('the reviewer can establish and document'), not caseworkers. The underlying change reporting obligations that households must follow ARE covered in the OLG (Change Reporting \u2013 Overview, Simplified Reporting \u2013 Reporting Requirements During Case Maintenance), but the QC variance determination rules in 722.2 have no caseworker equivalent and no OLG coverage is expected.",
+    "olg_pages_found": [
+        "Simplified Reporting \u2013 Examples",
+        "Change Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance"
+    ],
+    "searches_performed": 1,
+    "_elapsed": 111.39524269104004,
+    "_session_id": "0ec3dae1-16de-4a0f-b25b-c1417c915789"
+}

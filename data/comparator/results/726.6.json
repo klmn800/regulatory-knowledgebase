@@ -1,0 +1,15 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers most but not all of FNS 726.6. Three of the four mandatory-action triggers are addressed: (1) ABAWD hour changes \u2014 'Simplified Reporting \u2013 Reporting Requirements During Case Maintenance' requires reporting when hours fall below 20/week; (2) income exceeding gross income limit \u2014 covered extensively across multiple Simplified Reporting pages with detailed procedures; (3) three of four Method 2 conditions (voluntary closure, verified upon receipt, fleeing felon) are listed under 'Changes that May Be Acted Upon at Anytime.' However, several FNS requirements are missing: (a) substantial lottery/gambling winnings as a mandatory reporting/action trigger \u2014 the OLG never mentions this in the Simplified Reporting context; (b) the PA/GA grant change condition under Method 2 (FNS item 2d) is not addressed; (c) the exception for changes reported for another public assistance program that don't trigger action in that program is not mentioned; (d) the OLG does not present the two-method framework (act on all changes vs. act only on decreases) that FNS describes \u2014 it simply lists the 'anytime' actions without framing them as one of two options the state has chosen.",
+    "olg_pages_found": [
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Simplified Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Examples",
+        "Change Reporting \u2013 Overview",
+        "How to Read a 1040 Federal Income Tax Form"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 213.40124130249023,
+    "_session_id": "70ac17cb-072b-4f59-93ad-c21dfa03217e"
+}

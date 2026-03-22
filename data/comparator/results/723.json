@@ -1,0 +1,9 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS Section 723 is entirely QC review methodology for handling variances under monthly reporting systems. It specifies when QC reviewers should include or exclude variances from error determinations based on one-month vs two-month retrospective/prospective budgeting under monthly reporting. Massachusetts does not use monthly reporting \u2014 DTA uses Simplified Reporting and Change Reporting as its two certification types (confirmed by OLG content under 'Certification Types'). The OLG has no content on monthly reporting as a reporting system. Since MA doesn't operate a monthly reporting system, and Section 723 is procedural guidance for QC reviewers (not caseworker policy), this section has no OLG equivalent and none is expected.",
+    "olg_pages_found": [],
+    "searches_performed": 4,
+    "_elapsed": 161.56015181541443,
+    "_session_id": "9cae27ff-4b48-42fd-bf10-5bb33b6f0958"
+}

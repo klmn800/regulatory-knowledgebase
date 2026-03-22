@@ -1,0 +1,13 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 731 is a QC review procedure specifying how QC reviewers must verify household circumstances during beginning months: AORD for general circumstances, full issuance month for income/deductions. The underlying policy concepts (prospective budgeting, income conversion) are covered elsewhere in the OLG \u2014 'How SNAP Benefits are Calculated' explains converting non-monthly income to monthly figures, and BEACON handles prospective budgeting automatically. However, the specific temporal verification scope instructions in 731 (verify AORD vs. verify entire month) are directed at QC reviewers, not caseworkers. The OLG appropriately does not replicate QC audit methodology. The income averaging/conversion permission noted in the bullet point is a general SNAP budgeting concept already reflected in OLG income pages.",
+    "olg_pages_found": [
+        "How SNAP Benefits are Calculated",
+        "Types of Earned Income",
+        "Entering, Changing, and Ending Earned Income in BEACON"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 326.598917722702,
+    "_session_id": "ae95111a-b712-43ae-9f88-0b2e6e89e7f6"
+}

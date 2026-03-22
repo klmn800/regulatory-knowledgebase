@@ -1,0 +1,15 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 725 describes Quarterly Reporting as an optional state reporting system ('The State agency has the option of establishing a quarterly reporting system in lieu of change reporting requirements'). Massachusetts has not exercised this option. The OLG documents the certification types MA actually uses: Simplified Reporting (with Interim Reports), Change Reporting, Bay State CAP, EDSAP Reporting, and Transitional Benefits Alternative (TBA). No mention of quarterly reporting exists anywhere in the OLG. This is not a gap \u2014 it is a state policy choice not to adopt an optional federal reporting system. The ABAWD work hours reporting requirement mentioned in FNS 725 as an exception IS covered in the OLG under 'Simplified Reporting \u2013 Reporting Requirements During Case Maintenance > Subject to ABAWD Work Rules and Work Hours Fall Below 20 Per Week', which requires non-exempt ABAWD clients to report when hours drop below 20/week. The QC review procedures in FNS 725 (worksheet corrections, error determination, missing quarterly report handling) are QC-specific and have no caseworker equivalent.",
+    "olg_pages_found": [
+        "Certification Type Overview",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Change Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Overview",
+        "ABAWD Work Rules Participation"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 296.6688265800476,
+    "_session_id": "1efa2e00-bbce-4804-a497-b6b80fa35403"
+}

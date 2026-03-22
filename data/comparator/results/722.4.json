@@ -1,0 +1,17 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG adequately covers the core requirement that new household members must be added no later than the month following the month reported ('Add a New Person as a SNAP Household Member' page, citing 106 CMR 366.120). It also covers benefit increase scenarios (related benefits when change reported too late in month) and benefit decrease scenarios (notification of negative action within 10 days). However, two specific FNS requirements are not fully addressed: (1) Disqualified members becoming eligible: The OLG covers IPV disqualification ending (BEACON 'Assessed Person Potential Changes' view, notice sent, reevaluation conducted) and voluntary quit disqualification ending (household may resume participation). But the FNS requirement that such members 'must be added in the month after the disqualification period ends' and that this 'must be reviewed as a reported change' \u2014 treating it with the same change-processing timelines as any other reported addition \u2014 is not explicitly stated. The OLG frames it as a reevaluation process rather than a reported-change obligation with a specific deadline. (2) Verification timing for supplements: FNS specifies that if timely verification is provided prior to the end of the issuance month, a supplement should be authorized in that issuance month. The OLG discusses related benefits when changes are reported too late for the next cyclical month but does not tie supplement authorization specifically to the verification submission deadline within the issuance month.",
+    "olg_pages_found": [
+        "Add a New Person as a SNAP Household Member",
+        "SNAP Voluntary Quit and Reduction of Work Hours",
+        "Intentional Program Violation Overview",
+        "SNAP Disqualifications and Sanctions",
+        "Unclear Information",
+        "Related Benefit",
+        "The General Work Rules"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 370.984201669693,
+    "_session_id": "3ca8eaab-7a65-4a94-a2dd-731d7da70e11"
+}

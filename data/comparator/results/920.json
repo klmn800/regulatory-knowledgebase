@@ -1,0 +1,17 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG has extensive coverage of nonexempt resource verification across the 'SNAP Asset Guidelines' and 'Assets Overview - SNAP' pages. The fair market value less encumbrances calculation is explicitly stated in Assets Overview ('The countable value of a non-liquid asset is its equity value. The equity value of an asset is its fair market value less any encumbrances.') and detailed for real property with specific verification methods (tax bills, appraisals, knowledgeable sources). Verification standards for declared resources are thoroughly covered: bank deposits/joint accounts (statements within 45 days), securities (broker statements, newspaper clippings), real property (tax assessments, encumbrance documentation from lenders), ownership verification (at least two forms of documentation required). BEACON procedures are provided for entering liquid assets, financial holdings, real property, insurance, and pensions, each with % owned and % accessible fields. However, FNS Section 920 also requires exploring household circumstances to 'reasonably establish the absence of any undeclared resources' (negative allegation investigation). The OLG does not provide explicit guidance on proactively investigating for undeclared/hidden assets. BEACON's Income and Asset Q&A Navigator prompts workers to ask about each asset type, which partially addresses this procedurally, but the OLG lacks written policy on exploration standards for establishing that no unreported resources exist.",
+    "olg_pages_found": [
+        "SNAP Asset Guidelines",
+        "Assets Overview - SNAP",
+        "Entering Real Property Data in BEACON",
+        "Entering Liquid Asset Data in BEACON",
+        "Entering Financial Holdings Data in BEACON",
+        "Verification Chart",
+        "Treating Crowdfunding Accounts as Assets"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 189.3420808315277,
+    "_session_id": "1d480f85-edfa-40b6-94ca-2d6777be8198"
+}

@@ -1,0 +1,16 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "FNS 713.1 requires that when income is prorated over a budget month, the reviewer must verify the full amount and compute a monthly figure, with the same applying to one-time or periodic expenses that were averaged or prorated. The OLG covers the underlying policy mechanics in several places but not as a unified framework: (1) 'Types of Earned Income > Income Averaging' explains mandatory and elective income averaging over certification periods, including calculating monthly/weekly amounts from pay history; (2) 'Self-Employment SNAP > Averaging Self-Employment Income' covers annualizing self-employment income over 12 months; (3) 'Non-Recurring Medical Expenses' has detailed proration procedures including the mandatory Optimal Proration Tool for averaging non-recurring medical expenses; (4) 'Determining Prorated Benefit Amount' covers the Retro Benefit Calculation tool for prorating benefit amounts. However, the OLG does not articulate a general principle that all prorated/averaged income and deductions must be verified as to the full amount and recomputed as a monthly figure. The conversion factors for weekly-to-monthly (4.333) and biweekly-to-monthly (2.167) income do not appear explicitly in the OLG \u2014 BEACON apparently handles these conversions automatically. The OLG's coverage is topic-specific (income averaging, self-employment annualization, medical expense proration) rather than presenting a coherent cross-cutting policy on proration and averaging that a worker could apply to any income or deduction type.",
+    "olg_pages_found": [
+        "Types of Earned Income",
+        "Self-Employment SNAP",
+        "Non-Recurring Medical Expenses",
+        "Determining Prorated Benefit Amount",
+        "Migrant Farm Laborers",
+        "SNAP Calculation Page Example"
+    ],
+    "searches_performed": 8,
+    "_elapsed": 425.0544214248657,
+    "_session_id": "ce8733ca-1559-4641-b240-d9ebb4895bd9"
+}

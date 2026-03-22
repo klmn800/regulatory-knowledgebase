@@ -1,0 +1,16 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "FNS 1110 is a brief introductory section consisting of two sentences ('The following paragraphs and examples show how to handle allowable deductions') plus side-by-side examples illustrating the billed-vs-paid expense principle. The OLG has a dedicated 'Expenses/Deductions Introduction' page (SNAP > Expenses and Deductions) that serves the same introductory purpose: it lists all seven allowable deductions, identifies which are automated in BEACON (Standard Deduction, Earned Income Deduction) vs. worker-determined, explains that expense deductions are optional verifications, and provides detailed rules for processing unverified expenses at application, recertification, interim report, and reported changes. The OLG introduction is more comprehensive than FNS 1110 and provides the unified deduction framework that workers need. The specific billed-vs-paid distinction from FNS 1110's examples is a QC reviewer concept (determining which month's billing to use for review purposes) rather than a caseworker procedure, as BEACON handles expense entry by frequency and amount rather than by billing cycle.",
+    "olg_pages_found": [
+        "Expenses/Deductions Introduction",
+        "Earned Income Deduction",
+        "Standard Deduction",
+        "Shelter Expenses Deduction",
+        "SNAP Calculation Page Example",
+        "How SNAP Benefits are Calculated"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 266.6799283027649,
+    "_session_id": "4c351ab9-6675-4152-9d4f-f7d422053c65"
+}

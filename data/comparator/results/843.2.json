@@ -1,0 +1,15 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG addresses duplicate participation primarily through BEACON system-level prevention. The 'Dual Participation Processing' page (Cross Programs > Interview Wrapup) describes BEACON's hard edit that blocks saving when a member appears in two active SNAP cases, requiring the worker to close/deny one case or provide a supervisor-approved override. The 'Completing SNAP Applications for Active or Pending Clients' page instructs workers to explore household composition and set benefit effective dates to avoid duplicate issuance. The IPV section covers 10-year disqualification for fraudulent receipt of multiple benefits. However, the OLG does not cover the core FNS 843.2 policy rule: when duplicate participation is discovered after the fact, how to determine which case was 'first to be correctly authorized to receive benefits' and that the total allotment issued to the other household is considered an overissuance. The OLG's approach is prevention-oriented (BEACON edits block dual participation at certification) rather than resolution-oriented (what to do when duplicate participation has already occurred for a sample/review month). A worker who discovered that a client had been receiving benefits in two SNAP cases simultaneously would not find guidance in the OLG on which case to treat as correct or how to classify and calculate the resulting overissuance.",
+    "olg_pages_found": [
+        "Dual Participation Processing",
+        "Completing SNAP Applications for Active or Pending Clients",
+        "The Web Application Workflow",
+        "SNAP Disqualifications and Sanctions",
+        "Agency Error"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 161.88174414634705,
+    "_session_id": "cbc1c04f-351c-4de1-9de1-d4f5426cb3b3"
+}

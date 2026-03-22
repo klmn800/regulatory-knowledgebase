@@ -1,0 +1,14 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG fully covers FNS 821's requirement. The 'Citizenship Overview - SNAP' page states: 'Citizenship will be verified only when the information on the application is questionable' \u2014 directly mirroring FNS 821's verification trigger. The page provides an extensive list of acceptable verification documents (birth certificate, passport, naturalization certificate, military papers, court records, etc.), a self-declaration fallback under penalty of perjury when documents are unavailable, and the consequence for unverifiable citizenship: 'A member whose U.S. citizenship is questionable and cannot be verified will be ineligible and shall be disqualified on the basis of being an ineligible noncitizen.' The Cross-Program Mandatory Verifications page reinforces this: 'U.S. citizenship, although mandatory does not need to be verified unless it is questionable or the status has changed.' BEACON procedures for entering citizenship data are also documented on a separate page.",
+    "olg_pages_found": [
+        "Citizenship Overview - SNAP",
+        "Mandatory Verifications",
+        "Verification Chart",
+        "Entering Citizenship Data - Citizenship - SNAP"
+    ],
+    "searches_performed": 3,
+    "_elapsed": 104.74891924858093,
+    "_session_id": "8365a6be-04c7-43dd-b1e0-b04bf91f91cd"
+}

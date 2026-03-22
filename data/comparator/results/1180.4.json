@@ -1,0 +1,14 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG adequately covers the child support income exclusion calculation, though using a different but mathematically equivalent methodology suited to BEACON's implementation. FNS 1180.4 describes a single-pass calculation where child support is excluded from gross income and the 20% earned income deduction is applied to the excluded earnings. The OLG documents a two-step approach: (1) child support is excluded from gross income for the initial eligibility test ('Excluding Child Support from the Gross Income Test' section), then (2) child support is added back into gross income and treated as a standard deduction in the benefit calculation, where the 20% earned income deduction applies to the full gross earned income ('How SNAP Benefits are Calculated' Step Two). The Child Support Expenses Deduction page includes a detailed worked example with Table A (income exclusion from gross test) and Table B (benefit calculation with child support as deduction), showing the complete flow. The Earned Income Deduction page confirms '20 percent of gross monthly earned income is allowed as a deduction.' Both approaches yield the same net income and benefit amount. The FNS section is primarily framed as QC reviewer instructions (Comparison I and II), not caseworker procedures.",
+    "olg_pages_found": [
+        "Child Support Expenses Deduction",
+        "Earned Income Deduction",
+        "How SNAP Benefits are Calculated",
+        "Expenses/Deductions Introduction"
+    ],
+    "searches_performed": 4,
+    "_elapsed": 243.6343536376953,
+    "_session_id": "2140daa7-f2c4-4077-acbe-daec878d34ae"
+}

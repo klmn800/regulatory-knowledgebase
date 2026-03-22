@@ -1,0 +1,14 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers non-liquid resource verification in pieces but lacks a unified, systematic framework matching FNS 990's scope. Real property (Element 221) is well-covered: 'SNAP Asset Guidelines > Real Estate' specifies verification via tax bills, appraisals, and knowledgeable sources, and the BEACON Real Property page captures type, fair market value, encumbrances, and equity value. Vehicles (Element 222) are non-countable for SNAP in MA, so verification is moot. For 'other' non-liquid resources (the actual scope of FNS 990 \u2014 e.g., business property, recreational property, trust assets), coverage is incomplete. 'Assets Overview - SNAP > Non-liquid Assets' defines equity value correctly (fair market value less encumbrances) but states verification is only required 'when information is inconsistent' \u2014 a conditional standard rather than the mandatory verification FNS 990 requires. The Verification Chart lists property value verification as mandatory (M*) for non-categorically eligible SNAP households with acceptable documents (current tax bill, written appraisal, proof of sale attempts), but this appears limited to real property. The 'Non-countable Assets' list identifies excluded categories but does not specify how workers should verify exclusion status for each category, which FNS 990 explicitly requires. The specific verification sources FNS references (sales agreements, courthouse records, tax records, title searches) are partially reflected in the real property section but not generalized to other non-liquid resource types.",
+    "olg_pages_found": [
+        "Assets Overview - SNAP",
+        "SNAP Asset Guidelines",
+        "Entering Real Property Data in BEACON",
+        "Verification Chart"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 206.73255586624146,
+    "_session_id": "c75e21f7-74df-456d-b003-2949ee73e96a"
+}

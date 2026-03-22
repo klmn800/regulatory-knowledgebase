@@ -1,0 +1,18 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers most of FNS 1130.1 but has gaps on specific deductible expense types and the in-kind exclusion. COVERED: (1) Care provider cannot be a SNAP HH member \u2014 well-documented with examples (Dependent Care Expenses Deduction > Examples). (2) Transportation costs \u2014 extensively covered via Federal Mileage Rates page, DTA Connect reporting procedures, and multiple examples (Q11 Julie's $55/week transport, Q12 Jeanne driving Chase, Lisa's Uber example). (3) Activity fees \u2014 implicitly covered through Q5 (Kira's $75 afterschool basketball program for disabled son) and Q1 (YMCA afterschool program), though not explicitly labeled as 'activity fees.' (4) Subsidy expenses \u2014 partially addressed in Q2 referencing EEC costs and Cross-Program example of child care subsidy through EEC. (5) Conversion/proration \u2014 BEACON performs calculations for transport (e.g., Lisa's Uber: $10 x 2 roundtrips x 2 trips monthly = $40), and biweekly amounts appear in examples, but the OLG does not provide general guidance on converting or prorating dependent care expenses the way it does for income or medical expenses. NOT COVERED: (1) In-kind benefits (meals, lodging) exclusion from deductible expenses \u2014 not mentioned anywhere in OLG dependent care content. (2) Late fees as a deductible expense type \u2014 not addressed. (3) The FNS principle that ancillary fees 'do not have to be mandatory but must be specific and identifiable' \u2014 not stated in OLG. While the OLG's examples implicitly demonstrate many deductible expense types, it lacks an explicit enumeration of what qualifies, which could leave workers uncertain about edge cases like late fees or non-mandatory activity fees.",
+    "olg_pages_found": [
+        "Dependent Care Expenses Deduction",
+        "Dependent Care Expense - Examples",
+        "Federal Mileage Rates - Dependent Care",
+        "DTA Connect: Updating Dependent Care Expenses",
+        "Entering Dependent Care as a Medical Expense in BEACON",
+        "Verification of Dependent Care Expenses",
+        "Case Maintenance Actions Related to Dependent Care",
+        "Expenses/Deductions Introduction"
+    ],
+    "searches_performed": 8,
+    "_elapsed": 303.1867516040802,
+    "_session_id": "118eefce-67aa-4e99-a307-e24d9bb2545f"
+}

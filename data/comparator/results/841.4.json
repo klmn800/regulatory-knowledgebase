@@ -1,0 +1,18 @@
+{
+    "classification": "partial_match",
+    "confidence": "MEDIUM",
+    "note": "The OLG functionally covers this FNS requirement through its verification framework but does not explicitly state the principle. The Verification Chart (Cross Programs > Verifications > Verification Types > Verification Chart) marks 'People who Joined Your Household' and 'People who Moved Out of Your Household' as 'n/a' for SNAP, meaning SNAP does not require documentary verification of household composition changes \u2014 client statements are effectively the baseline. The VC-1 Q&A page explicitly states 'a client must not be required to put in writing that someone is no longer in their home,' reinforcing that household statements are accepted. The Self-Declaration page establishes the documentary evidence \u2192 collateral contact \u2192 self-declaration hierarchy that applies to 'most other verification elements.' However, the OLG does not explicitly articulate the FNS principle that when verification of household composition is unobtainable or inadequate, the household's statement must be used. This principle is implicit in the framework (SNAP HH comp doesn't require verification) rather than stated as a rule. For documentation requirements, the OLG has general narrative requirements (Collateral Contact page requires documenting all contacts in the Narrative; BEACON Narratives pages require detailed narratives for all case actions), but lacks specific guidance on documenting reasoning when resolving household composition inconsistencies \u2014 there is no FNS-380 equivalent or specific standard for this scenario.",
+    "olg_pages_found": [
+        "Verification Chart",
+        "VC-1 Q and A",
+        "Self-Declaration",
+        "Collateral Contact",
+        "Household Composition - SNAP",
+        "Completing BEACON Narratives",
+        "The Application Interview",
+        "The Recertification Interview"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 258.0092623233795,
+    "_session_id": "2207055f-d663-4a71-b8ce-1a4ab4b7d467"
+}

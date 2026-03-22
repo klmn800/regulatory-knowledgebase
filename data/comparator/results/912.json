@@ -1,0 +1,16 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG thoroughly covers SNAP resource limits as required by FNS 912. The 'Assets Overview - SNAP' page specifies both statutory limits: $4,500 for households with an elderly (60+) or disabled member, and $3,000 for all other households. The OLG clearly explains which households are subject to asset testing vs. exempt: categorically eligible (CE) households bypass the asset test entirely, while non-CE households (those with IPV disqualifications, SNAP Work Program noncompliance, or non-SSI elderly with income over 200% CE standard) must meet the applicable limit. The 'Categorical Eligibility' page details how BEACON automates the CE determination and bypasses the Asset Q&A Navigator for CE households. The 'SNAP Asset Guidelines' page provides a summary table of limits by household type. Multiple pages reinforce asset verification requirements for non-CE households.",
+    "olg_pages_found": [
+        "Assets Overview - SNAP",
+        "SNAP Asset Guidelines",
+        "What is SNAP?",
+        "Categorical Eligibility",
+        "Elderly or Disabled Clients",
+        "SNAP Annual Cost-of-Living Adjustment (COLA)"
+    ],
+    "searches_performed": 3,
+    "_elapsed": 106.11030125617981,
+    "_session_id": "2c773419-c873-4962-be4a-367fc3bc69bd"
+}

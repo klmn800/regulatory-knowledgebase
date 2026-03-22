@@ -1,0 +1,18 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG provides extensive coverage of the medical expense deduction: the $35 threshold, elderly/disabled eligibility, unreimbursed expenses requirement, the Standard Medical Deduction (SMD) of $155 under an approved USDA waiver for self-declared expenses up to $190/month, actual expenses above $190, verification procedures, non-recurring expense proration across the certification period, and medical expense handling at IR and recertification (see 'Overview of Medical Expense Deduction', 'Standard Medical Deduction Waiver', 'Non-Recurring Medical Expenses', and 'Medical Expense Deduction During Review Periods'). However, the FNS requirement to include 'anticipated changes in the household's medical expenses that can be reasonably anticipated during the certification period based on available information about the household member's medical condition, public or private insurance coverage, and current verified medical expenses' is not explicitly addressed. The OLG focuses on currently reported and verified expenses, and on handling changes when they are reported (at IR, recertification, or case maintenance). It does not instruct workers to proactively assess or project anticipated future medical expense changes at certification based on known medical conditions or insurance coverage. The non-recurring expense proration system addresses spreading known one-time costs over the certification period, but this is different from the FNS concept of anticipating changes in ongoing expenses. The SMD waiver provision from FNS is well-documented \u2014 the OLG explicitly states DTA has an approved USDA waiver allowing self-declaration for expenses \u2264$190/month.",
+    "olg_pages_found": [
+        "Overview of Medical Expense Deduction",
+        "Standard Medical Deduction Waiver",
+        "Non-Recurring Medical Expenses",
+        "Medical Expense Deduction During Review Periods",
+        "How to Discuss Medical Expenses with Clients",
+        "How SNAP Benefits are Calculated",
+        "Entering Medical Expense Data in BEACON",
+        "Medical Expenses Claimed by Subsidized Housing Tenants"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 381.192743062973,
+    "_session_id": "e979db05-630f-4d3f-a48b-49b0f55a0007"
+}

@@ -1,0 +1,19 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers most of the substance behind FNS 943.3's conditions but does not present them as an explicit framework of triggers for further verification. Specifically: (1) Alleged account ownership \u2014 the Verification Chart lists bank accounts as mandatory verification (M*) for non-categorically eligible SNAP households, with acceptable documents being bank statements showing account number and balance. SNAP Asset Guidelines details verification of bank deposits and joint accounts within 45 days. (2) Evidence contradicting negative allegation \u2014 the OLG has general guidance on questionable/contradictory information (Examples of Questionable & Contradictory Information page) but does not specifically address contradicted negative allegations about bank accounts. (3) Banking institution use for check cashing/direct deposit \u2014 no OLG content found addressing this as a trigger for account investigation. (4) IEVS/collateral inquiry reveals possible resources \u2014 the DOR Bank Match (monthly, processed by FIDM unit) and External Agency Data Container pages cover the operational mechanism for detecting undeclared accounts, and the Categorical Eligibility page confirms BEACON automatically applies asset matches when cases become non-categorically eligible. However, the OLG frames these as match disposition workflows rather than as conditions triggering further verification of liquid resources. The OLG has strong BEACON procedures for entering and verifying declared liquid assets, and an automated match system for undeclared accounts, but lacks the explicit policy framework connecting specific conditions to the obligation for further investigation that FNS 943.3 describes.",
+    "olg_pages_found": [
+        "Verification Chart",
+        "SNAP Asset Guidelines",
+        "Entering Liquid Asset Data in BEACON",
+        "Matches - Job Aid",
+        "Matches - Match Disposition Reason Options",
+        "Matches - Program Integrity (PI) Checklist \u2013 Overview",
+        "FIDM Unit Responsibilities",
+        "Examples of Questionable & Contradictory Information",
+        "Categorical Eligibility"
+    ],
+    "searches_performed": 8,
+    "_elapsed": 388.5445454120636,
+    "_session_id": "26447b5d-4691-4050-ae26-e472526c8721"
+}

@@ -1,0 +1,16 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG has substantial coverage of categorical eligibility but with notable gaps versus FNS 846. For Step 1 (traditional CE): The PA Categorically Eligible Households section adequately covers verification through TAFDC, EAEDC, SSI, and combinations. For BBCE/NPA: The NPA Categorically Eligible Households section explains how CE is conferred via TANF-funded services (the 'Help for Those in Need' brochure), and notes BEACON automates the CE determination. However, the OLG does not describe the FNS requirement to verify and document conferment status at the time of certification/recertification\u2014specifically, there is no guidance on documenting CE conferment via approval notice language, system indicators, or case comments as FNS Step 1 requires. For Step 2 (disqualifying characteristics): The OLG's 'Who Is Not Categorically Eligible' section lists only three categories (IPV disqualification, work program noncompliance, and income over 200% for elderly/disabled households). FNS 846 Step 2 lists additional disqualifiers\u2014refusal to cooperate with eligibility determination, striker ineligibility, and knowing resource transfer to qualify for SNAP\u2014that are not mentioned on the CE page as CE disqualifiers, even though these topics are covered elsewhere in the OLG (strikers under Cross Programs, resource transfer under Assets, fleeing felons under IPV). The CE page itself does not cross-reference these provisions or alert workers that they also prohibit categorical eligibility. The net effect is that a worker reading only the CE page would not know the full set of circumstances that remove CE status.",
+    "olg_pages_found": [
+        "Categorical Eligibility",
+        "Transfer of Funds",
+        "Eligibility of Strikers",
+        "Disqualification of Fleeing Felons",
+        "Limitations on Program Eligibility",
+        "Assets Overview - SNAP"
+    ],
+    "searches_performed": 8,
+    "_elapsed": 400.4526925086975,
+    "_session_id": "1484e57b-dd9d-4d14-8c94-d04b018f00a5"
+}

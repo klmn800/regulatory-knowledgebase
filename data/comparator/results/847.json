@@ -1,0 +1,18 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 847 is a QC review procedure, not a caseworker policy requirement. It instructs QC reviewers to check the Electronic Disqualified Recipient System (eDRS) for each adult household member and describes how to handle variances found during QC review. The eDRS check is a federal QC audit tool \u2014 caseworkers do not use eDRS. The underlying policy concept (how to handle disqualified household members) IS well-covered in the OLG: the 'SNAP Disqualifications and Sanctions' page catalogs all disqualification types (IPV, fleeing felon, trading benefits, voluntary quit, work program noncompliance); the 'Entering SNAP Disqualification and Sanction Data' page provides BEACON procedures for the Sanctions page; the 'Limitations on Program Eligibility' pages describe the Eligibility Limitations Q&A Navigator in BEACON which screens for program violations at application, reapplication, recertification, and member addition; the 'SNAP Attributed Amount (Riverside Rule)' page covers how income is handled for disqualified members; and the 'Categorical Eligibility' page notes that households with disqualified members lose categorical eligibility. The OLG does not reference eDRS because that is a QC-specific verification system, not a caseworker tool. BEACON's own edits and data matching (referenced in the Quality Assurance Unit page) serve the analogous function for case processing.",
+    "olg_pages_found": [
+        "SNAP Disqualifications and Sanctions",
+        "Entering SNAP Disqualification and Sanction Data",
+        "BEACON Page Changes for Limits on Program Eligibility - SNAP",
+        "Case Manager Responsibilities",
+        "Intentional Program Violation Overview",
+        "SNAP Attributed Amount (Riverside Rule)",
+        "Categorical Eligibility",
+        "Quality Assurance Unit"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 299.1481468677521,
+    "_session_id": "b160b96e-91af-4b4e-adce-d1a011e20f07"
+}

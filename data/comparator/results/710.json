@@ -1,0 +1,16 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 710 is a general introduction to Sections 711-713, establishing that when retrospective budgeting is combined with prospective eligibility, the reviewer must verify income and deductions for two months (the budget month and the issuance month). Massachusetts does not use retrospective budgeting for SNAP \u2014 the OLG describes only prospective budgeting systems (Simplified Reporting, Change Reporting, Bay State CAP). The OLG uses prospective income tabs in BEACON for earned and unearned income, and there is no mention of 'budget month' vs 'issuance month' distinctions or monthly reporting households in the SNAP context. Since Massachusetts does not operate a retrospective budgeting system for SNAP, the two-month verification requirement in FNS 710 does not apply to Massachusetts practice. The verification time period standards that DO apply (prospective, per Sections 711.1 etc.) are addressed through the OLG's existing verification guidance at application, recertification, and interim report.",
+    "olg_pages_found": [
+        "Entering, Changing, and Ending Earned Income in BEACON",
+        "Entering, Changing, and Ending Other (Unearned) Income Data",
+        "Simplified Reporting \u2013 Interim Report",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Verifications at Reevaluation, Recertification and Interim Reports",
+        "Verifications at Application"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 280.8703351020813,
+    "_session_id": "b4ce418c-fbc1-4781-8e93-830b9beae846"
+}

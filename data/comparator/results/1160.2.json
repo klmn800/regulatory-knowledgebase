@@ -1,0 +1,17 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers utility expense verification across multiple pages (SUA Expense Introduction, HCSUA, Non-Heating SUA, Telephone SUA, Verification Chart) and lists many of the same verification types as FNS: current heating/utility bills, fuel assistance statements, landlord verification forms, and lease agreements. The SUA Expense Introduction page also includes the catch-all 'any document that verifies the allowable expense.' However, three specific FNS requirements are not addressed: (1) FNS explicitly lists 'statements from utility companies' as distinct from bills \u2014 the OLG only references 'bills' and 'third-party statements,' not formal company statements; (2) FNS specifically lists 'statements or receipts from the company or individual that sold the household wood, propane, or heating oil' \u2014 the OLG lists 'current gas, oil, electric or propane bill' for HCSUA and 'Bill for other utility costs such as coal, wood for heating' in the Verification Chart, but does not mention receipts from individual sellers (relevant for cord wood or bulk fuel purchases from non-utility vendors); (3) FNS restricts landlord statements to cases where the landlord 'bills for individual usage or charges a flat rate separately from the rent for utilities' \u2014 the OLG accepts the Landlord Verification form (LL/VER) without stating this limitation; (4) FNS requires documentation when the utility expense is not in any household member's name \u2014 the OLG has no equivalent requirement. The first two gaps are partially mitigated by the OLG's catch-all provision, but the landlord limitation and the name-on-account documentation requirement are substantive omissions.",
+    "olg_pages_found": [
+        "Standard Utility Allowance Expense Introduction",
+        "Heating/Cooling Standard Utility Allowance (HCSUA)",
+        "Non-Heating Standard Utility Allowance (Non-Heating SUA)",
+        "Telephone Standard Utility Allowance (Telephone SUA)",
+        "Verification Chart",
+        "Entering Standard Utility Allowance Data",
+        "Standard Utility Allowance Page"
+    ],
+    "searches_performed": 4,
+    "_elapsed": 137.41825103759766,
+    "_session_id": "47b40205-7bda-4499-b709-089a092f5039"
+}

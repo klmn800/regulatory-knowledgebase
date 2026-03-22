@@ -1,0 +1,21 @@
+{
+    "classification": "different_standard",
+    "confidence": "HIGH",
+    "note": "FNS 812.2 specifies that standard verification for school enrollment is 'a statement signed or issued by school authorities.' The OLG covers school enrollment verification but with a more lenient standard. The OLG 'Verifying Student Eligibility' section (Students page) states that 'Students can provide a telephonic or written self-declaration of the school they are attending and the student eligibility criteria they are claiming, unless the student eligibility criterion is required to be verified with documentary evidence.' The Cross-Program Verification Chart lists 'School/Training Enrollment' as Optional (O) for SNAP, with acceptable documents including 'Report card; Letter from the school; School Verification form.' So the OLG treats school enrollment verification as optional/self-declared by default, whereas FNS identifies a signed or issued school statement as the standard verification. When documentary evidence is required (questionable circumstances), the OLG's acceptable documents do align with the FNS standard (letter from school, school verification form). The difference is in the baseline threshold: FNS expects a school-issued document as standard; OLG accepts self-declaration as sufficient unless questionable.",
+    "olg_pages_found": [
+        "Students",
+        "Verification Chart"
+    ],
+    "searches_performed": 2,
+    "_elapsed": 89.77565670013428,
+    "_session_id": "3d2e30f2-dc0f-4fe9-a02d-27f14e0709c2",
+    "_layer3": {
+        "classification": "state_silent",
+        "note": "106 CMR 362.400 addresses student status but does not specify verification standards for school enrollment itself. The matched CMR sections (362.330, 362.400) address work requirement good cause and student eligibility criteria (mental/physical unfitness), but neither mandates how school enrollment must be verified. CMR 362.400(B) permits verification 'if' needed for certain claims (unfitness) but does not establish baseline verification requirements for basic school enrollment. Massachusetts has not adopted the FNS standard in regulation, leaving a gap between federal guidance and state-codified requirements.",
+        "cmr_sections": [
+            "362.400"
+        ],
+        "action_recommended": "update_olg",
+        "priority": "MEDIUM"
+    }
+}

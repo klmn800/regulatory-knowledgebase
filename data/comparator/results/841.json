@@ -1,0 +1,17 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 841 describes a QC reviewer methodology \u2014 a 'series of sequential inquiries to guide the reviewer' through household composition verification, with documentation on Form FNS-380 (a QC review form). This is audit procedure, not caseworker policy. The underlying substantive policy (who must be in a SNAP household, purchase-and-prepare rules, mandatory members) IS covered by the OLG across multiple pages: 'Household Composition - SNAP' defines household types, 'The Application Interview > 2. Check Household Composition' instructs workers to ask about other people in the home including relationship/food prep/income, 'The Recertification Interview > Check Household Composition' mirrors this for recerts, 'Nonhousehold Members' covers exclusions, and 'VC-1 Q and A' provides scenario-based guidance on investigating living arrangements. The OLG appropriately covers household composition policy and worker interview procedures; it does not need to replicate the FNS QC reviewer's sequential inquiry framework or Form FNS-380 documentation standards, which are specific to Quality Control reviews.",
+    "olg_pages_found": [
+        "Household Composition - SNAP",
+        "The Application Interview",
+        "The Recertification Interview",
+        "Nonhousehold Members",
+        "VC-1 Q and A",
+        "Entering SNAP Household Composition Data",
+        "Simplified Reporting \u2013 Interim Report"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 276.9926526546478,
+    "_session_id": "cedf83ad-26ed-405e-93eb-fedfd993cc1f"
+}

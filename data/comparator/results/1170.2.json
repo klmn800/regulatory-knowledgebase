@@ -1,0 +1,18 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 1170.2 is a QC reviewer documentation checklist \u2014 it specifies what the reviewer must document in the QC review file, not what the caseworker must do. The six bullet points (entitlement to deduction, deductible expenses, treatment of reimbursements, time periods, verification obtained/dates, variance explanations) are all framed as reviewer audit tasks. That said, the OLG does substantively cover the underlying policy elements these documentation points reference: (1) Entitlement \u2014 the OLG clearly states the deduction is for persons aged 60+ or with a verified disability (Overview of Medical Expense Deduction, Entering Medical Expense Data in BEACON). (2) Deductible expenses \u2014 extensive coverage of countable vs non-countable expenses, out-of-pocket costs, pharmacy costs, mileage, housing authority medical expenses. (3) Reimbursements \u2014 the OLG states expenses paid by third parties are not countable and only 'unreimbursed' costs qualify (Overview > Countable Expenses). (4) Time periods \u2014 the OLG covers non-recurring expense proration, number of months to divide over, and BEACON entry of time periods in detail (Non-Recurring Medical Expenses pages). (5) Verification \u2014 thorough coverage of the $190 threshold, self-declaration for expenses \u2264$190, documentary evidence required above $190, acceptable document types, and use of SVES/BENDEX data sources. The OLG does not explicitly require workers to record verification dates or document variance explanations, but these are QC audit requirements, not caseworker procedures. BEACON likely timestamps verification receipt automatically.",
+    "olg_pages_found": [
+        "Overview of Medical Expense Deduction",
+        "Standard Medical Deduction Waiver",
+        "Entering Medical Expense Data in BEACON",
+        "Non-Recurring Medical Expenses",
+        "Out of Pocket Medical Expenses",
+        "Medical Expenses Claimed by Subsidized Housing Tenants",
+        "Medical Expense Deduction During Review Periods",
+        "Expenses/Deductions Introduction"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 274.14743638038635,
+    "_session_id": "e97861d4-8dad-40b1-b8f5-9f65bad78dc5"
+}

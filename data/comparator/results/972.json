@@ -1,0 +1,26 @@
+{
+    "classification": "confirmed_gap",
+    "confidence": "HIGH",
+    "note": "FNS 972 requires affirmative verification of property ownership even when the household denies owning real property. For most households, the reviewer must check county records or other official sources and document verification attempts. Households in public/subsidized housing or homeless AORD get an exception where their negative allegation can be accepted without further verification. The OLG covers real property verification only when property IS acknowledged \u2014 the 'SNAP Asset Guidelines' page explains how to verify fair market value (tax bills, appraisals, comparable market analysis) and the 'Assets Overview - SNAP' page states equity value 'must be verified when information provided by household members is inconsistent with statements made by the household.' However, the OLG contains no guidance on what to do when the household reports NO property: no instruction to check county records, no distinction between public housing/homeless households and other households for verification purposes, and no requirement to document verification attempts. The BEACON workflow reflects this gap \u2014 the 'Entering Real Property Data in BEACON' page only addresses data entry when property exists ('check No Real Property checkbox' when there are none, with no further steps). This is a gap in the written guide: workers have no OLG guidance on the affirmative duty to verify negative property allegations for non-exempt households.",
+    "olg_pages_found": [
+        "SNAP Asset Guidelines",
+        "Assets Overview - SNAP",
+        "Entering Real Property Data in BEACON",
+        "Collateral Contact",
+        "Shelter Expenses Deduction",
+        "What is Questionable and Contradictory Information?"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 336.2212529182434,
+    "_session_id": "37e009ef-769d-48f9-a0f3-af2c78f100da",
+    "_layer3": {
+        "classification": "state_requires",
+        "note": "106 CMR 363.130(E)(2) requires that 'fair market value and equity value of all countable land and buildings owned by the household' shall be 'verified at application and recertification when the information provided by the household is questionable and affects the household's eligibility or benefit level.' This language creates an affirmative duty to verify property ownership claims, including negative allegations. While the CMR focuses on verification 'when information is questionable,' the standard practice in resource verification is to establish the baseline (no property exists) before determining whether owned property is countable. The CMR does not explicitly create exceptions for public housing or homeless households as FNS 972 does, nor does it detail the county records search requirement. However, the state regulation clearly mandates verification of property claims as part of the financial eligibility determination. The OLG gap represents missing state-required guidance on how workers must execute this CMR obligation.",
+        "cmr_sections": [
+            "363.130(E)(2)",
+            "363.130(E)(1)"
+        ],
+        "action_recommended": "update_olg",
+        "priority": "HIGH"
+    }
+}

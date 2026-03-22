@@ -1,0 +1,17 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG thoroughly covers categorical eligibility fundamentals: who qualifies (PA, SSI, TANF/BBCE households), that assets are non-countable for CE households, who loses CE status (IPV, work program disqualification, elder/disabled over 200% FPL), and BEACON automation (bypasses Asset Q&A for CE, enforces asset completion for non-CE). However, two FNS-specific requirements are not addressed: (1) FNS requires that even for CE households, resources must be examined to determine if they produce income (interest, rent) \u2014 the OLG treats CE asset exemption as absolute without this caveat. Rental income and interest are covered as general income types elsewhere in the OLG but are not linked to resource review for CE households. (2) FNS specifies that when a household is incorrectly classified as CE (e.g., a member not included in the PA budget), the applicable resource standard must be applied. The OLG covers the forward case (BEACON requires assets when non-CE) but does not address the corrective scenario of reclassifying a household from CE to non-CE and applying resource limits. The BEACON edit mechanism ('Assets data must be completed') partially addresses this operationally, but no written procedure guides workers through the correction process.",
+    "olg_pages_found": [
+        "Categorical Eligibility",
+        "Assets Overview - SNAP",
+        "Asset Limits",
+        "Interview Wrapup Overview",
+        "Who Is Not Categorically Eligible for SNAP Benefits?",
+        "BEACON Determination of Categorical Eligibility",
+        "Transfer of Funds"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 223.24272084236145,
+    "_session_id": "0f3e67b4-4f4f-4d26-986c-2271d0a1ae27"
+}

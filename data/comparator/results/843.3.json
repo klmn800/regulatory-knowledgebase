@@ -1,0 +1,15 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG addresses the dual participation prevention aspect through BEACON system edits (Dual Participation Processing page) that detect and block a person from being active in two SNAP cases simultaneously. The 'Completing SNAP Applications for Active or Pending Clients' page provides procedures for when someone in an active SNAP household applies separately, including confirming household composition changes before removing the individual. The 'Add a New Person as a SNAP Household Member' page covers adding members and effective dates. However, the OLG does not explicitly state the core FNS 843.3 principle: that when an individual transfers between two certified SNAP households, their income and deductions must be removed from the losing household's budget and included in the gaining household's budget to prevent double-counting. The BEACON dual participation edit prevents the same person from being active in two SNAP cases, but there is no written guidance addressing budget coordination \u2014 ensuring income/deductions follow the transferring individual and are not counted in both households' calculations. The H-EAT page demonstrates the concept for utility allowances (Ingrid example) but this is limited to one specific deduction type, not a general principle covering all income and deductions.",
+    "olg_pages_found": [
+        "Dual Participation Processing",
+        "Completing SNAP Applications for Active or Pending Clients",
+        "Add a New Person as a SNAP Household Member",
+        "Heat and Eat (H-EAT)",
+        "Unclear Information"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 381.3795952796936,
+    "_session_id": "51e5d17b-912d-4b17-9598-982fff5b319e"
+}

@@ -1,0 +1,25 @@
+{
+    "classification": "policy_present_procedures_missing",
+    "confidence": "HIGH",
+    "note": "The OLG thoroughly covers sponsor resource deeming policy. The 'Sponsor Deeming' page includes a dedicated 'Determination of Countable Assets from a Sponsor' section with a complete 4-step calculation (sum countable assets, subtract $1,500, divide by number of sponsored noncitizens, multiply by number applying). The 'Verification' section requires that 'All income and assets of the sponsor(s) must be verified' before certification. However, the 'Entering Sponsor Deeming Data' BEACON procedures page is explicitly marked '*** The Procedures Below are not Currently in Use ***' and instructs workers: 'Until BEACON is programmed to perform the sponsor deeming calculation, you must not explore sponsorship for noncategorically eligible households.' This means the policy and calculation methodology exist in the OLG, but the BEACON procedures needed to actually carry out sponsor resource deeming are disabled. Workers cannot implement the requirement in practice despite the written policy being present. This page was last updated March 15, 2012, suggesting a long-standing implementation gap.",
+    "olg_pages_found": [
+        "Sponsor Deeming",
+        "Entering Sponsor Deeming Data",
+        "Noncitizen Introduction - SNAP"
+    ],
+    "searches_performed": 3,
+    "_elapsed": 96.98627018928528,
+    "_session_id": "d087ba68-e588-4269-ab4a-522e8fd659eb",
+    "_layer3": {
+        "classification": "state_requires",
+        "note": "106 CMR 362.270(B)(1) explicitly mandates that 'the income and assets of the sponsored noncitizen shall be deemed to include the income and assets of the sponsor(s)' for sponsored noncitizen adults applying for SNAP. CMR 362.270(E) and (F) detail the specific calculation methodology for both income and assets deeming. This is a state regulatory requirement, not optional. The OLG gap is critical: workers are currently instructed NOT to process sponsor deeming cases due to disabled BEACON procedures, meaning the state is not implementing a mandatory regulatory requirement. This is a compliance violation.",
+        "cmr_sections": [
+            "362.270(B)(1)",
+            "362.270(E)",
+            "362.270(F)",
+            "363.100-363.230"
+        ],
+        "action_recommended": "update_olg",
+        "priority": "HIGH"
+    }
+}

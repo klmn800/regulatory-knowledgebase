@@ -1,0 +1,13 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 755 defines QC variance exclusion criteria for SAVE \u2014 it specifies when QC reviewers should exclude variances related to noncitizen verification from the error count. This is a QC review procedure, not a caseworker policy requirement. The underlying operational requirement (use SAVE to verify immigration status, document results in the case record) is extensively covered by the OLG's SAVE page, which includes detailed procedures for submitting initial verification requests, instituting additional verification, following up on results, saving results to the ECF, and closing cases. The OLG also instructs workers to save SAVE results as PDF and upload to the ECF (per the Document Handling page). While the OLG does not specifically itemize the ASVI Query Verification Number or USCIS screen print as required case record elements (as FNS 755 does for QC purposes), the OLG's instruction to save the full SAVE response to the ECF would inherently capture this information. The variance exclusion framework itself is strictly QC methodology with no caseworker equivalent.",
+    "olg_pages_found": [
+        "Systematic Alien Verification for Entitlements (SAVE)",
+        "Simplified Reporting \u2013 Recertification",
+        "Saving Documents as PDF"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 341.7996952533722,
+    "_session_id": "563a3860-8648-4370-8b1a-a32e194ec40f"
+}

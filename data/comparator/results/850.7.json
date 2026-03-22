@@ -1,0 +1,19 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG adequately covers the FNS 850.7 requirement to accept employment. The requirement is explicitly stated in 'Introduction to the SNAP Work Rules' ('accept an offer of employment' as a General Work Rule). Good cause criteria are comprehensively addressed on the 'Good Cause Criteria for Not Complying with the General Work Rules' page, covering childcare unavailability, crisis situations, unreasonable employment, and transportation issues. The 'Unreasonable Employment' section effectively defines suitable vs unsuitable employment (below minimum wage, discrimination, health/safety risks, religious interference, excessive travel time). Disqualification periods are documented (3/6/12 months for first/second/third findings) on the 'SNAP Voluntary Quit and Reduction of Work Hours' page, with detailed BEACON procedures for entering sanctions and removing them for good cause. The BEACON Employment Status page captures 'Refused a Job Offer' as a Reason Not Employed with a Justification dropdown. Exemptions from work requirements are thoroughly documented across the SNAP Work Rules Screening Page, ABAWD Work Rules Exemptions page, and Elderly/Disabled exemptions page. The OLG's procedural emphasis is on voluntary quit rather than employment refusal specifically, but the good cause framework is written broadly ('fails to comply either at application or at anytime during the client's certification period') to encompass all forms of General Work Rules noncompliance including refusal of employment.",
+    "olg_pages_found": [
+        "Introduction to the SNAP Work Rules",
+        "Good Cause Criteria for Not Complying with the General Work Rules",
+        "SNAP Voluntary Quit and Reduction of Work Hours",
+        "SNAP Disqualifications and Sanctions",
+        "Entering, Changing, and Ending Earned Income in BEACON",
+        "The SNAP Work Rules Screening Page",
+        "ABAWD Work Rules Exemptions",
+        "Elderly or Disabled Clients and the SNAP Employment & Training or SNAP Work Program",
+        "Good Cause Criteria for Not Complying with the ABAWD Work Rules"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 209.77127599716187,
+    "_session_id": "ef0ddf66-79da-4562-9b1c-daf1dffa7db1"
+}

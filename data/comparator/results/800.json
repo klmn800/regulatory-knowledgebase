@@ -1,0 +1,19 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "FNS Section 800 is a one-sentence chapter introduction ('This chapter discusses verification requirements and error determination for non-financial eligibility criteria.') containing no specific policy requirements. It simply introduces Chapter 8's scope. The OLG extensively covers non-financial eligibility criteria across dedicated sections: noncitizen status (SNAP > Eligibility Requirements > Noncitizen), residency (Lawfully Residing), Social Security Number verification, household composition (Nonhousehold Members, Students), ABAWD work requirements, identity verification, and a comprehensive verification framework (Cross Programs > Verifications). The OLG's coverage of non-financial eligibility topics is broad and well-organized.",
+    "olg_pages_found": [
+        "What are Verifications?",
+        "Case Manager Responsibilities for Verifications",
+        "Nonimmigrants",
+        "Social Security Number",
+        "Nonhousehold Members",
+        "Students",
+        "Lawfully Residing - SNAP",
+        "The ABAWD Clock Page",
+        "ABAWD Work Rules Participation"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 277.11282896995544,
+    "_session_id": "82494f81-b43b-4bcf-b35a-c71e5f399366"
+}

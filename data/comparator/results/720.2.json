@@ -1,0 +1,15 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG has a dedicated 'Unclear Information' page (SNAP > Case Maintenance > Unclear Information) with a comprehensive multi-step procedure covering two of the three FNS triggers: (1) significantly conflicting information (Step One) and (2) information less than 60 days old that may be required to report (Step Three). The page includes detailed worker-actionable steps: checking if info is significantly conflicting, checking gross limit applicability, evaluating the 60-day/reportable criteria, cold calling the client, and sending a VC-1 if the cold call fails. The Simplified Reporting and Change Reporting pages also restate the two-prong unclear information criteria. However, the third FNS trigger \u2014 information from deceased or prisoner matching systems \u2014 is NOT referenced in the unclear information framework. Death and prisoner matches are covered separately under External Agency Matches (PI Checklist, Job Aid), where they are handled by FIDM or automatic BEACON processing rather than through the unclear information follow-up procedures. The OLG does not explicitly connect these match types to the unclear information policy, creating a gap in the written guide's coverage of FNS 720.2's third criterion. Additionally, the FNS provision allowing non-triggering information to be 'held until the next scheduled contact' is not explicitly stated in the Unclear Information page, though the Simplified Reporting page notes that match verification during case maintenance must wait until IR or Recertification for certain reporting types.",
+    "olg_pages_found": [
+        "Unclear Information",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Change Reporting \u2013 Overview",
+        "Matches - Job Aid",
+        "Matches - Program Integrity (PI) Checklist \u2013 Overview"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 243.70574855804443,
+    "_session_id": "798aac80-8eab-451e-90b4-28b2f9cb3d0d"
+}

@@ -1,0 +1,15 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS Section 723.2 describes QC review procedures specific to the Monthly Reporting certification system \u2014 a two-month budget cycle where households submit monthly reports used to determine benefits for the corresponding issuance month. Massachusetts does not use Monthly Reporting. The OLG documents only three SNAP certification types: Change Reporting, Simplified Reporting (including SIMP-12 and former EDSAP), and TBA (Transitional Benefits Alternative). The Certification Type Overview page confirms these are the only systems in use. Since Massachusetts has not implemented Monthly Reporting, the variance timing rules, prospective/retrospective budgeting distinctions for monthly report elements, and error determination procedures in this section do not apply to Massachusetts SNAP cases. The underlying policy concepts (when changes take effect, agency obligation to act on reported changes) are covered by the OLG under the Change Reporting and Simplified Reporting frameworks that Massachusetts actually uses.",
+    "olg_pages_found": [
+        "Certification Type Overview",
+        "Change Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Add a New Person as a SNAP Household Member"
+    ],
+    "searches_performed": 8,
+    "_elapsed": 404.8153121471405,
+    "_session_id": "f9788180-97c6-4715-b038-2c850fec68d1"
+}

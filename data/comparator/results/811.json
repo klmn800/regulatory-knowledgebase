@@ -1,0 +1,19 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "FNS 811 establishes that age may be verified for all household members but must be verified when eligibility and/or allotment are affected (e.g., students under 18 with earned income, persons 60+ with medical expenses or resources). The OLG does not have a dedicated section stating this verification standard. However, the OLG addresses age indirectly in several places: (1) Self-Declaration page lists 'Date of birth' as an item that can be verified via self-declaration for Cross Programs; (2) the Avoiding Over Verification page gives an example where verifying a 16-year-old student's wages is over-verification because the income is not countable \u2014 implicitly recognizing that age determines whether verification of other elements is needed; (3) age thresholds are referenced throughout eligibility topics (students 18-49, ABAWD under 18/over 65, elderly 60+ for medical deduction and resources, dependent children under 22). What is missing is the general principle that age verification is mandatory when it affects eligibility or allotment, and optional otherwise. The OLG assumes BEACON captures date of birth during application (via the Assessed Person page) and uses it for automated screening (e.g., ABAWD exemptions driven by DOB), but does not explicitly instruct workers on when age must be independently verified versus when self-declaration suffices.",
+    "olg_pages_found": [
+        "Self-Declaration",
+        "Avoiding Over Verification",
+        "Students",
+        "ABAWD Work Rules Exemptions",
+        "The SNAP Work Rules Screening Page",
+        "SNAP Asset Guidelines",
+        "Categorical Eligibility",
+        "VC-1 Q and A",
+        "Permanent Verifications"
+    ],
+    "searches_performed": 8,
+    "_elapsed": 404.31364250183105,
+    "_session_id": "718c674d-a438-4262-a8dd-b16e8a64a089"
+}

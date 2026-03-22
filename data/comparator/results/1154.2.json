@@ -1,0 +1,14 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers the policy for when unoccupied/vacated home shelter expenses are allowable (Shelter Expenses Deduction > Allowable Shelter Expenses: household intends to return, current occupants not claiming shelter deduction, home not leased/rented). The OLG also provides general shelter expense verification guidance (Verification of Shelter Expenses: self-declaration, landlord statements, lease, rent receipts, mortgage statements, tax bills, insurance). However, FNS 1154.2 specifies two additional verification methods particular to unoccupied homes that the OLG does not address: (1) 'statements from any persons residing in the other home' \u2014 a collateral contact requirement specific to verifying that occupants are not claiming separate SNAP shelter costs, and (2) 'documented statements from the case record' as an acceptable verification source. The OLG's general shelter verification list does not mention either of these, nor does any OLG section provide verification guidance specific to the unoccupied home scenario. The Migrant Farm Laborers page repeats the allowability conditions but also lacks verification specifics.",
+    "olg_pages_found": [
+        "Shelter Expenses Deduction",
+        "Standard Utility Allowance Expense Introduction",
+        "Verification Chart",
+        "Migrant Farm Laborers"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 155.332515001297,
+    "_session_id": "1cce2ba9-8cd8-4e2b-b8dd-0b3aba5b6955"
+}

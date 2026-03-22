@@ -1,0 +1,17 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "FNS 841.3 describes a structured process for resolving inconsistencies between collateral contact statements and household statements about composition: (1) recontact the household, (2) if household agrees with collateral, adjust composition, (3) if household disagrees and no strong contrary evidence, seek additional collateral contacts, (4) if no additional contacts resolve it, accept client statement (per 841.4). The OLG covers the building blocks but lacks this specific decision tree. The Collateral Contact page (Cross Programs > Verifications > Verification Methods) explains how and when to use collateral contacts, and includes a brief note that 'if the information provided by a collateral contact is questionable, you may need to make additional contacts.' The Client Responsibilities page states that if a collateral contact cannot or refuses to verify, the client must help find another contact. The VC-1 Q&A provides an anecdotal example of contradictory household composition statements but directs workers to make a fraud referral rather than following a structured resolution process. The Questionable Contradictory Information and SLAM pages similarly route to fraud referrals when information is inconsistent. What is missing is the FNS-prescribed resolution sequence: the explicit requirement to recontact the household when collateral information conflicts, the decision branches for when the household agrees vs. disagrees, and critically, the directive to accept client statement when the discrepancy cannot be resolved through additional collateral contacts. The OLG's default for unresolvable contradictory information about household composition appears to be fraud referral, whereas FNS 841.3 prescribes accepting the client's statement. Note: FNS 841.3 is framed as QC reviewer procedure, but the underlying policy principle \u2014 the resolution hierarchy and the default to accepting client statement \u2014 is substantive policy that informs how caseworkers should handle the same situation.",
+    "olg_pages_found": [
+        "Collateral Contact",
+        "Client Responsibilities for Verifications",
+        "VC-1 Q and A",
+        "What is Questionable and Contradictory Information?",
+        "Addressing SLAM",
+        "Unclear Information",
+        "The Out of State EBT Card Usage Match"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 212.02638936042786,
+    "_session_id": "f7de731e-9c1b-4d3d-9e79-2a0800a2b297"
+}

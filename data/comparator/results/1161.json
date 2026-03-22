@@ -1,0 +1,19 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 1161 is a QC review procedure section ('Special Treatment of Variances') that instructs QC reviewers on how to handle variances in shelter and utility deductions. Its subsections (1161.2 change reporting, 1161.3 incorrectly processed expenses, 1161.4 monthly reporting failures) define how reviewers should include or exclude variances \u2014 not caseworker policy. The underlying policy rules embedded in the section \u2014 that change-reporting households must report shelter only when they move, that the agency must explore shelter changes when an address change is reported, and how to handle unreported/unverified expenses \u2014 are all thoroughly covered in the OLG. Specifically: 'Change Reporting \u2013 Examples' covers the move-and-report requirement with VC-1 procedures; 'Simplified Reporting \u2013 Reporting Requirements During Case Maintenance' provides detailed address-change procedures including telephonic signature, cold calls, and SUA handling; 'Processing of Unverified Expense Deductions' covers the rule that benefits must be calculated without unverified shelter/utility deductions after an address change. The OLG appropriately translates these rules into worker-actionable procedures without adopting the QC variance framework, which is audit methodology, not caseworker guidance.",
+    "olg_pages_found": [
+        "Change Reporting \u2013 Examples",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Simplified Reporting \u2013 Examples",
+        "Processing of Unverified Expense Deductions",
+        "Entering Shelter Expenses Data in BEACON",
+        "Standard Utility Allowance Expense Introduction",
+        "Shelter Deduction for Homeless Households",
+        "Completing Unvalidated Address Change Requests (SNAP)",
+        "Address (RFA)"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 229.16959476470947,
+    "_session_id": "1ea4f9e7-e1dc-4a39-b735-7acd1b4386bb"
+}

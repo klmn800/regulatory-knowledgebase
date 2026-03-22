@@ -1,0 +1,17 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG implements FNS 711's prospective budgeting requirement comprehensively across all relevant eligibility elements, though distributed across topic-specific pages rather than stated as a single general principle. For earned income, the 'Types of Earned Income' page covers the four-week lookback as 'an indication of anticipated income in the month of application and subsequent months,' with explicit 'reasonably certain' language matching FNS. The 'Anticipated Income' section states: 'If any portion or the total of the anticipated income is known and expected with reasonable certainty, that portion is considered countable income.' Unearned income has its own Prospective tab in BEACON for calculating monthly prospective amounts. Self-employment income has dedicated 'Anticipating Self-Employment Income' guidance. Expenses are also handled prospectively via BEACON Prospective tabs for child support expenses and dependent care expenses. The Simplified Reporting IR section covers anticipated income changes within 30 days of certification midpoint with detailed examples. Non-financial elements (citizenship, residency, household composition) are verified at certification and assumed to continue \u2014 which is inherently prospective. While the OLG lacks a standalone page stating the abstract principle that 'all household circumstances must be anticipated prospectively,' the practical implementation across all financial and non-financial elements fully operationalizes FNS 711's requirement.",
+    "olg_pages_found": [
+        "Types of Earned Income",
+        "Entering, Changing, and Ending Earned Income in BEACON",
+        "Entering, Changing, and Ending Other (Unearned) Income Data",
+        "Self-Employment SNAP",
+        "Entering Child Support Expenses Data",
+        "Entering Dependent Care Expenses Data - SNAP",
+        "Simplified Reporting \u2013 Interim Report"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 185.33062314987183,
+    "_session_id": "8bbac002-60d8-4855-bb97-6a87b651ba8a"
+}

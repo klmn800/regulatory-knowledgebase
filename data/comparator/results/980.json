@@ -1,0 +1,15 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS Section 980 requires QC reviewers to verify vehicle ownership via DMV inquiry, document vehicle details (make, model, year, registered owner), and establish value using NADA blue book. Massachusetts has excluded vehicles from SNAP resource counting entirely. The OLG Assets Overview page explicitly states 'vehicles (currently not countable as an asset for SNAP).' BEACON runs a monthly RMV Match that searches for vehicles registered to DTA clients, and the match disposition options include 'SNAP only - not countable.' Workers can also view RMV vehicle registration data via the Ext Data button on the Assessed Person page. Because vehicles are not a countable SNAP resource in MA, the detailed FNS verification procedures (NADA valuation, documenting make/model/year, DMV cross-checks for undisclosed vehicles) are QC review methodology with no caseworker equivalent needed. The OLG adequately informs workers that vehicles are not countable and provides the RMV match disposition procedure.",
+    "olg_pages_found": [
+        "Assets Overview - SNAP",
+        "Matches - Job Aid",
+        "Matches - Match Disposition Reason Options",
+        "Assessed Person (RFA)",
+        "Categorical Eligibility"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 171.67278480529785,
+    "_session_id": "a8ba71b8-d51c-4817-96c3-b89d565a91d6"
+}

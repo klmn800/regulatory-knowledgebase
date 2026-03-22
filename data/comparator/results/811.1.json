@@ -1,0 +1,15 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers date of birth verification as a mandatory element for SNAP (Verification Chart, Mandatory Verifications pages) and lists acceptable documents: driver's license or state-issued ID, birth certificate or hospital birth record, school/work/child care records, and court or other government documents. DOB is also noted as a permanent verification (not subject to reverification) and acceptable via self-declaration. However, FNS 811.1 lists 19 specific document types for age verification, many of which are not mentioned in the OLG even broadly: adoption papers, church records, baptismal certificate, Bureau of Vital Statistics, U.S. passport, Family Bible records, Indian census records, WIOA documents, Social Security records, military records, census records, and child welfare records. The OLG's catch-all phrase 'Court or other government documents' could cover some of these (court support orders, juvenile court records), but several FNS-listed sources (Family Bible, Indian census, WIOA, church/baptismal records) fall outside any OLG category. The OLG's shorter list is functional but notably narrower than the federal standard.",
+    "olg_pages_found": [
+        "Verification Chart",
+        "Mandatory Verifications",
+        "Permanent Verifications",
+        "Self-Declaration",
+        "VC-1 Overview"
+    ],
+    "searches_performed": 3,
+    "_elapsed": 123.36696910858154,
+    "_session_id": "4d10ed78-b190-4a78-a1d4-11e6be90c1d2"
+}

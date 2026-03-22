@@ -1,0 +1,17 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG covers all substantive elements of FNS 822.1 across multiple pages. (1) USCIS documentation as the verification standard: the OLG requires noncitizens to 'provide documentation of immigration status' verified through SAVE, which interfaces with USCIS databases (Verification of Immigration Status - SNAP, SAVE Overview). (2) Mandatory SAVE use when documentation is inadequate: extensively covered with step-by-step procedures for initial verification, additional verification when SAVE prompts it, and resubmitting documentation (SAVE page: 'Instituting Additional Verification', 'Resubmit Documentation', 'Following Up on Additional Verification Requests'). (3) Ineligibility when verification cannot be obtained: the Noncitizen Introduction - SNAP page states 'When a noncitizen applying for SNAP benefits indicates an inability or unwillingness to provide information or acceptable verification of an eligible noncitizen status that person will be ineligible.' The Nonimmigrants page under 'Undetermined Noncitizen Status' similarly states inability/unwillingness to provide verification results in ineligibility. This covers the FNS requirement that if verification 'is not provided and not available, the non-citizen must be considered ineligible.' The Layer 1 concern that the OLG doesn't address the scenario where SAVE additional verification is pursued but ultimately fails is addressed by the combination of the SAVE procedures (which include escalation through resubmit documentation) and the general ineligibility rule for inability to provide verification \u2014 if SAVE cannot verify and the noncitizen cannot provide USCIS documents, they meet the 'inability to provide verification' standard and are ineligible.",
+    "olg_pages_found": [
+        "Systematic Alien Verification for Entitlements (SAVE)",
+        "Verification of Immigration Status - SNAP",
+        "Noncitizen Introduction - SNAP",
+        "Nonimmigrants",
+        "Lawfully Residing - SNAP",
+        "Mandatory Verifications",
+        "Noncitizen Opt-Out SNAP"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 258.25341272354126,
+    "_session_id": "568b30d1-5bc0-46e4-a867-5924f83eba87"
+}

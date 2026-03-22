@@ -1,0 +1,14 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG comprehensively covers child support verification requirements including: legal obligation verification (court orders, separation agreements, DOR documentation, SSA letters), payment verification (canceled checks, wage withholding, custodial parent statements, DOR lockbox), and the requirement that payments be 'paid to or for a non-household member.' The OLG also includes BEACON procedures via the Support Expense Tab and Prospective Expense Tab for data entry and monthly amount calculation. However, two FNS-specific requirements are not explicitly addressed: (1) FNS requires verifying 'that the child being supported is not part of the household under review' as a distinct verification step \u2014 the OLG states the non-household-member rule (Child Support Expenses Deduction page) and illustrates it in Q3 of Child Support Expense Examples, but does not instruct workers to affirmatively verify household composition as part of the child support deduction process; (2) FNS instructs reviewers to 'be alert to the effect of timing and amount of payment relative to the review date for possible conversion purposes' \u2014 the OLG does not provide guidance on converting child support payments from non-monthly frequencies (e.g., weekly $150 payments) to monthly amounts for the deduction, though BEACON's Prospective Expense Tab appears to handle frequency-based calculation. The BEACON procedure likely addresses conversion mechanically, but the OLG lacks written guidance on timing considerations or conversion methodology specific to child support expenses.",
+    "olg_pages_found": [
+        "Child Support Expenses Deduction",
+        "Child Support Expense Examples",
+        "Entering Child Support Expenses Data",
+        "Entering Child Support Income - SNAP"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 297.99533224105835,
+    "_session_id": "1783704d-fefb-4775-9ec9-5618897ded62"
+}

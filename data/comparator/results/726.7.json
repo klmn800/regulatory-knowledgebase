@@ -1,0 +1,15 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 726.7 is a QC review procedure prescribing how a reviewer must handle a specific error-determination scenario: when a new household member's income causes total income to exceed the simplified reporting limit. The multi-step process (Comparison I, determine unconverted income vs 130% FPL for certified household size, Comparison II, determine reportability and timeliness) is entirely QC methodology \u2014 it tells reviewers how to classify variances and calculate errors, not how caseworkers should process cases. The underlying policy rules it references \u2014 that simplified reporting households must report when gross income exceeds the limit for their household size, and that household composition changes may trigger reporting obligations \u2014 ARE covered in the OLG. The 'Simplified Reporting \u2013 Reporting Requirements During Case Maintenance' page explains that households must report when gross income exceeds the maximum monthly gross income limit. The 'Simplified Reporting \u2013 Examples' page (Q1/A1) details when income changes must be reported. The 'Simplified Reporting \u2013 Interim Report' page covers verification of new household members. However, the specific QC mechanics of comparing income against the certified household size (excluding the new member) to determine reportability, and the cascading comparison steps for error classification, are audit procedures with no caseworker equivalent.",
+    "olg_pages_found": [
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Simplified Reporting \u2013 Examples",
+        "Simplified Reporting \u2013 Interim Report",
+        "Unclear Information",
+        "Add a New Person as a SNAP Household Member"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 330.69748854637146,
+    "_session_id": "b42fdceb-aee3-4780-b4c6-e7a2cbc80659"
+}

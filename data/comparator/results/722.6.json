@@ -1,0 +1,9 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 722.6 is a QC variance-exclusion rule, not caseworker policy. It instructs QC reviewers on when to exclude variances from error calculations when a household's certification period was shortened via a Notice of Expiration (because the state couldn't obtain sufficient information to act on a change). The three conditions listed (sample month is next-to-last or last month, household did not refuse to cooperate, change was reported timely) are all QC review criteria for determining whether to count a variance as an error. The OLG has no equivalent because this is audit methodology \u2014 it governs how QC reviewers assess state agency actions, not how caseworkers process cases. The underlying state action (closing a case when verification isn't received) is covered in the OLG under general case maintenance and unclear information procedures, but the specific variance-exclusion logic of 722.6 has no caseworker-facing component.",
+    "olg_pages_found": [],
+    "searches_performed": 6,
+    "_elapsed": 293.1921992301941,
+    "_session_id": "daea26e8-3573-4787-8726-535429e34416"
+}

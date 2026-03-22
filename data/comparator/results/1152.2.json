@@ -1,0 +1,11 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG covers property tax verification under 'Verification of Shelter Expenses' on the Shelter Expenses Deduction page. It lists 'current property tax bills' as an acceptable verification document, which aligns with FNS 1152.2's requirement of 'bills from the taxing authorities.' While the OLG does not separately call out 'statements from the taxing authorities,' it includes a catch-all provision accepting 'any document that verifies the allowable expenses described above,' which would encompass tax authority statements. The OLG also notes that self-declaration (including signed application or recertification) is acceptable unless contradictory or questionable, and that shelter costs unchanged at recertification need not be re-verified.",
+    "olg_pages_found": [
+        "Shelter Expenses Deduction"
+    ],
+    "searches_performed": 2,
+    "_elapsed": 68.09352469444275,
+    "_session_id": "6d6acac0-77cb-419d-96da-44a5c9b4dbb3"
+}

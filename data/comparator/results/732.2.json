@@ -1,0 +1,9 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 732.2 is entirely QC audit methodology. It instructs reviewers on how to handle error determinations for unreported changes in 'beginning months' (first and second months of certification) under monthly reporting with prospective budgeting. Key concepts \u2014 variance inclusion/exclusion rules, one-month vs two-month system distinctions, error determination process for budget months \u2014 are all QC reviewer procedures with no caseworker-facing equivalent. The OLG appropriately covers change reporting obligations for workers (what households must report, when to act on changes) but has no reason to address how QC reviewers evaluate whether unreported changes in beginning months constitute errors.",
+    "olg_pages_found": [],
+    "searches_performed": 2,
+    "_elapsed": 108.02684450149536,
+    "_session_id": "cd639f7c-1da3-4dd9-8679-6c91d6ba7666"
+}

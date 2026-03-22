@@ -1,0 +1,12 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers the policy rule: the 'Shelter Expenses Deduction > Allowable Shelter Expenses' section states that 'Charges for repair of a home substantially damaged in a natural disaster are countable unless the repair charge has been or will be reimbursed by private or public relief agencies, insurance companies or any other source.' The OLG also provides general shelter verification standards in 'Verification of Shelter Expenses,' listing self-declarations, landlord statements, leases, rent receipts, mortgage statements, tax bills, insurance declarations, LL-VER forms, and a catch-all 'any document that verifies the allowable expenses.' However, the OLG does not specifically address verification for home repair costs. FNS 1155.2 explicitly requires 'bills from providers' and 'correspondence from the providers' as the standard verification for this deduction type. While the OLG's catch-all clause could encompass these, the lack of specific guidance for repair cost verification means a worker would not know from the OLG alone what documents to request or accept for this particular expense.",
+    "olg_pages_found": [
+        "Shelter Expenses Deduction",
+        "Entering Shelter Expenses Data in BEACON"
+    ],
+    "searches_performed": 4,
+    "_elapsed": 144.54378700256348,
+    "_session_id": "d616af14-6942-4bc8-a1ce-4a43c9057aa0"
+}

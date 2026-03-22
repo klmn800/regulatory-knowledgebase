@@ -1,0 +1,18 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "FNS 810 covers two sub-topics: (1) age verification (Element 110) and (2) school enrollment verification (Element 111/112). The OLG adequately addresses both. For age: DOB is listed as a mandatory permanent verification on the 'Mandatory Verifications' and 'Permanent Verifications' pages, can be verified by self-declaration per the 'Self-Declaration' page, and the VC-1 Overview provides acceptable documents (driver's license, birth certificate, hospital records, school records, court documents) \u2014 closely mirroring FNS 811.1's standard verification list. For school enrollment: the OLG 'Students' page thoroughly covers who is subject to student eligibility criteria (ages 18-49, enrolled half-time+ in higher education), exemptions (under 18, 50+, high school, non-degree programs), student eligibility requirements, and verification procedures. The 'Noncountable Income' page correctly states that earned income of children under 18 enrolled in school at least half-time is noncountable, aligning with FNS's requirement to verify school enrollment for children under 18 with earned income. The 'Avoiding Over Verification' page reinforces this with an example. The Verification Chart lists 'School/Training Enrollment' as an optional verification item for SNAP with appropriate documents (report card, letter from school, School Verification form). The OLG's coverage is distributed across multiple pages but collectively addresses the FNS requirements.",
+    "olg_pages_found": [
+        "Mandatory Verifications",
+        "Permanent Verifications",
+        "Self-Declaration",
+        "VC-1 Overview",
+        "Students",
+        "Noncountable Income",
+        "Avoiding Over Verification",
+        "Verification Chart"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 227.88366150856018,
+    "_session_id": "0ffa7863-4857-4f68-a9b7-2ba0ce56c4c0"
+}

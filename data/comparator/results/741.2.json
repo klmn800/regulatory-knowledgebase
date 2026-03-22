@@ -1,0 +1,13 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG has a dedicated page 'SNAP Annual Cost-of-Living Adjustment (COLA)' under Scheduled Mailings/Projects > SNAP COLA that directly covers periodic federal SNAP adjustments. It explains that USDA FNS adjusts maximum benefits, deductions, and income eligibility standards at the beginning of each federal fiscal year (effective October 1), and that SUAs are updated annually to coincide. The page details specific changes to: gross/net/165% income eligibility standards, shelter deduction, standard deduction, SUAs, maximum benefit levels, minimum benefit, homeless shelter deduction, disaster SNAP standards, asset limits, and reporting thresholds. It documents BEACON's automatic recalculation of all active SNAP households (e.g., 'weekend of September 20, 2025') and instructs workers to use new standards in manual calculations effective the following Monday. A separate page 'TAFDC and SNAP: Federal Poverty Guidelines' covers annual FPG updates and their effect on SNAP categorical eligibility standards, noting BEACON is programmed to use new figures once published. The OLG does not explicitly discuss variance tracking or error determination for untimely/incorrect implementation (which is a QC-facing concern from FNS 741.2), but the substantive policy requirement \u2014 that periodic adjustments are implemented prospectively for all households at a specific point in time \u2014 is thoroughly covered with both policy and BEACON procedures.",
+    "olg_pages_found": [
+        "SNAP Annual Cost-of-Living Adjustment (COLA)",
+        "TAFDC and SNAP: Federal Poverty Guidelines",
+        "Social Security Administration (SSA) Cost of Living Adjustment (COLA) Overview"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 356.0896234512329,
+    "_session_id": "900e7816-6f65-4720-b903-1b70b98b8f24"
+}

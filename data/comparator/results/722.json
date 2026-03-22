@@ -1,0 +1,13 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG clearly covers the client-side change reporting requirements: the 10-day reporting obligation and $125 earned/unearned income threshold for Change Reporting households (Change Reporting - Overview page). It also states that 'The Department is required to act on reported changes in a timely manner.' However, the OLG does not specify the regulatory timeline framework that FNS 722 describes: (1) the 10-day deadline for the state agency to obtain verification and act on known changes, (2) the minimum 10-day advance notice of adverse action period, (3) the resulting 20-day framework for reported changes and 30-day framework for unreported changes, or (4) the state option to adjust these periods to match public assistance notice timelines. The 'Department Responsibility to Take Timely Action' page addresses specific scenarios (e.g., net income reduced to zero) but does not lay out the general timing framework. The Agency Error page references consequences when the Department 'did not act timely on a reported change' but does not define what 'timely' means in terms of specific day counts. Workers are told to act in a timely manner but are not given the regulatory deadlines that define timeliness.",
+    "olg_pages_found": [
+        "Change Reporting \u2013 Overview",
+        "Department Responsibility to Take Timely Action",
+        "Agency Error"
+    ],
+    "searches_performed": 8,
+    "_elapsed": 413.8651087284088,
+    "_session_id": "1c7c11ef-c3bc-48a6-a62a-02c8a1bb03a5"
+}

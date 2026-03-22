@@ -1,0 +1,15 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG adequately covers verification of declared liquid resources. The Verification Chart specifies that bank accounts require a 'current bank statement or other document showing account number and balance' as mandatory verification for non-categorically eligible SNAP households, aligning with FNS 943.2's requirement for financial institution verification. Cash on hand is marked n/a for SNAP verification, consistent with FNS 943's allowance that reviewers may accept the household's statement about cash. The SNAP Asset Guidelines page provides detailed verification standards for securities (statements from issuing entities, newspaper clippings, financial publications). The Entering Liquid Asset Data in BEACON page captures the key data points FNS 942 requires: asset type, amount, ownership/accessibility, institution name, account number, and routing number. Crowdfunding accounts have their own specific verification standards. The one minor gap is that FNS 942 requires documenting whether the account is interest-bearing and the institution's address/phone, which the OLG does not explicitly mention \u2014 though these are arguably QC documentation requirements rather than caseworker verification standards.",
+    "olg_pages_found": [
+        "Verification Chart",
+        "SNAP Asset Guidelines",
+        "Entering Liquid Asset Data in BEACON",
+        "Treating Crowdfunding Accounts as Assets",
+        "Case Manager Responsibilities for Verifications"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 190.64321422576904,
+    "_session_id": "ea790cea-d04a-47db-aa54-146554cc134b"
+}

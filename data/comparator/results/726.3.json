@@ -1,0 +1,16 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "Massachusetts has implemented the state option described in FNS 726.3, using 200% FPL as the categorical eligibility (CE) gross income standard. The OLG covers the key underlying concepts: (1) The Categorical Eligibility page states households become non-categorically eligible when income exceeds 200% of the CE Gross Income Standards; (2) The Simplified Reporting Examples page (Q2/A2) explicitly notes that elderly/disabled households 'are subject to the 200% gross income limit for categorical eligibility purposes' even though they have no gross income limit for SNAP eligibility; (3) BEACON automatically converts CE cases to non-CE when income exceeds 200%. However, the OLG does not explicitly connect the 200% CE limit to simplified reporting income reporting obligations. The simplified reporting case maintenance pages describe the standard gross income limit as the reporting trigger but do not describe the 200% CE threshold as an additional or separate reporting requirement for CE households. Workers could infer the connection between the two concepts, but the OLG does not present it as a unified reporting rule the way FNS 726.3 frames it. Additionally, the FNS note that the 130% reporting requirement still applies to CE households under simplified reporting (because it is a reporting requirement, not a gross income test) is not explicitly stated in the OLG \u2014 the OLG's treatment of elderly/disabled households as having 'no gross income limit' could create ambiguity about whether the 130% threshold applies to them at all.",
+    "olg_pages_found": [
+        "Simplified Reporting \u2013 Examples",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Simplified Reporting \u2013 Overview",
+        "Categorical Eligibility",
+        "What is SNAP?",
+        "Unclear Information"
+    ],
+    "searches_performed": 4,
+    "_elapsed": 153.62774014472961,
+    "_session_id": "ebc4d76f-1f2c-420b-b163-0f4cab312f4a"
+}

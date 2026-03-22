@@ -1,0 +1,21 @@
+{
+    "classification": "confirmed_gap",
+    "confidence": "HIGH",
+    "note": "The OLG does not address the federal requirement regarding substantial lottery or gambling winnings. FNS 720.4 establishes multiple mandatory policies: (1) all SNAP households must report substantial lottery/gambling winnings (defined as a single cash prize >= the resource limit for elderly/disabled households), (2) the certification period must be terminated upon receipt of such winnings, (3) state agencies must establish data-matching agreements with gaming entities, and (4) the household cannot be categorically eligible for its next certification after termination for winnings. The only OLG mention of gambling winnings is on the '1040 Federal Income Tax Form' page, which lists gambling winnings as a type of 'Other Income' requiring further exploration \u2014 this is generic tax-form guidance, not the specific substantial winnings policy. The Change Reporting and Simplified Reporting pages do not list lottery/gambling winnings as a mandatory reportable change. The Categorical Eligibility page lists exclusions from categorical eligibility (IPV, work program noncompliance) but does not mention termination for substantial winnings. No OLG content was found addressing the substantial winnings threshold, mandatory case termination, gaming entity data matches, or the post-termination categorical eligibility restriction.",
+    "olg_pages_found": [
+        "How to Read a 1040 Federal Income Tax Form",
+        "Categorical Eligibility",
+        "Change Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 159.9044692516327,
+    "_session_id": "2ea3268e-4b86-437b-8633-8d4c2bccd45e",
+    "_layer3": {
+        "classification": "state_silent",
+        "note": "106 CMR does not contain specific regulations addressing substantial lottery or gambling winnings, mandatory reporting requirements for such winnings, case termination procedures following receipt of winnings, gaming entity data-matching agreements, or post-termination categorical eligibility restrictions. The CMR matches returned (364.320 on income anticipation, 364.200 on asset/income determination, 366.110 on reporting, 363.140 on noncountable assets, 363.200 on income definition) are generic provisions about income and asset treatment that do not address the lottery/gambling winnings policy. Since Massachusetts CMR is silent on this FNS requirement, the state has not formally implemented this federal policy into state regulation, making it unclear whether Massachusetts is obligated to follow it or has chosen not to implement it.",
+        "cmr_sections": [],
+        "action_recommended": "investigate",
+        "priority": "HIGH"
+    }
+}

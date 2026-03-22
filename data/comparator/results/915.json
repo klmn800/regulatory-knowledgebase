@@ -1,0 +1,15 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS Section 915 establishes standards for what QC reviewers may accept as case record verification during audits \u2014 specifically a 30-day window for non-liquid resource documentation and AORD-date-specific documentation for liquid resources. These are QC review methodology rules (what an auditor can accept when evaluating a case), not caseworker policy requirements. The OLG appropriately covers verification requirements from the caseworker perspective (what documents to collect, when to request them, how to record them) in pages like 'Documentary Evidence', 'Verifications at Application', 'Verifications at Case Maintenance', and asset-specific pages. But the temporal acceptance windows (30-day rule, AORD rule) are audit standards that govern QC reviewer behavior, not eligibility worker behavior. There is no caseworker action implied by Section 915 that the OLG would need to address.",
+    "olg_pages_found": [
+        "Assets Overview - SNAP",
+        "Entering Liquid Asset Data in BEACON",
+        "Verifications at Application",
+        "Documentary Evidence",
+        "Verifications at Case Maintenance"
+    ],
+    "searches_performed": 3,
+    "_elapsed": 157.04831504821777,
+    "_session_id": "2cb1a5ba-cb6a-4eb1-a88c-e7df329edbb6"
+}

@@ -1,0 +1,15 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers verification of declared liquid resources through the SNAP Asset Guidelines page, including acceptable verification documents (bank statements, savings account statements, bank books), a 45-day verification timeline, and detailed procedures for joint accounts and verification of ownership/inaccessibility. However, the OLG does not address the FNS requirement to proactively inquire at the financial institution whether (1) other household members have resources at the same institution, or (2) the declaring member has additional undeclared resources there. The OLG's verification framework is reactive \u2014 it verifies what is declared \u2014 rather than including the discovery-oriented inquiry FNS 943.2 requires. The SLAM (Suspected of Living Above Means) procedures explore whether household expenses exceed declared income, but this is a different mechanism than systematically querying financial institutions about additional accounts. The Collateral Contact page describes procedures for contacting third parties but does not specifically address proactive resource discovery at financial institutions.",
+    "olg_pages_found": [
+        "SNAP Asset Guidelines",
+        "Entering Liquid Asset Data in BEACON",
+        "Collateral Contact",
+        "Verification Chart",
+        "SLAM Overview"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 262.7118663787842,
+    "_session_id": "7abbd6ab-8613-439e-842b-e93cbdab1c1c"
+}

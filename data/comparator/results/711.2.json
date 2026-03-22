@@ -1,0 +1,18 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "FNS 711.2 requires that for prospective budgeting cases, all income and deduction elements be verified and used to compute the benefit level. The OLG thoroughly covers this through multiple pages. The 'How SNAP Benefits are Calculated' page (SNAP > Case Maintenance) provides a complete 6-step manual benefit calculation: (1) total income, (2) preliminary deductions (standard, earned income, medical, dependent care, child support), (3) preliminary adjusted net income, (4) shelter deduction, (5) net income, (6) benefit amount (max allotment minus 30% of net income). This is substantively equivalent to the FNS 'Comparison I' computation. Income verification requirements are documented in 'Types of Earned Income > Verification of Income' (gross earned income must be verified prior to certification) and in recertification/IR verification sections. BEACON's Prospective Tab for earned income, unearned income, and expenses calculates monthly prospective amounts used in Eligibility and Benefits Calculation (EBC), implementing the prospective budgeting system where budget month equals issuance month. The Expenses/Deductions Introduction page lists all allowable deductions. The 'Comparison I/II' terminology is QC-specific audit language not needed in the caseworker guide; the underlying benefit computation methodology is fully present.",
+    "olg_pages_found": [
+        "How SNAP Benefits are Calculated",
+        "Expenses/Deductions Introduction",
+        "Types of Earned Income",
+        "Entering, Changing, and Ending Earned Income in BEACON",
+        "Entering, Changing, and Ending Other (Unearned) Income Data",
+        "Simplified Reporting \u2013 Recertification",
+        "Change Reporting \u2013 Recertification",
+        "SNAP Calculation Page Example"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 235.12454271316528,
+    "_session_id": "49f10ed1-f71a-42af-906c-4c8aea43b196"
+}

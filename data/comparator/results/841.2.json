@@ -1,0 +1,14 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 841.2 describes QC reviewer audit methodology for verifying household composition through collateral contacts \u2014 specifically how the federal auditor must conduct the inquiry (asking contacts to independently name household members without providing a list, asking about additional members, documenting on the QC worksheet, and following Section 841.3 for discrepancies). These are QC review procedures, not caseworker policy. The OLG does have a 'Collateral Contact' page (Cross Programs > Verifications > Verification Methods) that covers caseworker-level collateral contact procedures \u2014 when to use them, how to conduct them, documentation requirements, and client rights \u2014 but this addresses general verification, not the specific QC audit protocol for household composition. The OLG also covers household composition verification at the caseworker level (asking applicants who lives in the household at application and recertification interviews), but this is standard eligibility processing, not the QC reviewer inquiry method described in FNS 841.2.",
+    "olg_pages_found": [
+        "Collateral Contact",
+        "The Application Interview",
+        "The Recertification Interview",
+        "Client Responsibilities for Verifications"
+    ],
+    "searches_performed": 4,
+    "_elapsed": 200.47199726104736,
+    "_session_id": "7950f704-c49e-459a-93a7-f0faca9e65c3"
+}

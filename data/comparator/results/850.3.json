@@ -1,0 +1,20 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG thoroughly covers work registration requirements across multiple pages in the SNAP Work Rules section. Massachusetts implements work registration through the act of signing the SNAP application or recertification form \u2014 the OLG explicitly states that 'registration of non-exempt household members occurs when the client signs the SNAP application or recertification form, and takes effect on the application date or the first day of the household's new certification period.' This makes the FNS-listed verification sources (employment registration form, agency printout, employment office contact) inapplicable, as there is no separate employment agency registration step. The OLG covers exemption screening in detail via the SNAP Work Rules Screening Page with BEACON procedures, including age, disability, student status, substance use treatment, earned income, and noncitizen work authorization categories. Disqualification for noncompliance is covered through both the voluntary quit process (3/6/12 month escalating disqualification periods with BEACON sanction procedures and Notice of Adverse Action) and the ABAWD 3-strike disqualification process. Good cause determination is documented with specific criteria (childcare unavailability, crisis/emergency, unreasonable employment, transportation unavailability), verification standards (telephonic self-declaration unless questionable), and BEACON entry procedures. The FNS variance procedures are QC-specific and not applicable to caseworker guidance.",
+    "olg_pages_found": [
+        "Introduction to the SNAP Work Rules",
+        "The General Work Rules",
+        "Good Cause Criteria for Not Complying with the General Work Rules",
+        "Good Cause Criteria for Not Complying with the ABAWD Work Rules",
+        "SNAP Voluntary Quit and Reduction of Work Hours",
+        "ABAWD Work Rules Disqualification Process",
+        "ABAWD Work Rules Regaining Process",
+        "The SNAP Work Rules Screening Page",
+        "The ABAWD Clock Page",
+        "SNAP Disqualifications and Sanctions"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 180.55709648132324,
+    "_session_id": "1d4f93bc-4713-4942-9885-bdfcf881fe8f"
+}

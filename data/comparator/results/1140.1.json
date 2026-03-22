@@ -1,0 +1,12 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 1140.1 is a QC reviewer procedure, not a caseworker policy requirement. It instructs the reviewer to document and explain mistakes only when there is a variance in the standard deduction amount. The standard deduction is automatically applied by BEACON based on household size (confirmed on OLG 'Standard Deduction' page), so there is no worker action, documentation requirement, or verification step to translate into caseworker guidance. This section is purely QC audit methodology \u2014 telling reviewers when they need to write up findings.",
+    "olg_pages_found": [
+        "Standard Deduction",
+        "Expenses/Deductions Introduction"
+    ],
+    "searches_performed": 2,
+    "_elapsed": 113.34838724136353,
+    "_session_id": "27e6537a-0a4f-447a-a0e1-e9d397dfc2b6"
+}

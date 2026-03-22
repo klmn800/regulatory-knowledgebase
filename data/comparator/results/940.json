@@ -1,0 +1,18 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers the substance of liquid resources comprehensively: the SNAP Asset Guidelines page defines countable assets (cash, bank deposits, securities, certificates of deposit, etc.) with types matching FNS 940's examples list. The Entering Liquid Asset Data in BEACON page provides detailed BEACON procedures for recording liquid assets per household member (select member from Members List, choose asset type, enter amounts). The Income and Assets Q&A Navigator in BEACON requires workers to answer Yes/No about liquid assets, triggering the Liquid Asset page, and BEACON enforces completion via edit checks for non-categorically eligible households (Interview Wrapup Overview). The External Databases page instructs workers to check external databases (RMV, SAVE, SDX, BENDEX, EMT, Work Number) before requesting client verification, and FIDM processes financial institution data matches. However, FNS 940 requires several specific practices not explicitly documented in the OLG: (1) the requirement to affirmatively ask each household member about liquid resources including cash is implied by the Q&A Navigator workflow but not stated as an explicit interview obligation; (2) the requirement to specifically question about bank accounts when income verification shows direct deposit is not mentioned; (3) the requirement for member-by-member documentation with details (not just yes/no) is not articulated as a standard \u2014 the Q&A Navigator itself uses Yes/No radio buttons, which is exactly what FNS says is insufficient; (4) the OLG references external databases generally but does not specifically require an IEVS inquiry for resources for all household members as FNS mandates. The OLG tells workers what counts as a liquid asset and how to enter it in BEACON, but lacks the questioning protocol and documentation standards FNS 940 prescribes.",
+    "olg_pages_found": [
+        "SNAP Asset Guidelines",
+        "Entering Liquid Asset Data in BEACON",
+        "Assets Overview - SNAP",
+        "Interview Wrapup Overview",
+        "External Databases",
+        "Verification Chart",
+        "Entering Financial Holdings Data in BEACON",
+        "Matches - Job Aid"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 368.92286491394043,
+    "_session_id": "9cec8f0b-953b-47e4-b7ea-2fe8a255b665"
+}

@@ -1,0 +1,29 @@
+{
+    "classification": "different_standard",
+    "confidence": "HIGH",
+    "note": "Massachusetts operates a VOLUNTARY E&T program, which fundamentally changes how FNS 850.1 applies. FNS 850.1 describes mandatory E&T requirements: mandatory case management services (intake assessments, individual service plans, progress monitoring, provider coordination), mandatory participation in at least one E&T component, and disqualification for failure to comply. The OLG (SNAP Path to Work Program page) explicitly states: 'Participation in the SNAP Path to Work Program is voluntary. All pending and active SNAP-only clients must be offered the opportunity to participate. Acceptance of the referral is completely voluntary and there are no penalties for failing to participate in the program.' CMR 362.310 confirms: 'Voluntary participants in an employment and training component will not be disqualified for failure to comply with employment and training requirements.' The OLG covers E&T components well (education, vocational training, job search training, job search, job retention, community service/workfare) through the SNAP Path to Work program. However, because participation is voluntary, the OLG does not address: (1) mandatory case management services as described in FNS (comprehensive intake assessments, individual service plans, progress monitoring), (2) disqualification procedures for E&T non-compliance, (3) good cause determinations specific to E&T failure, or (4) E&T participation verification procedures. The General Work Requirements Policy and Procedures page references Memo 2014-20 'Mandatory SNAP Employment and Training (E&T) Program,' suggesting Massachusetts may have previously operated or considered a mandatory E&T program, but current OLG content consistently describes E&T as voluntary. This is likely an intentional state policy choice \u2014 states may operate voluntary E&T programs \u2014 but the difference from FNS's mandatory framework is significant and should be documented.",
+    "olg_pages_found": [
+        "SNAP Path to Work Program",
+        "SNAP Path to Work Website",
+        "ABAWD Work Rules Participation",
+        "General SNAP Work Requirements Policy and Procedures",
+        "Good Cause Criteria for Not Complying with the General Work Rules",
+        "SNAP Disqualifications and Sanctions",
+        "Entering SNAP Disqualification and Sanction Data",
+        "Rights and Responsibilities"
+    ],
+    "searches_performed": 8,
+    "_elapsed": 464.2305483818054,
+    "_session_id": "d38f4fca-6bb7-4957-9e6b-e17f3759108b",
+    "_layer3": {
+        "classification": "state_differs",
+        "note": "Massachusetts has implemented a voluntary SNAP E&T program rather than mandatory E&T. CMR 362.310(B) explicitly permits voluntary participation and states 'Voluntary participants in an employment and training component will not be disqualified for failure to comply with employment and training requirements.' This is a lawful state policy choice under federal law (states may operate voluntary programs), but it fundamentally alters the applicability of FNS 850.1, which describes mandatory E&T with case management, required components, and disqualification for non-compliance. The CMR also establishes separate mandatory work requirements (registration, job search, suitable work acceptance, voluntary quit rules in 362.310(A)) and ABAWD-specific requirements (362.320) that operate independently of E&T. The OLG correctly reflects the state's voluntary approach but lacks documentation of how the FNS mandatory E&T framework maps (or does not map) to Massachusetts practice.",
+        "cmr_sections": [
+            "362.310(A)",
+            "362.310(B)",
+            "362.320"
+        ],
+        "action_recommended": "update_olg",
+        "priority": "MEDIUM"
+    }
+}

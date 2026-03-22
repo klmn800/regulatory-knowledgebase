@@ -1,0 +1,15 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG has a dedicated page 'Residents of Institutions' (SNAP > Eligibility Requirements > Residents of Institutions) that covers the general rule that residents of institutions providing more than 50% of three daily meals are ineligible for SNAP. It lists five exceptions (federally subsidized elderly housing, drug/alcohol treatment centers, group living arrangements for blind/disabled, battered persons shelters, homeless shelters) with verification procedures and BEACON instructions. The 'Household Composition - SNAP' page also lists institutional residents as ineligible clients. BEACON procedures exist for removing ineligible institutional residents using the 'Institutionalized, including Incarceration' reason code. FNS 842 is primarily a QC documentation instruction (record findings under Element 140 - Residency and Element 150 - Household Composition), referencing Section 832 for details. The underlying policy requirement \u2014 that institutional residency triggers ineligibility and must be verified and documented \u2014 is well covered in the OLG.",
+    "olg_pages_found": [
+        "Residents of Institutions",
+        "Household Composition - SNAP",
+        "Students",
+        "Group Homes Overview",
+        "Group Homes Processing"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 159.1855764389038,
+    "_session_id": "40edbf4c-fabf-46e6-af93-786c9f363a1d"
+}

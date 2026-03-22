@@ -1,0 +1,14 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS Section 730 defines 'beginning months' as a transitional mechanism for households 'otherwise subject to retrospective budgeting' \u2014 during beginning months, these households receive prospective budgeting instead. Massachusetts does not use retrospective budgeting for SNAP. The OLG describes three certification types (Simplified Reporting, Change Reporting, and Bay State CAP), all of which use prospective budgeting exclusively. Since no MA SNAP households are subject to retrospective budgeting, the 'beginning months' concept has no applicable population in Massachusetts. This is not a gap \u2014 it is a federal provision that only applies to states that have elected to use monthly reporting with retrospective budgeting.",
+    "olg_pages_found": [
+        "Simplified Reporting \u2013 Overview",
+        "Change Reporting \u2013 Overview",
+        "Certification Type Overview",
+        "Entering, Changing, and Ending Earned Income in BEACON"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 259.1508946418762,
+    "_session_id": "559b672b-be9c-4683-89a3-be8a25ef83d0"
+}

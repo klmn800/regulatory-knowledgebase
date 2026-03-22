@@ -1,0 +1,14 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "FNS 934 is a brief, high-level directive stating that resources accessible to but not owned by the household must be treated according to certification policy and applicable state laws. The OLG implements this principle through multiple concrete sections rather than restating the abstract rule. Key OLG coverage: (1) 'Jointly Owned Assets' (Assets Overview - SNAP) states jointly owned assets are available in their entirety unless demonstrated inaccessible; (2) 'Joint Accounts' (SNAP Asset Guidelines) requires the full deposit amount be considered available unless the member demonstrates otherwise; (3) 'Countable Assets - Bank Deposits' states funds are considered available 'only to the extent that the household has both ownership of and access to the funds'; (4) 'Verification of Ownership' provides a detailed procedure for demonstrating lack of access or ownership; (5) 'Inaccessible Assets' and 'Non-countable Assets' list specific categories of excluded resources. CMR 363.120 (Jointly Owned Assets) mirrors the OLG rules and provides the state regulatory basis. The OLG's approach of addressing accessibility through specific asset-type rules rather than a single overarching statement is a normal implementation pattern \u2014 workers need concrete rules for specific situations, not abstract principles. The substantive requirement of FNS 934 is adequately covered.",
+    "olg_pages_found": [
+        "Assets Overview - SNAP",
+        "SNAP Asset Guidelines",
+        "Nonhousehold Members",
+        "Nonimmigrants"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 203.09846091270447,
+    "_session_id": "dae9d2bc-e55a-4074-b5b3-0c0bea67a9bc"
+}

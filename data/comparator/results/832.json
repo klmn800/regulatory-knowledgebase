@@ -1,0 +1,13 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG has a dedicated 'Residents of Institutions' page (SNAP > Eligibility Requirements > Residents of Institutions) that covers the substantive policy: institutions providing more than 50% of three daily meals make residents ineligible, with five enumerated exceptions (federally subsidized elderly housing, drug/alcohol treatment centers, group living arrangements for blind/disabled, battered persons shelters, homeless shelters). The page includes BEACON procedures for requesting verification of the Section 202/236 housing exception and cross-references to removing ineligible members via AU Composition (Reason: Institutionalized, including Incarceration). The Household Composition page also lists institutional residents among ineligible clients. However, FNS 832 requires specific documentation standards: type of institution, name and title of person providing information, institution name, address, phone number, and date of contact. The OLG does not specify these documentation elements anywhere. The OLG also does not explicitly instruct workers to document institutional residency under both a residency element and household composition, as FNS requires. The policy substance is well-covered; the documentation standards are the gap.",
+    "olg_pages_found": [
+        "Residents of Institutions",
+        "Household Composition - SNAP",
+        "Students"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 195.37441849708557,
+    "_session_id": "f38cfd03-fbb5-4b87-97c5-75e67a850e02"
+}

@@ -1,0 +1,14 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 720.1 is a QC review procedure that instructs reviewers how to determine whether variances resulting from household changes should be included or excluded from error determinations based on reporting and processing timeframes. This is audit methodology, not caseworker policy. The underlying policy it references \u2014 household reporting timeframes \u2014 IS covered in the OLG: Change Reporting households must report changes within 10 days (Change Reporting \u2013 Overview), income-related changes must be reported within 10 days of receiving the first payment (Change Reporting \u2013 Overview > Income-Related Changes), and Simplified Reporting households have distinct reporting requirements at IR and recertification with gross income threshold triggers (Simplified Reporting \u2013 Reporting Requirements During Case Maintenance, Simplified Reporting \u2013 Examples). The three FNS options for when the 10-day clock starts (date of awareness, date of first paycheck, month-end) are state-level choices; Massachusetts has implemented the 'first payment' trigger for income changes and a general 10-day rule for other changes. The variance inclusion/exclusion logic, error determination procedures, and budget-comparison methodology described in 720.1 are QC reviewer procedures with no caseworker equivalent.",
+    "olg_pages_found": [
+        "Change Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Simplified Reporting \u2013 Examples",
+        "Simplified Reporting \u2013 Interim Report"
+    ],
+    "searches_performed": 4,
+    "_elapsed": 210.29667592048645,
+    "_session_id": "f556449a-7f11-4ece-b3eb-69c0188b427f"
+}

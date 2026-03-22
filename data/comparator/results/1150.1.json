@@ -1,0 +1,14 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG adequately covers this FNS requirement across multiple pages. (1) The 'Allowable Shelter Expenses' page explicitly defines shelter expenses as including 'rent, mortgage (principal, interest, homeowner's insurance and real estate taxes), mandatory Personal Mortgage Insurance (PMI), condominium fees, home equity loans or other continuing charges leading to the ownership of shelter' \u2014 this language covers second mortgages and home equity loans, addressing the FNS example. (2) The 'Shelter Expenses Deduction' page states the shelter cap 'does not apply' to elderly/disabled households, matching FNS's rule that elderly/disabled households may deduct all excess shelter expenses. (3) The 'How SNAP Benefits are Calculated' page (Step Four) explains the shelter deduction calculation: add shelter costs + SUA, subtract half of PANI, and notes 'the Excess Shelter Deduction may not exceed' the cap 'unless the household includes an elderly or disabled member.' The FNS requirement about using the limit for the sample month is an operational detail handled by annual COLA updates in BEACON.",
+    "olg_pages_found": [
+        "Shelter Expenses Deduction - Allowable Shelter Expenses",
+        "Shelter Expenses Deduction",
+        "How SNAP Benefits are Calculated",
+        "SNAP Calculation Page Example"
+    ],
+    "searches_performed": 3,
+    "_elapsed": 129.27114081382751,
+    "_session_id": "c246d4c6-2cf1-4e8c-ab70-4fc988486f89"
+}

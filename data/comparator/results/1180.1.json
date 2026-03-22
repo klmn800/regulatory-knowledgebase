@@ -1,0 +1,15 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "FNS 1180.1 is a QC reviewer documentation checklist specifying what the reviewer must record during their case review. The OLG covers the underlying caseworker verification requirements well: legal obligation verification (court orders, separation agreements, DOR documentation), payment verification (cashed checks, wage withholding, SSA/DUA statements, custodial parent statements), acceptable document types, and BEACON entry procedures. The OLG also clearly distinguishes that verification of legal obligation is not proof of actual payment. However, several FNS documentation elements are not addressed in the OLG because they are QC-specific: documenting who received payments, the exact dates and amounts paid, time periods covered by payments, why the household was entitled to the deduction vs income exclusion, and explanation of variances. These are reviewer record-keeping requirements rather than caseworker policy. The OLG's gap is modest \u2014 it tells workers what to verify but does not instruct them to document all the specific data points FNS requires for QC review purposes (e.g., payment schedule from the court order, identity of the recipient).",
+    "olg_pages_found": [
+        "Child Support Expenses Deduction",
+        "Child Support Expense Examples",
+        "Entering Child Support Expenses Data",
+        "Entering Child Support Income - SNAP",
+        "DOR CSS Child Support Data - RAPID Report"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 346.8497152328491,
+    "_session_id": "e207c2e7-422e-4b7d-b952-96e496d236a0"
+}

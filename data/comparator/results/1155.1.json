@@ -1,0 +1,11 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG acknowledges the damaged home repair deduction in the Shelter Expenses Deduction page (Allowable Shelter Expenses section): 'Charges for repair of a home substantially damaged in a natural disaster are countable unless the repair charge has been or will be reimbursed by private or public relief agencies, insurance companies or any other source.' This covers the basic policy rule. However, FNS 1155.1 requires specific documentation of: (1) cause of damage, (2) cost of repair, (3) verification obtained and date obtained, and (4) explanation of any variances. The OLG provides none of these documentation specifics for home repair charges. The general Verification of Shelter Expenses section lists standard shelter verifications (landlord statements, leases, mortgage statements, etc.) but does not address the unique documentation needs for disaster-related repair costs \u2014 such as documenting the cause of damage, obtaining repair cost estimates, or verifying reimbursement status. A worker encountering a home repair deduction claim would know it's allowable but would have no OLG guidance on what specific documentation to collect or how to verify the claim.",
+    "olg_pages_found": [
+        "Shelter Expenses Deduction"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 142.1063265800476,
+    "_session_id": "064e9561-5bcb-4510-ad0b-f922d00267de"
+}

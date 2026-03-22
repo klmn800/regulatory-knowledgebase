@@ -1,0 +1,15 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG provides comprehensive coverage of FNS 726.4's periodic report requirements. Key FNS requirements and OLG coverage: (1) Certification periods >6 months require periodic reports: OLG covers this \u2014 SIMP-12 has IR at month 6, SIMP-24 has IR at month 12, Former EDSAP has IRs every 6 months. (2) Elderly/disabled households can have 24-month certification with 12-month periodic report: OLG covers this via SIMP-24 (24-month cert, IR at month 12 for elderly/disabled with unearned income only). (3) Form must contain questions about changes needed to determine revised allotment: OLG describes specific form content \u2014 e.g., 'Has this income changed, or do you expect this income to change?' for earned income, and lists what changes must/don't need to be verified (earned income, unearned income >$125, new income sources, household composition vs. housing/dependent care/medical expenses). (4) Agencies must act on all reported changes: OLG instructs workers to 'only update the applicable pages' when changes are reported, provides specific BEACON processing steps for changes vs. no-changes scenarios, and addresses DTA Connect reported changes with explicit instructions to review and process them. The OLG's 'Simplified Reporting \u2013 Interim Report' page covers IR timing, form content, verification requirements, BEACON processing procedures, and worker action steps. While the OLG does not reproduce the exact FNS language about 'prospectively moving forward' or the distinction between change reporting requirements appearing on the periodic report vs. the household being subject to change reporting, these are regulatory nuances that the OLG implements functionally through its detailed IR processing procedures.",
+    "olg_pages_found": [
+        "Simplified Reporting \u2013 Interim Report",
+        "Simplified Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Simplified Reporting \u2013 Examples",
+        "External Databases"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 336.39312767982483,
+    "_session_id": "0012dfe2-3fb7-43d0-b98c-10285e9c55fd"
+}

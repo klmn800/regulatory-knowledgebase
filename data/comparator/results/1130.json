@@ -1,0 +1,14 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG Dependent Care Expenses Deduction Overview page lists qualifying purposes as: continue employment, search for a job, attend training or education program to prepare for employment, and has a disability. This covers most of FNS 1130's seven purposes but omits three: (1) 'accept employment' is missing from the Overview list, though it appears in the Examples page (A3: 'accept or continue employment'); (2) 'comply with Employment and Training requirements' is not mentioned anywhere in the dependent care pages; (3) 'make an effort equivalent to job search if not subject to job search' is not mentioned. The OLG adds 'has a disability' as a qualifying purpose, which is not one of FNS 1130's listed purposes (FNS addresses disability through eligibility for care, not as a purpose for needing it). The dual-deduction rule (dependent care vs. medical expense) is well covered, including guidance on which deduction is more beneficial and BEACON procedures. The inconsistency between the Overview (omitting 'accept employment') and the Examples page (including it) is itself a minor documentation issue.",
+    "olg_pages_found": [
+        "Dependent Care Expenses Deduction",
+        "Dependent Care Expense - Examples",
+        "Expenses/Deductions Introduction",
+        "How SNAP Benefits are Calculated"
+    ],
+    "searches_performed": 3,
+    "_elapsed": 112.56241297721863,
+    "_session_id": "ca2e62b7-8ef0-4bce-b84e-11b553953a12"
+}

@@ -1,0 +1,13 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG covers all key elements of FNS 812.1. (1) Student eligibility rule: The 'Who is Subject to Student Eligibility Criteria?' section states that students 18-49 enrolled half-time+ in higher education must meet exemptions \u2014 matches FNS. (2) Verification: 'Verifying Student Eligibility' allows telephonic or written self-declaration of school and exemption claimed, with no further verification 'unless questionable' \u2014 this effectively implements the FNS rule that verification is not required when an exemption is evident, though using slightly different framing ('unless questionable' vs 'if exemption is evident'). (3) Enrollment continuity: The 'Continuous Enrollment' section under 'Four Year College/University Students' explicitly states enrollment begins on the first day of school term, continues through class attendance, summer vacation, semester breaks, and vacation, and lists all four FNS termination conditions: graduates, is suspended, is expelled, or drops out. The FNS condition 'does not intend to enroll for the next normal school term' is captured by the OLG's framing that continuous enrollment applies 'provided the student is enrolled for the next regular session.' (4) Financial aid income: The 'Educational Loans, Grants, Scholarships, and Reimbursements' section on the Students page addresses treatment of financial aid income, and verification of income (including from financial aid) is covered by the general income verification framework. Layer 1's finding of gaps in enrollment termination conditions was incorrect \u2014 the OLG's 'Continuous Enrollment' section covers these comprehensively.",
+    "olg_pages_found": [
+        "Students",
+        "Educational Income - Noncountable for SNAP, TAFDC and EAEDC",
+        "College Students Coming Home for Summer Breaks"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 298.5533745288849,
+    "_session_id": "29325157-a544-43d2-89fa-eac72174c84b"
+}

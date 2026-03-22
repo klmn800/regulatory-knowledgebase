@@ -1,0 +1,16 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 1130.4 is QC review methodology for handling dependent care deduction variances. Its three components \u2014 (1) how reviewers handle expenses not reported at certification (forfeiture language on forms), (2) how reviewers exclude variances from unreported changes, and (3) how reviewers correct math mistakes or misapplied policy \u2014 are all QC reviewer instructions with no caseworker equivalent. The one underlying policy rule embedded in the QC framing \u2014 that change reporting households are not required to report changes in dependent care costs \u2014 IS covered by the OLG. The Simplified Reporting Interim Report page explicitly lists 'Dependent care expense changes' as changes that do not need to be verified during IR (page: Simplified Reporting - Interim Report, section: What Changes Do Not Need to be Verified). The Optional Expense Reporting section confirms dependent care expenses are optional to report. Additionally, the OLG has extensive dependent care deduction coverage including policy rules, eligibility criteria, examples, verification procedures, and BEACON entry instructions (pages: Dependent Care Expenses Deduction, Dependent Care Expense - Examples).",
+    "olg_pages_found": [
+        "Dependent Care Expenses Deduction",
+        "Dependent Care Expense - Examples",
+        "Simplified Reporting \u2013 Interim Report",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Expenses/Deductions Introduction",
+        "Rights and Responsibilities"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 159.64497208595276,
+    "_session_id": "9b8fda96-6ef8-4c7c-bce3-03c2df7c1d63"
+}

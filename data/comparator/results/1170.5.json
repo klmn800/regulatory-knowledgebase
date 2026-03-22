@@ -1,0 +1,18 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "FNS 1170.5 addresses QC reviewer procedures for medical deduction variances, including reimbursement verification, insurance coverage investigation, recurring expense development, proration of periodic expenses, and handling misapplied policy. The underlying policy concepts are comprehensively covered in the OLG across multiple dedicated pages: 'Overview of Medical Expense Deduction' states that expenses 'paid by someone else (e.g., a third-party reimbursement)' are not countable; 'Out of Pocket Medical Expenses' lists allowable expense types and states 'Only the amount of the unreimbursed cost must be verified'; 'Standard Medical Deduction Waiver' covers verification tiers ($35 self-declaration threshold, $190 documentary evidence threshold); 'Non-Recurring Medical Expenses' provides extensive proration procedures including an Optimal Proration Tool; 'Medical Expense Deduction During Review Periods' covers handling at IR and recertification; and 'Entering Medical Expense Data in BEACON' covers recurring vs one-time frequency entry. The FNS-specific QC variance handling instructions (what the reviewer must do when the EW did or didn't request reimbursement verification, how to classify variances) are QC methodology that does not require caseworker-facing OLG coverage.",
+    "olg_pages_found": [
+        "Overview of Medical Expense Deduction",
+        "Out of Pocket Medical Expenses",
+        "Standard Medical Deduction Waiver",
+        "Non-Recurring Medical Expenses",
+        "Medical Expense Deduction During Review Periods",
+        "Entering Medical Expense Data in BEACON",
+        "How to Discuss Medical Expenses with Clients",
+        "Medical Expenses Claimed by Subsidized Housing Tenants"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 221.64393639564514,
+    "_session_id": "39d55b12-49db-458c-8d6e-29cd5f712e12"
+}

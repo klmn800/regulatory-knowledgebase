@@ -1,0 +1,14 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 713 is a QC review procedure directing reviewers on verification timing exceptions when income was prorated or deductions were averaged/prorated. It instructs the QC reviewer to 'verify the amount of such income regardless of when it was received' and 'compute a monthly amount using the income and/or deductions verified by the reviewer.' This is audit methodology \u2014 it tells QC reviewers how to handle verification time periods, not caseworker policy. The underlying caseworker-facing policies (income averaging, mandatory income averaging for annual/seasonal income, non-recurring medical expense proration) ARE covered in the OLG under 'Types of Earned Income > Income Averaging', 'Types of Earned Income > Mandatory Income Averaging', 'Non-Recurring Medical Expenses', and 'Unearned Income Overview > Mandatory Income Averaging'. The OLG tells workers how to average and prorate income and expenses; FNS 713 tells QC auditors how to verify those calculations during review.",
+    "olg_pages_found": [
+        "Types of Earned Income",
+        "Non-Recurring Medical Expenses",
+        "Unearned Income Overview",
+        "Noncountable Income"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 224.3731071949005,
+    "_session_id": "6d9c408f-2128-4f45-bc7b-4bf8d960296f"
+}

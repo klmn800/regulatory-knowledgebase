@@ -1,0 +1,17 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG applies the FNS 1112 rule in specific contexts but lacks a general statement of the principle. The Veterans Benefits pages (both Federal and State) explicitly demonstrate the rule: when vendor payments are excluded from income, the shelter deduction must be reduced by subtracting the vendor payment amount (e.g., '$750 rent - $650 vendor payment = $100 allowable shelter expense'). The Medical Expenses page states 'A medical expense is not countable if the expense was or will be paid by someone else (e.g., a third-party reimbursement).' The Dependent Care page states 'Reimbursed dependent care is not an allowable deduction. Only the non-reimbursed portion of the expense is allowable.' However, the general SNAP Vendor Payments page (under Income) and the Shelter Expenses Deduction page do not state the overarching rule that when vendor payments are excluded from income, the household cannot claim a deduction for those same expenses. A worker handling a non-veterans vendor payment scenario (e.g., a friend paying rent directly to the landlord) would find guidance on excluding the payment from income but no corresponding instruction to reduce the shelter deduction. The LIHEAP exception mentioned in FNS 1112 is not addressed in this context either, though LIHEAP/HEAP is covered extensively on its own page. The rule is effectively scattered across source-specific pages rather than stated as a general principle where workers would look for it.",
+    "olg_pages_found": [
+        "State Veterans Benefits",
+        "Federal Veterans Benefits",
+        "Vendor Payments",
+        "Overview of Medical Expense Deduction",
+        "Dependent Care Expenses Deduction",
+        "Unearned Income Overview",
+        "Shelter Expenses Deduction"
+    ],
+    "searches_performed": 8,
+    "_elapsed": 536.2093815803528,
+    "_session_id": "c5e3bbc7-c1b9-42e1-a1e4-f61a3ca5e80c"
+}
