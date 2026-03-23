@@ -1,13 +1,11 @@
 {
     "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "The OLG has a dedicated page 'SNAP Attributed Amount (Riverside Rule)' that clearly covers the core FNS requirement: SNAP benefits must not increase when a household's benefits under another means-tested program are decreased or suspended due to fraud or non-compliance. The OLG explains the mechanism (SNAP Attributed Amount added as unearned income equal to the difference between the pre-sanction and post-sanction cash benefit), lists specific TAFDC and EAEDC sanction types that trigger it, describes duration rules, and notes that BEACON automates the calculation. However, the OLG does not mention the FNS provision allowing the state to reduce SNAP benefits by up to 25% as an additional consequence. Massachusetts appears to implement only the 'hold harmless' approach (preventing SNAP from increasing) without the optional 25% reduction, but the OLG does not explicitly acknowledge this FNS option or state that Massachusetts chose not to exercise it. The omission of the 25% reduction provision is a minor gap \u2014 it may reflect an intentional state policy choice, but the OLG does not document it either way.",
+    "note": "The OLG covers this FNS requirement through the 'SNAP Attributed Amount (Riverside Rule)' page under SNAP > Case Maintenance. The core rule is clearly stated: 'SNAP regulations prohibit an increase in SNAP benefits when a household's benefits under another federal or state means-tested program have been decreased or suspended due to fraud or a failure to comply with a requirement of an Economic Assistance benefit program.' The OLG explains the mechanism (SNAP Attributed Amount added as unearned income), lists specific TAFDC and EAEDC sanction types that trigger it, notes BEACON automation, covers duration rules, and addresses removal conditions. However, two FNS-specified provisions are absent from the OLG: (1) The 25% maximum reduction provision \u2014 FNS states 'The State agency may reduce the household's allotment by not more than 25%' but the OLG does not mention any cap on the reduction amount; and (2) The calculation methodology \u2014 FNS specifies the 25% reduction must be 'based on the amount of SNAP benefits the household should have received under the regular SNAP benefit formula, taking into account its actual (reduced) income,' which the OLG does not address. The OLG instead describes the attributed amount as 'the actual difference between the Economic Assistance benefit amount the household should be receiving and the Economic Assistance benefit amount the household is actually receiving while sanctioned,' which is a different mechanism than the 25% cap FNS describes. It is possible Massachusetts chose the attributed-amount approach rather than the 25% reduction approach (FNS uses 'may' for the 25% reduction, suggesting it is an option), but the OLG does not reference this choice or the 25% alternative.",
     "olg_pages_found": [
-        "SNAP Attributed Amount (Riverside Rule)",
-        "Unearned Income Overview",
-        "Entering SNAP Disqualification and Sanction Data"
+        "SNAP Attributed Amount (Riverside Rule)"
     ],
-    "searches_performed": 4,
-    "_elapsed": 184.20295977592468,
-    "_session_id": "5dd8b474-cc1a-430b-92a6-9f519a2c4c26"
+    "searches_performed": 6,
+    "_elapsed": 277.98603200912476,
+    "_session_id": "7185c6a0-28e3-4e18-a9f7-7d7a5aa29c92"
 }

@@ -1,13 +1,13 @@
 {
-    "classification": "partial_match",
+    "classification": "match",
     "confidence": "HIGH",
-    "note": "The OLG covers the core SE income budgeting scenarios well: (1) 12-month annualization for annual income earned in a shorter period (Self-Employment SNAP > Averaging Self-Employment Income), (2) elective averaging for fluctuating earned income over the certification period (Types of Earned Income > Income Averaging), and (3) proration for partial-year SE income (Self-Employment SNAP > Example, covering summer vendors and new businesses). The OLG also has an 'Anticipating Self-Employment Income' section for non-averaged SE income. However, the OLG does not explicitly state the FNS rule that steady SE income 'that can be reasonably anticipated month to month' does not need to be annualized, averaged, or prorated \u2014 the existence of the anticipation section implies this pathway but never articulates the condition clearly. Additionally, the OLG's fluctuating income averaging guidance is in the general earned income section (Types of Earned Income > Income Averaging), not in the Self-Employment SNAP page itself, which could cause workers to miss that SE income can be electively averaged when it fluctuates. The FNS provisions regarding unreported SE income sources and QC reviewer correction procedures are QC-specific and not applicable to the OLG's caseworker audience.",
+    "note": "The OLG's Self-Employment SNAP page thoroughly covers all four SE income budgeting scenarios from FNS 1065.1: (1) Annual SE income earned in a shorter period must be averaged over 12 months \u2014 covered in 'Averaging Self-Employment Income' section; (2) Fluctuating SE income must be averaged \u2014 covered via the anticipating/averaging guidance; (3) SE income for only part of the year must be prorated \u2014 explicitly covered in the summer vendor example ('must have their self-employment income averaged over the summer months rather than a 12-month period'); (4) Steady SE income needs no annualizing \u2014 covered in 'Anticipating Self-Employment Income' section for non-averaged SE income. The FNS 'Reported Source' and 'Unreported Source' subsections describe QC reviewer correction procedures (correcting EW errors, calculating AORD figures for unreported income) \u2014 these are QC methodology, not caseworker policy, and do not require OLG coverage. The FNS section itself notes 'States have flexibility in their definition and treatment of SE income,' and the OLG provides comprehensive, worker-actionable guidance on all policy-relevant aspects.",
     "olg_pages_found": [
         "Self-Employment SNAP",
         "Types of Earned Income",
-        "Unearned Income Overview"
+        "Migrant Farm Laborers"
     ],
-    "searches_performed": 6,
-    "_elapsed": 276.2644045352936,
-    "_session_id": "7c33f417-8490-492f-8e45-b387a7d89c00"
+    "searches_performed": 5,
+    "_elapsed": 183.67539191246033,
+    "_session_id": "30aea326-c1e1-4165-94ce-3aa41dbfeba7"
 }

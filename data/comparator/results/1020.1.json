@@ -1,7 +1,9 @@
 {
     "classification": "not_applicable",
     "confidence": "HIGH",
-    "note": "FNS 1020.1 describes credit checks as an optional tool for QC reviewers ('when the reviewer wants to further investigate or establish a financial profile'). This is a QC audit methodology, not a SNAP policy requirement for caseworkers. The OLG appropriately does not cover QC reviewer investigative tools — eligibility workers verify earned income through pay stubs, employer statements, The Work Number, and other standard verification methods documented in the OLG. Credit checks are not part of the caseworker verification toolkit.",
+    "note": "FNS 1020.1 describes credit checks as an optional tool for QC reviewers ('when the reviewer wants to further investigate or establish a financial profile of household members'). This is a QC investigation methodology, not a SNAP policy requirement that states must implement in their caseworker guides. The OLG appropriately covers mandatory earned income verification methods (pay stubs, employer statements, Work Number) but would not be expected to address optional QC reviewer investigation techniques like credit checks. No gap exists.",
     "olg_pages_found": [],
-    "searches_performed": 3
+    "searches_performed": 2,
+    "_elapsed": 75.20574879646301,
+    "_session_id": "57676f61-d69a-4eb2-b9f7-82b29d1c2bf4"
 }

@@ -1,0 +1,7 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 1032.2 is a QC review instruction telling reviewers they 'may accept a household's statement' when the household denies receiving veterans' benefits and there is no evidence to the contrary. This is QC methodology (how to evaluate a negative allegation during a quality control review), not a caseworker policy requirement. The caseworker equivalent — not pursuing verification of income the household denies having, absent contrary evidence — is implicit in the OLG's general verification framework. The OLG extensively covers veterans' benefits when they ARE reported (Federal Veterans Benefits, State Veterans Benefits, Unearned Income Overview, Simplified Reporting IR/Recert procedures for VA income), but does not need a separate instruction telling workers to accept a client's denial of VA income, as that is the default behavior in the absence of data-matching hits or other contrary evidence.",
+    "olg_pages_found": ["Federal Veterans Benefits", "State Veterans Benefits", "Unearned Income Overview", "Simplified Reporting - Interim Report", "Simplified Reporting - Recertification"],
+    "searches_performed": 6
+}

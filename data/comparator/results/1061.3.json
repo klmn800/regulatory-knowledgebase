@@ -1,7 +1,16 @@
 {
     "classification": "match",
     "confidence": "HIGH",
-    "note": "The OLG's Categorical Eligibility page thoroughly covers the core policy requirement that CE households are eligible for SNAP regardless of income. The OLG explicitly states CE households 'automatically passed a SNAP gross income test, net income test and/or asset test' and details benefit outcomes at all income levels (regular benefit, minimum benefit for 1-2 person HH, $0 for 3+ person HH). It also covers when households lose CE status ('When a Household Becomes Non-Categorically Eligible'), who cannot be CE (IPV, work program failure, elder/disabled over 200%), and BEACON automation of CE determination. The remaining FNS text — QC reviewers cannot remove CE conferment, allotment test always required, reporting incorrectly classified CE cases — describes QC audit methodology with no caseworker equivalent. The OLG's QC Compliance page addresses client cooperation with QC reviews but appropriately does not replicate QC reviewer instructions.",
-    "olg_pages_found": ["Categorical Eligibility", "Quality Control Compliance", "How SNAP Benefits are Calculated", "What is SNAP?"],
-    "searches_performed": 5
+    "note": "The OLG Categorical Eligibility page thoroughly covers the policy substance of FNS 1061.3. The OLG explicitly states that PA households are 'considered to have automatically passed a SNAP gross income test, net income test and/or asset test' \u2014 directly addressing the FNS requirement that CE households are eligible regardless of income. The 'Categorically Eligible Households' section further specifies that CE households are approved even when income exceeds limits (1-2 person HH receives minimum benefit, 3+ approved at $0). The 'Who Is Not Categorically Eligible' section lists the prohibited member exceptions (IPV, work program non-compliance, over-income elder/disabled HHs), which aligns with FNS's reference to Section 841 prohibitions. The IPV Overview page reinforces this: 'Households cannot be considered categorically eligible if they contain one or more disqualified members.' The remaining FNS requirements \u2014 that QC cannot remove CE conferment, that an allotment test must always be performed, how to handle PA households with excess income, and how to handle incorrect CE classification \u2014 are QC review procedures, not caseworker policy. The OLG does address the caseworker-relevant equivalent (BEACON auto-converts cases that lose CE status mid-certification and prompts asset verification).",
+    "olg_pages_found": [
+        "Categorical Eligibility",
+        "Assets Overview - SNAP",
+        "Transfer of Funds",
+        "What is SNAP?",
+        "How SNAP Benefits are Calculated",
+        "Intentional Program Violation Overview"
+    ],
+    "searches_performed": 3,
+    "_elapsed": 113.81793093681335,
+    "_session_id": "170a5e36-8f0d-439e-9f21-0592ff474c78"
 }

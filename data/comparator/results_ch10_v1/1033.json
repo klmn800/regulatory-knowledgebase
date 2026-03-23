@@ -1,0 +1,15 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG adequately covers FNS 1033's requirement to verify SSI through SSA's data exchange system. The External Databases page mandates checking SDX/BENDEX/SVES before requesting client verification. Application Scenario 1 explicitly states 'BENDEX/SDX (SVES) must be requested to verify SSN, identity, and to verify there is no SSI or RSDI income.' The SSP Amounts on BEACON page details the SDX batch process for calculating SSI amounts (federal + state payable amounts) and the SSI Tracking page displaying SSI data from SDX. For fallback verification, the SNAP Disability Requirements page states: 'You must first check to see if this information is verified on BENDEX, SDX or BEACON. If not, the client must provide written verification, for example, a copy of an award or benefits letter or a copy of a benefits check.' BEACON also automatically requests SVES updates for new clients. While the OLG does not explicitly list 'SSA correspondence' or 'direct contact with SSA district office' as additional verification options (which FNS lists as examples that 'may be required'), it covers the primary mechanism (data exchange) and the key fallback (award letter) thoroughly across multiple pages.",
+    "olg_pages_found": [
+        "External Databases",
+        "SSP Amounts on BEACON",
+        "SNAP Disability Requirements and Verifications",
+        "Quality Assurance Unit",
+        "Unearned Income Overview"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 158.2600018978119,
+    "_session_id": "bb2be8d5-78fd-4ed5-b2cc-83049b5430bd"
+}

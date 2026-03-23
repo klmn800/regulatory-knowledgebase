@@ -1,7 +1,12 @@
 {
     "classification": "match",
     "confidence": "HIGH",
-    "note": "The OLG Noncountable Income page explicitly lists 'In-kind income' as noncountable, defining it as 'Any gain or benefit not in the form of money and provided directly to the household' with an example (neighbor providing produce from their garden). This directly satisfies the FNS 1041.2 requirement that income-in-kind must be excluded from SNAP benefit calculations. Additionally, the Unearned Income Overview page's vendor payments section states 'if the employer provides housing to an employee in addition to wages, the value of the housing shall not be counted as income,' which mirrors the FNS example of a rent-free apartment for a building manager. The OLG adequately covers both the rule and its practical application.",
-    "olg_pages_found": ["Noncountable Income", "Unearned Income Overview"],
-    "searches_performed": 3
+    "note": "The OLG Noncountable Income page explicitly lists 'In-kind income' as noncountable: 'Any gain or benefit not in the form of money and provided directly to the household. For example, a client's neighbor provides produce from his garden.' Additionally, the Unearned Income Overview page under 'Examples of Countable and Non-countable Vendor Payments' states: 'if the employer provides housing to an employee in addition to wages, the value of the housing shall not be counted as income' \u2014 directly matching the FNS example of rent-free housing as compensation. Together these two pages fully cover the FNS 1041.2 requirement that income-in-kind must be excluded from SNAP benefit calculations.",
+    "olg_pages_found": [
+        "Noncountable Income",
+        "Unearned Income Overview"
+    ],
+    "searches_performed": 4,
+    "_elapsed": 123.29958057403564,
+    "_session_id": "985be3ce-bda1-490f-b4f0-7d01b0ac7a20"
 }

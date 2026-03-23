@@ -1,7 +1,16 @@
 {
-    "classification": "not_applicable",
+    "classification": "match",
     "confidence": "HIGH",
-    "note": "FNS 1036.2 is a one-line QC cross-reference: 'Negative Allegation. See data matching requirements, Section 512.' Section 512 prescribes QC reviewer procedures for running data matches (IEVS, SAVE, eDRS) during quality control reviews — it is QC methodology, not caseworker policy. The underlying operational requirement — that the agency use data matching systems to verify eligibility — IS covered in the OLG through extensive guidance on external databases (BENDEX, SDX, SVES, Work Number, DOR) at application and recertification, interview procedures instructing workers to 'check available external databases,' and the Unclear Information / Significantly Conflicting Information framework for investigating discrepancies. The OLG does not use the term 'negative allegation,' but this is a QC-specific concept describing what a reviewer must do when a household denies a circumstance, not a caseworker-facing policy rule.",
-    "olg_pages_found": ["The Application Interview", "The Recertification Interview", "Unclear Information", "SNAP Disability Requirements and Verifications", "Simplified Reporting – Recertification", "Simplified Reporting – Interim Report", "Simplified Reporting – Examples"],
-    "searches_performed": 6
+    "note": "FNS 1036.2 simply directs to Section 512 data matching requirements for verifying negative allegations of other government benefits (Black Lung, Railroad Retirement, etc.). Section 512 requires IEVS checks for all adult household members to confirm negative allegations. The OLG comprehensively covers this through its External Databases procedures and Matches/PI Checklist system. The External Databases page explicitly requires workers to check BENDEX/SDX (SVES) to 'verify there is no SSI or RSDI income,' Work Number to 'confirm that there are no wages being received,' and EMT to 'confirm that there is no UC being received' when a client reports no income \u2014 this is the functional equivalent of IEVS verification of negative allegations. The PI Checklist includes PARIS Veterans (VA benefits), DOR matches, DUA, and numerous other government data sources. While the OLG does not use the FNS term 'negative allegation,' the data matching procedures serve the identical verification purpose required by Section 512.",
+    "olg_pages_found": [
+        "External Databases",
+        "Matches Overview",
+        "Matches - Program Integrity (PI) Checklist \u2013 Overview",
+        "Matches - Job Aid",
+        "Verifications at Reevaluation, Recertification and Interim Reports",
+        "Simplified Reporting \u2013 Recertification"
+    ],
+    "searches_performed": 4,
+    "_elapsed": 172.5914204120636,
+    "_session_id": "6c5e8d8e-066e-47a4-b371-c4e080fc5bde"
 }

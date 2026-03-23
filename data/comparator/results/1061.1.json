@@ -1,7 +1,15 @@
 {
-    "classification": "partial_match",
+    "classification": "match",
     "confidence": "HIGH",
-    "note": "The OLG covers the mechanics of prospective income calculation extensively — BEACON's Prospective Tab for both earned and unearned income (pages: Entering/Changing Earned Income in BEACON, Entering/Changing Other (Unearned) Income Data) and the gross income test applied during benefit calculation (How SNAP Benefits are Calculated: 'If the Total Income exceeds the household's gross income limit, the household will be denied for over-income'). The child support exclusion from the gross income test is also documented. However, the OLG does not articulate the concept of 'prospective eligibility' as a distinct eligibility framework — it treats prospective income calculation as a BEACON data-entry procedure rather than explaining the policy logic that income tests are applied to prospective (anticipated) income for the budget month. The FNS requirement about what happens when income exceeds the limit due to a variance (and distinguishing included vs. excluded variances per Chapter 7 timeframes) is a QC-review concept with no caseworker equivalent in the OLG, but the underlying policy — that households whose prospective income exceeds the limit are denied — is present.",
-    "olg_pages_found": ["How SNAP Benefits are Calculated", "Entering, Changing, and Ending Earned Income in BEACON", "Entering, Changing, and Ending Other (Unearned) Income Data", "Types of Earned Income", "Child Support Expenses Deduction", "What is SNAP?", "Unclear Information"],
-    "searches_performed": 5
+    "note": "The FNS requirement that income tests be applied to prospectively budgeted income is covered by the OLG, though organized differently. The 'How SNAP Benefits are Calculated' page (Step One) explicitly states that if total income exceeds the gross income limit, the household is denied for over-income. The BEACON earned/unearned income pages detail how prospective monthly amounts are calculated (Prospective tab workflows). The Simplified Reporting pages explain gross income limit reporting requirements during case maintenance. The OLG does not use the term 'prospective eligibility' as a distinct concept, but the underlying policy \u2014 calculate prospective income, apply income tests, deny if over-income \u2014 is functionally covered across these pages. The variance/error determination language in FNS 1061.1 is QC-specific (how a reviewer classifies findings) and has no caseworker equivalent; workers simply process the case based on the income they calculate.",
+    "olg_pages_found": [
+        "How SNAP Benefits are Calculated",
+        "Entering, Changing, and Ending Earned Income in BEACON",
+        "Entering, Changing, and Ending Other (Unearned) Income Data",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Simplified Reporting \u2013 Examples"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 340.90368247032166,
+    "_session_id": "d2c960df-a702-460a-9c3c-dc4165b778d3"
 }

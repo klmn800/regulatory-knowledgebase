@@ -1,16 +1,15 @@
 {
     "classification": "partial_match",
-    "confidence": "HIGH",
-    "note": "The OLG thoroughly covers educational income as noncountable when it is part of a financial aid package, grant, loan, or scholarship (see 'Educational Income - Noncountable for SNAP, TAFDC and EAEDC' and 'Students > Educational Loans, Grants, Scholarships, and Reimbursements'). The OLG also correctly notes that student income NOT part of a financial aid package is subject to normal countable/noncountable rules. However, the OLG does not address the specific FNS 1065.3 requirements for countable educational income: (1) it must be averaged over the period it is intended to cover, (2) it is not counted until the month in which it is received or anticipated with reasonable certainty, and (3) allowable exclusions are applied before proration. The OLG's income averaging section ('Types of Earned Income > Mandatory Income Averaging' and 'Income Averaging') covers school employees, self-employment, and general fluctuating income but does not mention educational grants/loans/scholarships that fall outside the noncountable exclusion and require averaging. A worker encountering countable educational income (e.g., a scholarship portion not meeting the financial aid exclusion) would have no OLG guidance on how to prorate it over the intended coverage period.",
+    "confidence": "MEDIUM",
+    "note": "The OLG acknowledges the educational income averaging requirement in the Unearned Income Overview page under Mandatory Income Averaging: 'Educational Income Designated for Living Expenses: Households receiving scholarships, educational loans, or other educational grants will have such income, after exclusions, averaged over the period for which it was provided. See Students.' This aligns with FNS 1065.3's core requirement. However, the coverage is minimal \u2014 a single sentence with a cross-reference to the Students page, which does not elaborate on averaging methodology. The Students page and the Cross-Program Educational Income page focus almost entirely on the noncountable nature of educational income, without explaining: (1) what constitutes 'after exclusions' or how to identify the countable portion designated for living expenses, (2) that income is not counted until the month received or anticipated with reasonable certainty, (3) how to prorate over the intended coverage period, or (4) procedures for handling reported vs. unreported educational income sources. Massachusetts has broadly excluded educational income as noncountable, which reduces the practical scope of this requirement, but the OLG's own acknowledgment that living-expense-designated educational income requires averaging is not supported by procedures or examples to carry it out.",
     "olg_pages_found": [
-        "Educational Income - Noncountable for SNAP, TAFDC and EAEDC",
+        "Unearned Income Overview",
         "Noncountable Income",
+        "Educational Income - Noncountable for SNAP, TAFDC and EAEDC",
         "Students",
-        "Types of Earned Income",
-        "School Employees",
-        "Self-Employment SNAP"
+        "Types of Earned Income"
     ],
     "searches_performed": 5,
-    "_elapsed": 253.62939023971558,
-    "_session_id": "70cb019b-7b96-4492-b758-5891cfb66f66"
+    "_elapsed": 150.88302159309387,
+    "_session_id": "cb0a178d-8bbe-49fe-b5ed-9045e7150f74"
 }

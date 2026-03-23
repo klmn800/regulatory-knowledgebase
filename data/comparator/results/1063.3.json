@@ -1,9 +1,17 @@
 {
     "classification": "not_applicable",
     "confidence": "HIGH",
-    "note": "FNS 1063.3 is entirely a QC review procedure. It instructs QC reviewers on how to handle earned income sources that were 'never reported to the agency, or reported but never processed' during the error determination process \u2014 specifically, to use verified income from the sample month, apply annualization/proration per Section 1065, or exclude sources within exclusionary timeframes. These are QC error calculation methods, not caseworker policy requirements. The underlying caseworker obligations (clients must report income changes, workers must process reported income) are covered by separate FNS sections and have their own OLG counterparts (e.g., Simplified Reporting, Change Reporting, The Work Number data matching). No OLG coverage of this QC-specific procedure is expected or needed.",
-    "olg_pages_found": [],
+    "note": "FNS 1063.3 is QC error determination methodology, not caseworker policy. It instructs QC reviewers on how to treat unreported/unprocessed earned income sources during error determination \u2014 specifically whether to use verified income, annualize/prorate it per Section 1065, or exclude it based on exclusionary timeframes. The language is explicitly QC-directed ('QC must use,' 'The QC reviewer must'). The underlying caseworker-facing policies \u2014 reporting requirements for earned income, overissuance procedures for unreported income, and the earned income deduction disallowance for untimely reporting \u2014 are covered in the OLG across Simplified Reporting pages, Unclear Information procedures, and the Earned Income Deduction page. The OLG does not need a QC error determination procedure.",
+    "olg_pages_found": [
+        "Simplified Reporting \u2013 Examples",
+        "Simplified Reporting \u2013 Interim Report",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Unclear Information",
+        "Earned Income Deduction",
+        "Agency Error",
+        "Unintentional Program Violations"
+    ],
     "searches_performed": 5,
-    "_elapsed": 227.59522986412048,
-    "_session_id": "aa2477da-c3b8-429e-96bc-cb2c6d39ec09"
+    "_elapsed": 149.6172640323639,
+    "_session_id": "fd8e855b-c341-465e-83b2-20992b53e7a5"
 }

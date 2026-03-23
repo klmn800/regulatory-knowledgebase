@@ -1,7 +1,19 @@
 {
     "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "The OLG covers child support income verification for positive allegations adequately: DOR child support is verified via MobiusView (verified upon receipt, checked at every application/IR/recertification), and non-DOR child support requires a letter from the paying party stating amount, frequency, and intent. BEACON entry procedures are documented. However, the OLG entirely lacks the FNS two-step negative allegation investigation process (checking child support enforcement agency, exploring direct/voluntary payments, attempting contact with the absent parent). The OLG contains no family violence safeguards specific to child support verification — FNS explicitly requires that contact with the absent parent must not be attempted in family violence situations, with specific documentation requirements. The OLG also lacks conflict resolution procedures when the client's statement and the absent parent's or other sources conflict, and has no sensitivity protocols for contacting absent parents. The OLG's child support income guidance is operationally focused on processing declared support through DOR or direct payment verification, but does not address the investigative procedures FNS requires when a household denies receiving support.",
-    "olg_pages_found": ["Child Support Income - SNAP", "Entering Child Support Income - SNAP", "Child Support Expenses Deduction", "Child Support Expense Examples", "Vendor Payments", "Unearned Income Overview"],
-    "searches_performed": 5
+    "note": "The OLG adequately covers child support income when declared (positive allegation). The 'Child Support Income - SNAP' page instructs workers to always ask about child support when children are in the household. DOR child support is verified via MobiusView/RAPID (verified upon receipt, checked at every application/IR/recert). Non-DOR child support is verified via a letter from the payer stating amount, frequency, and intent. BEACON entry procedures are thorough. However, the OLG does not address the FNS two-step negative allegation process: when a household denies receiving child support, FNS requires (1) checking the child support enforcement agency and whether the absent parent is incarcerated, and (2) if not resolved, exploring direct/voluntary payments, attempting contact with the potentially liable person, and verifying through the child support agency. The OLG also lacks guidance on family violence sensitivity specific to SNAP child support income verification \u2014 the extensive DV pages (Domestic Violence Specialists, Good Cause) are TAFDC-focused for child support cooperation requirements and explicitly note 'DV Waivers and Child Support cooperation rules do not apply to EAEDC and SNAP-only cases.' There is no OLG guidance on resolving conflicts between a client's statement and an absent parent's statement about support payments, or on documenting decisions not to contact an absent parent due to safety concerns in the SNAP income verification context.",
+    "olg_pages_found": [
+        "Child Support Income - SNAP",
+        "Entering Child Support Income - SNAP",
+        "DOR CSS Child Support Data - RAPID Report",
+        "Child Support Expenses Deduction",
+        "Domestic Violence Related Pages",
+        "Domestic Violence Specialists",
+        "Collateral Contact",
+        "Verification Chart",
+        "Vendor Payments"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 223.21073818206787,
+    "_session_id": "9db93513-5f81-42fb-9081-e1b3f30bd66c"
 }

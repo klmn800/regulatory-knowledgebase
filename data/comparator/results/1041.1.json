@@ -1,7 +1,16 @@
 {
     "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "The OLG correctly identifies alimony as countable unearned income (Vendor Payments Example 4 shows court-ordered alimony as countable), instructs workers to enter it as 'Alimony in Other Income' from 1040 forms (How to Read a 1040 page), and addresses alimony garnishments as non-allowable deductions (Garnishments page). However, the OLG has no dedicated alimony verification section. FNS 1041.1 specifies detailed verification procedures that are absent from the OLG: (1) positive allegation verification through contact with the person making payments or through court/probation offices for third-party payments; (2) negative allegation handling — accepting denials absent contrary evidence but requiring conflict resolution with documentation when discrepancies arise; (3) a specific list of acceptable verification documents (divorce/separation decree, court order, alimony check, alimony agreement, VA/DoD documents, court records, lawyer's records, cancelled checks, tax returns, employer wage attachment records); and (4) guidance on evaluating document dates for currency. The OLG's Contribution Income verification page provides generic procedures (VC-1 with FA-1 form requiring who/amount/purpose/frequency), but these do not address the alimony-specific verification sources and conflict resolution procedures FNS requires.",
-    "olg_pages_found": ["How to Read a 1040 Federal Income Tax Form", "Vendor Payments", "Garnishments from Social Security Benefits (RSDI & SSI)", "Contribution Income", "Unearned Income Overview", "Entering, Changing, and Ending Other (Unearned) Income Data"],
-    "searches_performed": 6
+    "note": "The OLG acknowledges alimony as countable unearned income (Vendor Payments Example 4 shows a court-ordered $800/month alimony payment as countable unearned income) and provides generic contribution income verification procedures (Contribution Income > Verifying Contribution Income requires a VC-1 requesting documentation of who, amount, purpose, and frequency). However, the OLG does not treat alimony as a distinct income category with its own verification standards. FNS 1041.1 specifies detailed alimony-specific verification documents (divorce/separation decree, court order, alimony check, alimony agreement, VA/DoD documents, court records, lawyer's records, canceled checks, tax returns, employer wage attachment records) \u2014 none of these are enumerated in the OLG. FNS also requires distinct handling of positive allegations (contact with the person making the contribution, or collateral contact through courts for third-party payments) vs. negative allegations (denial may be accepted absent contrary evidence, but conflicts must be resolved with documentation). The OLG's contribution income verification is generic and does not address these alimony-specific procedures. The Verification Chart lists only generic unearned income verification examples (benefit/award letter, check/record of payment, statement from agency). A worker processing an alimony case would not find alimony-specific acceptable documents or guidance on resolving conflicting allegations in the OLG.",
+    "olg_pages_found": [
+        "Vendor Payments",
+        "Contribution Income",
+        "How to Read a 1040 Federal Income Tax Form",
+        "Garnishments from Social Security Benefits (RSDI & SSI)",
+        "Unearned Income Overview",
+        "Verification Chart"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 292.3887014389038,
+    "_session_id": "844a9893-92a0-481f-87ce-44a57e65545c"
 }

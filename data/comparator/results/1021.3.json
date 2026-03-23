@@ -1,7 +1,20 @@
 {
     "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "The OLG covers earned income verification procedures extensively but only within specific certification contexts (Simplified Reporting IR, Simplified Reporting Recertification, Change Reporting). It uses the Work Number as the primary wage data matching tool, with detailed procedures for matching, cold-calling clients, and issuing VC-1s. The OLG also addresses investigation of questionable and conflicting information through its 'Unclear Information' policy (SNAP > Case Maintenance > Unclear Information), which requires pursuing clarification of unclear info less than 60 days old and significantly conflicting information. However, the OLG does not reference IEVS as a general earned income verification system, does not state the FNS requirement that IEVS checks must be completed for all adult household members and household members under 18 not enrolled in school, and does not address the FNS 'further investigation' protocol when IEVS records show employment within the three most recent quarters. The OLG's data source reviews at recertification mention SVES, BENDEX, and SDX but these are for SSA/SSI data, not earned income matching. The Work Number may functionally serve a role analogous to IEVS wage matching, but the OLG does not frame it as fulfilling IEVS requirements or describe the specific IEVS-triggered investigation steps FNS mandates.",
-    "olg_pages_found": ["Simplified Reporting – Interim Report", "Simplified Reporting – Recertification", "Change Reporting – Recertification", "Unclear Information", "Entering, Changing, and Ending Earned Income in BEACON", "Simplified Reporting – Reporting Requirements During Case Maintenance", "Change Reporting – Overview"],
-    "searches_performed": 6
+    "note": "The OLG covers earned income verification requirements (Types of Earned Income > Verification of Income), investigation of questionable/contradictory information (Unclear Information page, What is Questionable and Contradictory Information? page), and extensive external agency data matching procedures via the PI Checklist (DOR Wage, DOR New Hire, Work Number, DUA matches). These collectively implement the federal IEVS requirements through Massachusetts-specific systems. However, three specific FNS elements are not explicitly covered: (1) The FNS requirement to run IEVS checks specifically for 'all adult household members and household members under 18 not enrolled in school' \u2014 the OLG's PI Checklist applies broadly but does not state this population-scoping rule; (2) The FNS 3-quarter lookback rule (when IEVS shows employment within the three most recent quarters prior to the sample month, the reviewer must contact the household and listed employers) has no direct OLG equivalent \u2014 match processing procedures exist but lack this specific temporal trigger; (3) The explicit 'No Further Investigation' / 'Further Investigation' conditional decision tree from FNS is not mirrored in the OLG, though the PI Checklist match disposition workflow provides functionally similar guidance. The OLG's coverage is operationally robust through BEACON-integrated match processing, but does not document the underlying federal verification framework that these systems implement.",
+    "olg_pages_found": [
+        "Types of Earned Income",
+        "Unclear Information",
+        "What is Questionable and Contradictory Information?",
+        "Examples of Questionable & Contradictory Information",
+        "Matches - Job Aid",
+        "Matches - Processing for SNAP Households",
+        "Matches - Program Integrity (PI) Checklist \u2013 Overview",
+        "Matches - Application Processing",
+        "Matches - Match Disposition Reason Options",
+        "Simplified Reporting \u2013 Interim Report"
+    ],
+    "searches_performed": 8,
+    "_elapsed": 353.0741751194,
+    "_session_id": "d58986cf-c83c-4bef-859d-b52dac68af58"
 }

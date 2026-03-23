@@ -1,7 +1,15 @@
 {
     "classification": "match",
     "confidence": "HIGH",
-    "note": "FNS 1034.2 simply directs reviewers to Section 512 (data matching requirements via IEVS) for negative allegations of unemployment compensation. The OLG covers this functionally through DTA's PI Checklist system for unemployment, which is the state's implementation of IEVS data matching for UC income. The OLG's Simplified Reporting Examples page contains extensive Q&A (Q8-Q13+) on handling PI Checklist unemployment matches, including procedures for entering UC income found via data match, verifying claim status through the DUA system/UI Online, and handling discrepancies between UC claims and existing wage records. While the OLG uses DTA-specific terminology (PI Checklist, DUA system) rather than federal terminology (IEVS, negative allegation), the substantive requirement — using data matching to identify UC income when a household doesn't report it — is thoroughly covered with detailed worker procedures.",
-    "olg_pages_found": ["Simplified Reporting – Examples (Unemployment Compensation sections)", "The SNAP Work Rules Screening Page", "Matches - Program Integrity (PI) Checklist – Overview"],
-    "searches_performed": 6
+    "note": "FNS 1034.2 requires data matching (per Section 512) to verify negative allegations of unemployment compensation \u2014 i.e., when a household denies receiving UC. The OLG covers this through the DUA (Department of Unemployment Assistance) match on the PI Checklist, which is listed as a mandatory match that case managers must process. The Matches Overview page states all outstanding matches must be reviewed and appropriate action taken, and BEACON will not allow case authorization when match information has not been dispositioned. The OLG's Unemployment Compensation page provides detailed procedures for processing DUA matches, including scenarios where match data conflicts with client statements. The Simplified Reporting Examples page (Q3/A3) explicitly states the DUA match 'verifies the receipt or non-receipt of Unemployment Compensation,' directly addressing the negative allegation scenario. While the OLG does not use FNS terminology of 'negative allegation,' the functional requirement is fully met: automated data matching identifies cases where clients deny UC but DUA records show otherwise, and workers must act on these matches.",
+    "olg_pages_found": [
+        "Matches Overview",
+        "Matches - Program Integrity (PI) Checklist \u2013 Overview",
+        "Unemployment Compensation (UC)",
+        "Simplified Reporting \u2013 Examples",
+        "Matches - Job Aid"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 146.40320467948914,
+    "_session_id": "52c46bec-8dea-4929-b142-da923cc982d1"
 }

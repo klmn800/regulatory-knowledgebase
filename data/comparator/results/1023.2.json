@@ -1,7 +1,17 @@
 {
     "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "FNS 1023.2 establishes two principles: (1) a household's claim of no other earned income may be accepted absent contradictory evidence, and (2) the reviewer must document why the claim was accepted. The OLG implicitly covers the first principle through its procedural framework — at Interim Report, 'if the client indicates that there have been no changes to income or expenses, additional verification is not required' (Simplified Reporting – Interim Report, Verifications section). The Unclear Information policy defines when contradictory evidence DOES exist and must be pursued, effectively creating the inverse rule. However, the OLG never explicitly states the general evidentiary principle that a claim of no earned income can be accepted in the absence of contradictory evidence, nor does it require workers to document WHY such a claim was accepted. The OLG's narrative requirements focus on situations where action IS taken (e.g., 'write a detailed narrative' when not acting on income under the gross limit), not on documenting the acceptance of a negative claim. This leaves a gap in the documentation requirement specifically.",
-    "olg_pages_found": ["Simplified Reporting – Interim Report", "Unclear Information", "Simplified Reporting – Recertification", "Simplified Reporting – Examples", "Types of Earned Income"],
-    "searches_performed": 5
+    "note": "FNS 1023.2 requires that (1) in the absence of contradictory evidence, the household's claim of no other earned income may be accepted, and (2) the reviewer must document why the claim was accepted. The OLG covers the first element through its Questionable & Contradictory Information policy (Examples of Questionable & Contradictory Information page) and Unclear Information procedures, which establish that if information is not contradictory, it should be accepted at face value \u2014 e.g., Example 2 explicitly states 'as the Department has no other information that contradicts what was reported...we should not consider anything they told us to be questionable or contradictory.' The OLG also has general narrative requirements (Completing BEACON Narratives): 'a detailed Narrative must be written following all case action and all client contact' describing 'the action that was taken, how the action impacted the [case].' However, the OLG does not specifically instruct workers to document WHY a negative allegation of no income was accepted. The general narrative policy covers case actions broadly but does not call out the specific practice of documenting the reasoning for accepting a claim of no income, which is what FNS requires. This is a minor but real gap in specificity \u2014 the documentation requirement for negative allegations is implicit in general narrative policy but never explicitly stated for this scenario.",
+    "olg_pages_found": [
+        "Examples of Questionable & Contradictory Information",
+        "What is Questionable and Contradictory Information?",
+        "Unclear Information",
+        "Completing BEACON Narratives",
+        "Narratives Guidelines Overview",
+        "Self-Declaration",
+        "Types of Earned Income"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 241.73209166526794,
+    "_session_id": "fe6e17ea-e11d-4ec9-871c-89c97931592b"
 }

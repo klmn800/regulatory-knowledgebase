@@ -1,0 +1,16 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG thoroughly covers educational income as noncountable when it is part of a financial aid package, grant, loan, or scholarship (see 'Educational Income - Noncountable for SNAP, TAFDC and EAEDC' and 'Students > Educational Loans, Grants, Scholarships, and Reimbursements'). The OLG also correctly notes that student income NOT part of a financial aid package is subject to normal countable/noncountable rules. However, the OLG does not address the specific FNS 1065.3 requirements for countable educational income: (1) it must be averaged over the period it is intended to cover, (2) it is not counted until the month in which it is received or anticipated with reasonable certainty, and (3) allowable exclusions are applied before proration. The OLG's income averaging section ('Types of Earned Income > Mandatory Income Averaging' and 'Income Averaging') covers school employees, self-employment, and general fluctuating income but does not mention educational grants/loans/scholarships that fall outside the noncountable exclusion and require averaging. A worker encountering countable educational income (e.g., a scholarship portion not meeting the financial aid exclusion) would have no OLG guidance on how to prorate it over the intended coverage period.",
+    "olg_pages_found": [
+        "Educational Income - Noncountable for SNAP, TAFDC and EAEDC",
+        "Noncountable Income",
+        "Students",
+        "Types of Earned Income",
+        "School Employees",
+        "Self-Employment SNAP"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 253.62939023971558,
+    "_session_id": "70cb019b-7b96-4492-b758-5891cfb66f66"
+}

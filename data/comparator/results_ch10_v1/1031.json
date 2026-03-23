@@ -1,0 +1,18 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers the core SVES/BENDEX data exchange requirement for RSDI in multiple locations: the Unearned Income Overview page states 'Social Security (RSDI) (verifiable via BENDEX. An overnight request must be submitted through a SVES Request in BEACON.)' The VC-1 Q&A page details when overnight SVES must be run (all HH members at application, RSDI/SSI recipients at recertification), covering both positive and negative allegation checking. The SNAP Disability Requirements page mentions 'You must first check to see if this information is verified on BENDEX, SDX or BEACON. If not, the client must provide written verification, for example, a copy of an award or benefits letter or a copy of a benefits check' \u2014 but this is in the context of disability status verification, not RSDI income amount verification. The Self-Declaration page confirms unearned income must be verified with documentary evidence if not available through an external data source, with collateral contact as backup. However, the OLG lacks a consolidated RSDI income verification standard that explicitly lists acceptable supplemental documents (current SSA award letter, other SSA correspondence, direct SSA office contact) as FNS Section 1031 requires. The verification hierarchy (data exchange first, then supplemental documents) is implied across scattered pages but never stated explicitly for RSDI income amounts. A worker needing to verify an RSDI amount that doesn't match BENDEX would not find clear guidance on which specific documents to request.",
+    "olg_pages_found": [
+        "Unearned Income Overview",
+        "VC-1 Q and A",
+        "SNAP Disability Requirements and Verifications",
+        "External Databases",
+        "Self-Declaration",
+        "Entering, Changing, and Ending Other (Unearned) Income Data",
+        "Garnishments from Social Security Benefits (RSDI & SSI)",
+        "Medicare Part D"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 295.1196320056915,
+    "_session_id": "ea18d6f9-2980-4fcb-b382-863d1efcbb61"
+}

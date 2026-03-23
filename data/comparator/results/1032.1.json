@@ -1,7 +1,14 @@
 {
     "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "The OLG addresses veterans' benefits verification across multiple pages but does not specify the FNS-required acceptable documents (Current VBA Award notice or direct contact with a VBA representative). The 'Federal Veterans Benefits' cross-program page (Vets_ActDuty_FedVetsBenes) states that 'All federal veterans' benefit payments must be verified in accordance with established procedures' and refers workers to the generic 'Unearned Income Overview and Verification Chart' — but never names the VBA Award notice as the standard document. The Simplified Reporting pages (Recertification and Interim Report) identify veterans' benefits as a 'mandatory verification item' and discuss determining VA State vs VA Federal Service-Related income type, but focus on BEACON data entry procedures rather than specifying what documents satisfy the verification requirement. The Unearned Income Overview notes that federal VA benefits are 'verifiable via SDX for clients who receive SSI' but does not address standard verification for non-SSI veterans. This is a gap in the written verification standards: the OLG tells workers to verify VA income but does not tell them what documents to accept.",
-    "olg_pages_found": ["Federal Veterans Benefits", "State Veterans Benefits", "Simplified Reporting – Recertification", "Simplified Reporting – Interim Report", "Unearned Income Overview", "SNAP Disability Requirements and Verifications", "Self-Declaration"],
-    "searches_performed": 7
+    "note": "The OLG covers verification of federal veterans' benefits but does not specify the FNS-required verification standards for positive allegations. FNS 1032.1 requires a 'Current VBA Award notice' or 'Direct contact with a VBA representative' as standard verification. The OLG's Verification Chart lists generic 'Benefit or award letter' and 'Statement from agency making payments' for unearned income generally, without calling out VBA-specific documents. The Federal Veterans Benefits page states benefits 'must be verified in accordance with established procedures' and refers to the Verification Chart, but focuses almost entirely on vendor payment verification (VSO letters, Veterans Vendor Payment Form) rather than verification of the benefit income amount itself. A worker reading the OLG would know veterans' benefits need verification but would not know that FNS specifically requires a VBA Award notice or direct VBA contact as the standard.",
+    "olg_pages_found": [
+        "Verification Chart",
+        "Federal Veterans Benefits",
+        "State Veterans Benefits",
+        "Collateral Contact"
+    ],
+    "searches_performed": 4,
+    "_elapsed": 114.19928526878357,
+    "_session_id": "b263d0df-4f99-47f4-b544-9dc49b663685"
 }

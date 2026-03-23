@@ -1,0 +1,7 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG recognizes dividends and interest as countable unearned income. The Unearned Income Overview lists 'dividends, interest, royalties' as unearned income types, the 1040 page instructs workers to enter 'Taxable and Tax-Exempt Interest as Interest Income' and 'Ordinary Dividends as Dividend Securities' in BEACON, and the Capital Gains page includes a detailed example of handling dividends from a 1099-DIV (including reinvested dividends). However, the OLG lacks dedicated coverage of interest from savings/checking accounts — FNS requires reviewers to specifically check for interest-bearing accounts, and the OLG provides no such guidance for workers. The OLG also omits the specific verification standards FNS prescribes for interest income: positive allegation verification procedures, the three conditions under which household statements cannot be accepted (lump sum within 12 months, lottery/gambling winnings within 12 months, case record showing >$1 interest at certification), and guidance on averaging interest/dividend income. Coverage is scattered across tax-form-oriented pages (1040, Capital Gains) rather than providing standalone worker guidance on identifying and verifying interest and dividend income at certification.",
+    "olg_pages_found": ["Unearned Income Overview", "How to Read a 1040 Federal Income Tax Form", "Capital Gains", "Entering, Changing, and Ending Other (Unearned) Income Data"],
+    "searches_performed": 6
+}

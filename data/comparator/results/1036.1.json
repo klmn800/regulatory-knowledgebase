@@ -1,14 +1,13 @@
 {
-    "classification": "partial_match",
+    "classification": "match",
     "confidence": "HIGH",
-    "note": "FNS 1036.1 requires verification of other government benefits via: (1) current award certificate, (2) official correspondence, or (3) direct contact with the appropriate agency. The OLG Verification Chart covers documentary options well \u2014 listing 'Benefit or award letter', 'Statement from agency making payments', and 'Copy of payment document or check' for government benefits. These align with FNS items 1 and 2. However, the OLG does not list direct agency contact as an accepted verification method specifically for government benefits. The OLG Collateral Contact page (Cross Programs > Verifications > Verification Methods > Collateral Contact) establishes a general framework for third-party contacts but explicitly states collateral contact 'must not be used as the first method of verification' and frames it as a fallback when documentary evidence is unavailable. FNS 1036.1, by contrast, lists direct agency contact as a co-equal standard verification method, not a fallback. The gap is that a worker verifying government benefits would not know from the OLG that directly contacting the paying agency is an accepted standard method \u2014 they would only reach collateral contact after the client reports difficulty obtaining documents.",
+    "note": "The OLG Verification Chart lists acceptable documents for verifying government benefits including 'Benefit or award letter,' 'Statement from agency making payments,' and 'Copy of payment document or check,' which correspond to FNS's 'Current award certificate' and 'Official correspondence.' For FNS's third method \u2014 'Direct contact with the appropriate agency' \u2014 the OLG's Collateral Contact page (Cross Programs > Verifications > Verification Methods) explicitly describes contacting third-party agencies as a verification method, including procedures for making the contact and documentation requirements. While collateral contact is presented as a general verification method rather than being specifically listed under government benefits in the Verification Chart, it is clearly available for any verification element and would cover direct agency contact. The three FNS verification methods are all addressed in OLG content.",
     "olg_pages_found": [
         "Verification Chart",
         "Collateral Contact",
-        "Documentary Evidence",
-        "Unearned Income Overview"
+        "Federal Veterans Benefits"
     ],
-    "searches_performed": 5,
-    "_elapsed": 153.09257221221924,
-    "_session_id": "64d11646-f5b2-4bd6-9691-fe0130d3d282"
+    "searches_performed": 6,
+    "_elapsed": 235.29731941223145,
+    "_session_id": "3eb0f37c-acd9-45b5-a449-715335932c79"
 }

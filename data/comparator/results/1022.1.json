@@ -1,7 +1,14 @@
 {
     "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "The OLG covers self-employment income verification on the 'Types of Earned Income > Verification of Income' page, listing three categories: business records, tax returns, and 'other appropriate documents showing gross income and the total business expenses.' FNS 1022.1 specifies five distinct document types: recent tax returns, paid payment invoices, receipts for business expenses, household statement about past earnings/expenses, and household statement about estimated earnings/expenses. The OLG's 'other appropriate documents' catch-all could encompass paid invoices and receipts, but does not explicitly name them, and notably omits household statements about past or estimated earnings as acceptable verification for self-employment income. The OLG does reference accepting written self-declarations in other contexts (e.g., Simplified Reporting Q13 for anticipated SE income changes), but the core self-employment verification section does not list household statements as an option. The requirement to follow certification policy for allowable business expenses IS well covered — the OLG has an extensive 'Allowable Costs of Doing Business' section and a separate 'Expenses Not Allowed' section with detailed BEACON entry procedures.",
-    "olg_pages_found": ["Types of Earned Income", "Self-Employment SNAP", "Simplified Reporting – Examples"],
-    "searches_performed": 4
+    "note": "The OLG covers self-employment income verification but with less specificity than FNS requires. The OLG (Types of Earned Income > Verification of Income) lists acceptable verification as 'business records, tax returns, other appropriate documents showing gross income and the total business expenses.' FNS 1022.1 enumerates specific document types: tax returns, paid payment invoices, receipts for business expenses, and household statements about past/estimated earnings/expenses. The OLG's 'business records' and 'other appropriate documents' catch-all implicitly covers invoices and receipts, but does not name them explicitly. Regarding household statements, the OLG (Self-Declaration page) establishes a hierarchical verification chain for earned income: documentary evidence first, then collateral contact, then written self-declaration as a last resort. FNS lists household statements as co-equal verification options alongside documents, not as a last resort. The OLG also does not state FNS's directive to 'use as many of the following documents as necessary to establish an accurate record.' The OLG does thoroughly cover allowable business expenses (Self-Employment SNAP > Allowable Costs of Doing Business). The gap is in the granularity of the verification document list and the different framing of household statements.",
+    "olg_pages_found": [
+        "Types of Earned Income",
+        "Self-Employment SNAP",
+        "Self-Declaration",
+        "Quality Assurance Unit"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 192.6604301929474,
+    "_session_id": "60a04f44-10d7-41cb-bd0e-57a95fd3f4fc"
 }

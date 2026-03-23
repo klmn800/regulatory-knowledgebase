@@ -1,7 +1,14 @@
 {
     "classification": "match",
     "confidence": "HIGH",
-    "note": "The OLG adequately covers TANF (TAFDC) as countable unearned income for SNAP purposes. The Unearned Income Overview page explicitly lists 'Assistance Payments such as TAFDC, EAEDC, or other assistance programs based on need' as countable unearned income, with multiple examples showing TAFDC grants counted in SNAP benefit calculations (e.g., Examples of Countable and Noncountable Recoupments, mixed noncitizen household calculations). Verification is addressed through the general unearned income verification standard — 'Staff must always use the electronic databases available as the primary source of verification for unearned income' — and since DTA administers both TAFDC and SNAP, the TAFDC grant amount is already available in BEACON without external contact. The FNS note about the state option to count TANF prospectively in retrospective budgeting systems is not applicable to Massachusetts, which uses prospective budgeting (Simplified Reporting) for virtually all SNAP households.",
-    "olg_pages_found": ["Unearned Income Overview", "Entering, Changing, and Ending Other (Unearned) Income Data", "Categorical Eligibility", "Change Reporting – Overview", "Transitional Benefits Alternative (TBA) Overview", "Calculation Rules and Attribution of Income for Mixed Noncitizen Households"],
-    "searches_performed": 5
+    "note": "The OLG explicitly lists 'Assistance Payments such as TAFDC, EAEDC, or other assistance programs based on need' as countable unearned income on the Unearned Income Overview page, with BEACON procedures for entering prospective amounts on the Other Income pages. FNS 1046 is a brief section that simply identifies TANF as a type of Public Assistance (referencing Section 1043 for verification standards) and notes a state option to count TANF prospectively in retrospectively budgeted systems. Since Massachusetts uses prospective budgeting for all SNAP households (not retrospective), the budgeting option note is not applicable. TAFDC is administered by DTA itself, so verification of TAFDC income is inherently available through BEACON system records without requiring external agency contact. The OLG adequately covers TAFDC as unearned income with appropriate BEACON entry procedures.",
+    "olg_pages_found": [
+        "Unearned Income Overview",
+        "Entering, Changing, and Ending Other (Unearned) Income Data",
+        "Categorical Eligibility",
+        "Transitional Benefits Alternative (TBA) Overview"
+    ],
+    "searches_performed": 8,
+    "_elapsed": 414.8718218803406,
+    "_session_id": "ebcf1d64-fdd1-46bd-8ca7-595cf246fbd0"
 }

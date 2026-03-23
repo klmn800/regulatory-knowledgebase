@@ -1,7 +1,18 @@
 {
-    "classification": "match",
+    "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "FNS 1011 is an introductory framing section stating that households may receive income from multiple types/sources (wages, PA grants, self-employment, alimony) and that verification procedures vary by source and budgeting/reporting type. The OLG covers this comprehensively through its distributed structure: the 'Types of Earned Income > Verification of Income' page details earned income verification (pay stubs, employer statements, business records, tax returns); the 'Unearned Income Overview' page lists 15+ unearned income types (TAFDC, EAEDC, pensions, veterans' benefits, RSDI, SSI, UC, alimony, etc.) with source-specific verification systems (SDX, BENDEX, SVES, DUA, The Work Number); and separate Simplified Reporting sections address how verification requirements differ at initial certification, Interim Report, and recertification. The OLG also states that 'Staff must always use the electronic databases available as the primary source of verification for unearned income,' reinforcing that procedures vary by source. While the OLG does not have a single overarching statement mirroring FNS 1011's framing, the practical content — verification for each income type and context-dependent procedures — is thoroughly addressed.",
-    "olg_pages_found": ["Types of Earned Income", "Unearned Income Overview", "Simplified Reporting – Interim Report", "How to Read a 1040 Federal Income Tax Form", "Simplified Reporting – Recertification", "Vendor Payments"],
-    "searches_performed": 6
+    "note": "FNS 1011 is an introductory framework section establishing three principles: (1) income verification procedures vary by source/type, (2) income is verified for the budget or issuance month depending on the household's budgeting and reporting requirements, and (3) some income must be verified for other months (e.g., student grants prorated over a period). The OLG covers the substance of all three through distributed content: the Verification Chart maps income types to required documents; 'Types of Earned Income > Verification of Income' details earned income verification (pay stubs, employer statements, self-employment records); the Simplified Reporting IR page specifies different verification rules for earned vs. unearned income (e.g., $125 threshold for unearned); and 'Unearned Income Overview > Mandatory Income Averaging' addresses student grant proration ('averaged over the period for which it was provided'). BEACON prospective budgeting procedures are documented for both earned and unearned income. However, the OLG lacks a consolidated overview explicitly stating the general framework that verification procedures are source-dependent and month-dependent. There is no single page explaining that the timing of verification (budget month vs. issuance month) depends on the household's budgeting and reporting system. Workers learn this implicitly through context-specific pages rather than through an explicit procedural framework.",
+    "olg_pages_found": [
+        "Verification Chart",
+        "Types of Earned Income",
+        "Unearned Income Overview",
+        "Simplified Reporting \u2013 Interim Report",
+        "Change Reporting \u2013 Recertification",
+        "Entering, Changing, and Ending Earned Income in BEACON",
+        "Entering, Changing, and Ending Other (Unearned) Income Data",
+        "Educational Income - Noncountable for SNAP, TAFDC and EAEDC"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 154.76365399360657,
+    "_session_id": "75365051-57fd-4985-96b0-04a733083a84"
 }

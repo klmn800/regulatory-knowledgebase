@@ -1,7 +1,14 @@
 {
     "classification": "not_applicable",
     "confidence": "HIGH",
-    "note": "FNS 1061.2 applies only to 'households participating based on retrospective eligibility,' which means Monthly Reporting households that use prior-month (budget month) income for eligibility determination. Massachusetts does not operate a Monthly Reporting system — it uses Simplified Reporting with prospective budgeting exclusively. Both 106 CMR 364.320 (Anticipating Income) and the OLG income pages frame all income determination as prospective, using anticipated income based on past indicators. No OLG or CMR content references retrospective budgeting, budget month income, or Monthly Reporting households. Since Massachusetts has no retrospective eligibility households, this FNS requirement has no Massachusetts policy counterpart and does not represent a gap in the OLG.",
-    "olg_pages_found": [],
-    "searches_performed": 6
+    "note": "FNS 1061.2 applies exclusively to households participating under retrospective eligibility, which is part of the Monthly Reporting and Retrospective Budgeting (MRRB) system. Massachusetts does not use MRRB. The 106 CMR establishes only Change Reporting (366.110) and Simplified Reporting (366.110(B)-(D), 366.910) systems, all using prospective budgeting. The OLG confirms this: all income budgeting procedures reference prospective calculations (the Prospective tab in BEACON for earned and unearned income). FNS Section 700 states that 'Retrospective eligibility and budgeting systems are used exclusively in monthly reporting systems,' and FNS Section 130 defines retrospective eligibility as 'only utilized for households certified under a MRRB system.' Since MA elected not to implement MRRB, this FNS requirement has no application to MA's SNAP program, and the OLG's exclusive focus on prospective budgeting is correct.",
+    "olg_pages_found": [
+        "Simplified Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "Entering, Changing, and Ending Earned Income in BEACON",
+        "Entering, Changing, and Ending Other (Unearned) Income Data"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 214.31344509124756,
+    "_session_id": "18993c3e-a71b-44ea-ad67-2ff754018a91"
 }

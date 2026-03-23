@@ -1,14 +1,15 @@
 {
     "classification": "match",
     "confidence": "HIGH",
-    "note": "FNS 1064 has two components: (1) the substantive policy rule that status reporting households must only report earned income changes involving source, hourly rate/salary, or employment status (part-time/full-time), and (2) a 5-step QC variance determination procedure for reviewing earned income in these cases. The OLG adequately covers component (1). The Simplified Reporting Examples page (Q1/A1) explicitly states that Simplified Reporting households must report 'any change in earned income (i.e. change in pay per hour, salary amount, starting, stopping or changing full-time or part-time status)' \u2014 which maps directly to the FNS triggers of source, hourly rate/salary, and employment status. The Change Reporting Overview page also covers income-related reporting requirements ($125+ threshold). The Interim Report pages provide detailed BEACON procedures for processing earned income changes at IR. Component (2) \u2014 the 5-step QC variance determination procedure \u2014 is purely QC methodology (how reviewers compare verified income to EW amounts, apply corrections, and determine excludable changes). This is not caseworker policy and has no OLG equivalent, which is expected.",
+    "note": "The OLG adequately covers the policy content of FNS 1064. FNS requires that status reporting households only report earned income changes in source, hourly rate/salary, or employment status (part-time to full-time or vice versa). The OLG covers these same triggers in multiple places: (1) 'Verifying Earned Income at Interim Report' states clients must verify earned income changes 'due to pay per hour, salary amount, source of income, starting, stopping or changing full-time or part-time status'; (2) 'Simplified Reporting Examples' Q1/A1 lists the same triggers for when income changes must be reported; (3) 'Reporting Requirements During Case Maintenance' explains that Simplified Reporting households have minimal reporting outside of application, IR, and recertification \u2014 only gross income exceeding the limit or ABAWD work hours. The bulk of FNS 1064 (Steps 1-5) describes QC review procedures for comparing verified income to EW amounts, which is audit methodology with no caseworker equivalent and does not need OLG coverage.",
     "olg_pages_found": [
-        "Simplified Reporting \u2013 Examples",
-        "Change Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Interim Report",
         "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
-        "Simplified Reporting \u2013 Interim Report"
+        "Simplified Reporting \u2013 Examples",
+        "Simplified Reporting \u2013 Overview",
+        "Verifications at Case Maintenance"
     ],
-    "searches_performed": 5,
-    "_elapsed": 221.6791479587555,
-    "_session_id": "185cb1cd-f245-4e03-8b59-858eb700ee54"
+    "searches_performed": 6,
+    "_elapsed": 216.170419216156,
+    "_session_id": "928f80bf-4b5b-47c7-9397-ac0869c784c7"
 }

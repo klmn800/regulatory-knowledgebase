@@ -1,0 +1,7 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "FNS 1023.2 establishes two principles: (1) a household's claim of no other earned income may be accepted absent contradictory evidence, and (2) the reviewer must document why the claim was accepted. The OLG implicitly covers the first principle through its procedural framework — at Interim Report, 'if the client indicates that there have been no changes to income or expenses, additional verification is not required' (Simplified Reporting – Interim Report, Verifications section). The Unclear Information policy defines when contradictory evidence DOES exist and must be pursued, effectively creating the inverse rule. However, the OLG never explicitly states the general evidentiary principle that a claim of no earned income can be accepted in the absence of contradictory evidence, nor does it require workers to document WHY such a claim was accepted. The OLG's narrative requirements focus on situations where action IS taken (e.g., 'write a detailed narrative' when not acting on income under the gross limit), not on documenting the acceptance of a negative claim. This leaves a gap in the documentation requirement specifically.",
+    "olg_pages_found": ["Simplified Reporting – Interim Report", "Unclear Information", "Simplified Reporting – Recertification", "Simplified Reporting – Examples", "Types of Earned Income"],
+    "searches_performed": 5
+}

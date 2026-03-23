@@ -1,0 +1,14 @@
+{
+    "classification": "partial_match",
+    "confidence": "MEDIUM",
+    "note": "FNS 1035.2 requires that when a household denies receiving workers' compensation income (negative allegation), data matching per Section 512 must be used to verify the denial. The OLG's Unearned Income Overview page explicitly lists workers' compensation as a type of unearned income and notes it is 'verifiable via SDX for clients who receive SSI,' with an overnight SVES Request in BEACON. The OLG also states: 'Staff must always use the electronic databases available as the primary source of verification for unearned income.' The Matches Overview, PI Checklist, and Matches Job Aid pages provide extensive procedures for processing data matches. However, the OLG does not explicitly address the negative allegation scenario for workers' compensation \u2014 i.e., the specific protocol for when a household denies receiving this income type and data matching must be used to investigate that denial. The data matching infrastructure and workers' comp verification pathway exist in the OLG, but the investigative framing for denied income is absent.",
+    "olg_pages_found": [
+        "Unearned Income Overview",
+        "Matches Overview",
+        "Matches - Program Integrity (PI) Checklist \u2013 Overview",
+        "Matches - Job Aid"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 232.9208540916443,
+    "_session_id": "a89d11c9-52a7-4b02-a6ce-4b907a6b4c5f"
+}

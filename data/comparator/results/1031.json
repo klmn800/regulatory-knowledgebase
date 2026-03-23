@@ -1,18 +1,18 @@
 {
-    "classification": "partial_match",
+    "classification": "match",
     "confidence": "HIGH",
-    "note": "The OLG covers the core SVES/BENDEX data exchange requirement for RSDI in multiple locations: the Unearned Income Overview page states 'Social Security (RSDI) (verifiable via BENDEX. An overnight request must be submitted through a SVES Request in BEACON.)' The VC-1 Q&A page details when overnight SVES must be run (all HH members at application, RSDI/SSI recipients at recertification), covering both positive and negative allegation checking. The SNAP Disability Requirements page mentions 'You must first check to see if this information is verified on BENDEX, SDX or BEACON. If not, the client must provide written verification, for example, a copy of an award or benefits letter or a copy of a benefits check' \u2014 but this is in the context of disability status verification, not RSDI income amount verification. The Self-Declaration page confirms unearned income must be verified with documentary evidence if not available through an external data source, with collateral contact as backup. However, the OLG lacks a consolidated RSDI income verification standard that explicitly lists acceptable supplemental documents (current SSA award letter, other SSA correspondence, direct SSA office contact) as FNS Section 1031 requires. The verification hierarchy (data exchange first, then supplemental documents) is implied across scattered pages but never stated explicitly for RSDI income amounts. A worker needing to verify an RSDI amount that doesn't match BENDEX would not find clear guidance on which specific documents to request.",
+    "note": "The OLG adequately covers FNS 1031's RSDI verification requirements. The Unearned Income Overview page states RSDI is 'verifiable via BENDEX' with an overnight SVES request in BEACON, and that 'Staff must always use the electronic databases available as the primary source of verification for unearned income.' The External Databases page requires BENDEX/SDX (SVES) at application to verify RSDI income, and the Verifications at Recertification page requires SVES for members receiving or presumed to be receiving RSDI when income hasn't been updated within the last year. BEACON automatically requests SVES updates for all household members with valid SSNs. The Verification Chart lists acceptable additional documentation for unearned income: 'Benefit or award letter; Check, or record of payment; Statement from agency making payments' \u2014 covering FNS's 'current SSA award letter' and 'other SSA correspondence.' The VC-1 Q&A page demonstrates checking all household members (running SVES for related individuals who may also receive RSDI). The only FNS-listed option not explicitly mentioned is 'direct contact with the SSA office,' but this is a minor omission given the OLG's comprehensive electronic-first verification framework.",
     "olg_pages_found": [
         "Unearned Income Overview",
+        "External Databases",
+        "Verifications at Reevaluation, Recertification and Interim Reports",
+        "Verification Chart",
         "VC-1 Q and A",
         "SNAP Disability Requirements and Verifications",
-        "External Databases",
-        "Self-Declaration",
-        "Entering, Changing, and Ending Other (Unearned) Income Data",
         "Garnishments from Social Security Benefits (RSDI & SSI)",
-        "Medicare Part D"
+        "SSP Amounts on BEACON"
     ],
-    "searches_performed": 7,
-    "_elapsed": 295.1196320056915,
-    "_session_id": "ea18d6f9-2980-4fcb-b382-863d1efcbb61"
+    "searches_performed": 5,
+    "_elapsed": 165.40546488761902,
+    "_session_id": "aaabef68-0f0c-4346-8f49-b171200cc7f1"
 }

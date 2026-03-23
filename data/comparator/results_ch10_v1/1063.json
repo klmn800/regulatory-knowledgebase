@@ -1,0 +1,18 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG adequately covers the $125 earned income change reporting threshold (Change Reporting \u2013 Overview: 'earned income that is more than $125.00 per month') and prospective budgeting BEACON procedures (Entering, Changing, and Ending Earned Income in BEACON: Prospective tab, Calculate, Refresh). Income averaging policy is addressed in Types of Earned Income > Income Averaging (mandatory vs. elective averaging, migrant exclusion). However, several FNS 1063 requirements lack OLG coverage: (1) Vacation/sick pay classification \u2014 FNS specifies counting it as income in the month received, as the same source unless terminated, or as a non-recurring lump sum if from a terminated source paid in one sum. The OLG has no guidance on vacation/sick pay treatment. (2) The OLG's lump sum content (Noncountable Income, SNAP Asset Guidelines) covers nonrecurring lump sums generally but does not address the specific rule linking final vacation/sick pay from terminated employment to lump sum treatment. (3) FNS requires using Section 722 procedures to determine whether new or terminated source income counts in the budget \u2014 the OLG has no equivalent policy guidance for when income from starting/ending jobs enters or exits the budget calculation. (4) The formal FNS definition of 'interim change' (recalculation from household-reported changes or agency-discovered changes including SSA/SSI COLAs and TANF mass adjustments, requiring documentation of both awareness and timely action) is not stated in the OLG, though the COLA mass change process is covered procedurally in a separate section (SSA COLA Overview). The OLG's change reporting and income sections are BEACON-procedure-heavy but lack the policy logic layer that FNS 1063 establishes for income source classification and budget timing.",
+    "olg_pages_found": [
+        "Change Reporting \u2013 Overview",
+        "Types of Earned Income",
+        "Entering, Changing, and Ending Earned Income in BEACON",
+        "Simplified Reporting \u2013 Interim Report",
+        "Noncountable Income",
+        "SNAP Asset Guidelines",
+        "Social Security Administration (SSA) Cost of Living Adjustment (COLA) Overview",
+        "Temporary COVID-19 Verification Procedures"
+    ],
+    "searches_performed": 8,
+    "_elapsed": 376.66200518608093,
+    "_session_id": "0aa4aed7-19d9-4470-87e5-2b89a5eb3569"
+}

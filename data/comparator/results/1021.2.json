@@ -1,7 +1,20 @@
 {
     "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "The OLG addresses some elements relevant to verifying employment when a household claims no earned income, but lacks the systematic investigative framework FNS 1021.2 requires for negative allegations. The OLG covers: (1) Work Number matching for cases with no earnings on file at Interim Report ('Procedures for Addressing Cases with No Earnings on File'), (2) cold-calling clients to clarify employment status, (3) VC-1 procedures for requesting earned income verification, (4) collateral contact with employers to verify termination at recertification, and (5) BEACON's Employment Status page which records whether the client was employed in the last 12 months. However, the OLG does not cover: exploring past employment history to detect undisclosed current employment, investigating circumstantial indicators of employment (shelter costs exceeding reported income, difficulty locating household members at home, seasonal employment areas), questioning non-employer collateral contacts about possible employment, conducting IEVS matches specifically to detect undisclosed employment at certification, verifying termination dates and final pay for known past employment, or documenting investigative steps when verification cannot be obtained. The OLG's approach is reactive (respond to Work Number matches, unclear information, or client-reported changes) rather than the proactive investigative approach FNS requires when employment is denied. Note that much of FNS 1021.2 is framed for QC reviewers, but the underlying policy requirements — particularly around IEVS checks, collateral contact investigation, and exploring circumstantial indicators — have caseworker-side equivalents that are absent from the OLG.",
-    "olg_pages_found": ["Simplified Reporting – Interim Report", "Types of Earned Income", "Unclear Information", "Entering, Changing, and Ending Earned Income in BEACON", "Simplified Reporting – Recertification", "Simplified Reporting – Examples", "School Employees"],
-    "searches_performed": 6
+    "note": "The OLG covers several elements of the FNS negative allegation investigation protocol but does not present them as a unified, systematic procedure for when a household denies employment. Specifically: (1) Work Number/wage match checks are well-covered \u2014 BEACON automatically checks Work Number at recertification and IR, and the OLG has detailed procedures for resolving matches (Simplified Reporting \u2013 Interim Report, Simplified Reporting \u2013 Recertification, The Work Number). (2) SLAM procedures (Addressing SLAM) require workers to explore how expenses are being met when they exceed income, partially covering FNS's requirement to investigate when shelter costs exceed reported income. (3) Collateral contact is documented as a verification method (Collateral Contact page) with procedures for when and how to use it, but it is framed as an alternative when documentary evidence is unavailable \u2014 not as a proactive investigative tool for exploring denied employment. (4) The Case Accuracy Assistant flags cases with 'dependent care expenses with no income' for follow-up, covering one suspicious-situation indicator. However, the OLG lacks: (a) a dedicated negative allegation protocol \u2014 no single procedure tells workers what to do when a household denies all employment; (b) explicit guidance to explore past employment history, types of work, and former employers; (c) instructions to investigate behavioral indicators of possible employment (member frequently absent, leaves at same time daily); (d) seasonal employment area investigation guidance; (e) procedures for verifying termination dates and final pay for known past employment; (f) explicit IEVS match procedures in the context of denied employment (the Work Number is covered but broader IEVS data matching for employment verification is not proceduralized for caseworkers). The OLG's coverage is fragmented across SLAM, Work Number, collateral contact, and IR procedures rather than consolidated into a negative allegation investigation workflow.",
+    "olg_pages_found": [
+        "Simplified Reporting \u2013 Interim Report",
+        "Simplified Reporting \u2013 Recertification",
+        "The Work Number",
+        "Addressing SLAM",
+        "SLAM Overview",
+        "Collateral Contact",
+        "Case Accuracy Assistant",
+        "Examples of Questionable & Contradictory Information",
+        "Temporary COVID-19 Verification Procedures",
+        "Temporary SNAP Recertification Interview Waiver"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 341.8380858898163,
+    "_session_id": "4e0beaa6-c7b1-4be2-8ff0-b7f25307fcab"
 }

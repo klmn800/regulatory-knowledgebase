@@ -1,0 +1,20 @@
+{
+    "classification": "different_standard",
+    "confidence": "HIGH",
+    "note": "FNS 1044.2 requires that for households with a student, the reviewer must contact the school to verify whether the student received financial assistance, even when the household denies receipt (negative allegation). The OLG takes the opposite approach: the Students > Educational Loans, Grants, Scholarships, and Reimbursements section explicitly states 'When a client indicates that they are a student, you must not request verification of any type of educational income.' The OLG's verification framework for students relies on telephonic self-declaration and only escalates to documentary evidence when student eligibility (not financial aid receipt) is considered questionable. There is no OLG guidance addressing the specific scenario of a student denying receipt of financial assistance and no instruction to contact the school as a verification step for that denial. This represents a materially different verification standard \u2014 FNS mandates school contact for negative allegations about financial assistance, while the OLG prohibits requesting verification of educational income entirely.",
+    "olg_pages_found": [
+        "Students"
+    ],
+    "searches_performed": 5,
+    "_layer3": {
+        "classification": "state_differs",
+        "note": "106 CMR 365.700 establishes special procedures for student income handling but does not specify verification methods for educational grants, scholarships, or loans. CMR 362.410 addresses student eligibility requirements (work-study, employment, dependent care) but does not mandate school contact to verify financial assistance receipt. The CMR is silent on whether negative allegations about educational assistance require collateral contact. Massachusetts has chosen a different verification approach (self-declaration without school contact) than FNS prescribes, but this choice is not explicitly documented in CMR. The OLG's prohibition on requesting educational income verification appears to exceed what CMR requires and contradicts FNS Handbook 310's mandatory verification standard for negative allegations.",
+        "cmr_sections": [
+            "365.700",
+            "362.400",
+            "362.410"
+        ],
+        "action_recommended": "investigate",
+        "priority": "HIGH"
+    }
+}

@@ -1,7 +1,19 @@
 {
-    "classification": "partial_match",
+    "classification": "match",
     "confidence": "HIGH",
-    "note": "The OLG adequately covers wage/salary types (Types of Earned Income page), BEACON data entry procedures (Entering, Changing, and Ending Earned Income in BEACON), and verification requirements at reporting periods — including extensive IR procedures for Work Number matching, cold calls, and VC-1 issuance when income changes or is inconsistent. The Recertification Interview page instructs workers to ask open-ended questions like 'What sources of income do you have?' which partially addresses FNS's questioning mandate. However, the OLG does not address the FNS requirement to investigate when household expenses exceed reported income. This concept appears only narrowly in the Dependent Care Expenses page ('if all expenses exceed income, request additional verification') but is not stated as a general investigative duty applicable to all income verification. The OLG's Unclear Information page covers follow-up on conflicting information during case maintenance, but this is reactive (triggered by received documents) rather than the proactive investigative standard FNS requires at certification.",
-    "olg_pages_found": ["Types of Earned Income", "Entering, Changing, and Ending Earned Income in BEACON", "Simplified Reporting – Interim Report", "Simplified Reporting – Recertification", "The Recertification Interview", "Unclear Information", "Dependent Care Expenses Deduction", "Simplified Reporting – Examples"],
-    "searches_performed": 6
+    "note": "The OLG adequately covers all three core requirements of FNS 1021. (1) Verification of wages: The 'Types of Earned Income > Verification of Income' section states earned income is mandatory verification, must display gross wages and hours worked, and lists acceptable documents (pay stubs, pay envelopes, employer statements). (2) Questioning and documenting earnings: The OLG covers this across multiple pages \u2014 workers must consult households about hourly/piecework income expectations ('Types of Earned Income > Income from Hourly and Piecework Employment'), must ask clarifying questions about stipends vs. wages, and the Interim Report procedures require detailed follow-up on earned income changes including cold-calling clients and sending VC-1s when verification is inconsistent. The Narratives Guidelines checklist requires documenting income verification. (3) Investigating when expenses exceed income: The OLG has a dedicated cross-program policy called SLAM (Suspected Living Above Means) under 'Cross Programs > SLAM > Addressing SLAM' that explicitly requires workers to explore how households are meeting expenses when reported expenses exceed income, including asking clarifying questions about subsidized costs, unreported income, and split expenses. The 'Verification of Dependent Care Expenses' section also flags the expenses-exceed-income scenario as triggering additional verification. The L1 finding that the expense-to-income investigation mandate was missing appears to have been based on incomplete search results \u2014 the SLAM policy directly implements this FNS requirement.",
+    "olg_pages_found": [
+        "Types of Earned Income",
+        "Entering, Changing, and Ending Earned Income in BEACON",
+        "Simplified Reporting \u2013 Interim Report",
+        "Addressing SLAM",
+        "SLAM Overview",
+        "Dependent Care Expenses Deduction",
+        "Narratives Guidelines Overview",
+        "VC-1 Overview",
+        "Examples of Questionable & Contradictory Information"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 188.67409467697144,
+    "_session_id": "e3cedffe-fff5-4fbe-997c-ab6a763420f9"
 }

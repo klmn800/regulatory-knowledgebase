@@ -1,14 +1,13 @@
 {
-    "classification": "partial_match",
+    "classification": "match",
     "confidence": "HIGH",
-    "note": "The OLG covers the core FNS requirement that households deriving annual income in a period shorter than one year must have it averaged over 12 months, provided it is not received on an hourly or piecework basis. This is found on the 'Types of Earned Income' page under 'Mandatory Income Averaging' and reinforced on the 'Self-Employment SNAP' and 'School Employees' pages. However, the OLG does not use the term 'contract income' as a standalone category \u2014 instead it frames the rule through specific household types (school employees, sharecroppers, farmers, self-employed). A worker encountering a non-school, non-farm contract worker (e.g., a consultant with a 6-month contract) would need to generalize from the 'Annual Income in Shorter Period' rule, which is possible but not explicit. The FNS section's content about reported vs. unreported contract income sources, error correction procedures, and QC reviewer calculations is QC methodology (how reviewers evaluate caseworker work) rather than caseworker-actionable policy, so the absence of that content from the OLG is expected. The gap is narrow: the averaging rule itself is present, but the OLG lacks explicit guidance identifying 'contract income' as a category subject to mandatory averaging outside of the school employee and self-employment contexts.",
+    "note": "The OLG adequately covers the core FNS 1065.2 requirement. The 'Types of Earned Income' page states under 'Mandatory Income Averaging' that 'Households that derive their annual income in a period of time shorter than one year must have their income averaged over a twelve month period, provided the income is not received on an hourly or piecework basis.' This is the same rule as FNS 1065.2, with the same hourly/piecework exception. The OLG doesn't use the term 'contract income' but covers the concept and provides specific guidance for applicable populations (school employees, sharecroppers, farmers, self-employed). The remainder of FNS 1065.2 addresses QC reviewer procedures (correcting EW errors in reported/unreported contract income sources, AORD adjustments) which are audit methodology, not caseworker policy \u2014 the OLG is not expected to cover these.",
     "olg_pages_found": [
         "Types of Earned Income",
         "Self-Employment SNAP",
-        "School Employees",
-        "Migrant Farm Laborers"
+        "School Employees"
     ],
-    "searches_performed": 6,
-    "_elapsed": 254.87578225135803,
-    "_session_id": "20b50928-2cd8-41d9-9d86-801178fb9b9f"
+    "searches_performed": 3,
+    "_elapsed": 95.21600246429443,
+    "_session_id": "8362f4c7-e6a8-49a4-b3d8-2fc0ae1c5334"
 }

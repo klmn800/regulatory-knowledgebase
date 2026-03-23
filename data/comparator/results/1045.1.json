@@ -1,0 +1,15 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers foster care payments at the policy level for BOTH children and adults. The Household Composition - SNAP page ('Special Situation' section) explicitly states that families with foster care children or foster care adults may include or exclude them, with payments countable if included. The Verification Chart lists 'Foster Care' as mandatory (M) for SNAP, requiring 'Official document showing the foster care placement of the person in your care' \u2014 functionally equivalent to FNS's requirement to verify legal assignment. However, the detailed procedural guidance is heavily skewed toward adult foster care (MassHealth AFC program): the Adult Foster Care page has 13 sections covering payment verification, room and board rules, agency fees, BEACON procedures, and multiple worked examples. There is no comparable guidance for foster children (DCF placements). A worker processing a case with a foster child would know the basic include/exclude rule and that verification is mandatory, but would lack specific guidance on: how to verify DCF placement and payment amounts, what documents to request, how to enter foster child payments in BEACON, and how foster child payments differ from adult foster care payments. The Work Rules page mentions foster children from DCF in passing (Example 3), confirming the concept exists in the OLG, but no dedicated policy or procedural content addresses it.",
+    "olg_pages_found": [
+        "Household Composition - SNAP",
+        "Adult Foster Care",
+        "Verification Chart",
+        "The General Work Rules",
+        "Quality Assurance Unit"
+    ],
+    "searches_performed": 5,
+    "_elapsed": 157.29447436332703,
+    "_session_id": "519ac783-5cbd-43b7-9d9a-ffea3dff1832"
+}

@@ -1,7 +1,17 @@
 {
     "classification": "not_applicable",
     "confidence": "HIGH",
-    "note": "FNS 1062 describes QC reviewer procedures for determining unearned income variances (Steps A-E: compare verified amounts to worksheet, correct for errors, determine excludability). These are audit methodology for QC reviewers, not caseworker policy. The only caseworker-relevant element — the $125 reporting threshold for unearned income changes — is well-covered in the OLG across multiple pages including Change Reporting Overview (Income-Related Changes), Simplified Reporting Interim Report, and Simplified Reporting Examples. The OLG's QC Compliance page addresses client cooperation with QC reviews but does not (and should not) contain QC reviewer variance determination procedures.",
-    "olg_pages_found": ["Change Reporting – Overview", "Simplified Reporting – Interim Report", "Simplified Reporting – Examples", "Quality Control Compliance", "Unearned Income Overview"],
-    "searches_performed": 4
+    "note": "FNS Section 1062 is a QC variance determination procedure, not a caseworker policy requirement. Steps A-E describe how a QC reviewer audits unearned income: comparing verified amounts to worksheet amounts, correcting for worker error or household misreporting, determining excludability, and deciding which amount to use in error determination. These are audit methodology steps with no caseworker equivalent. The only policy content \u2014 the $125 change reporting threshold for unearned income \u2014 is thoroughly covered in the OLG across multiple pages: Change Reporting \u2013 Overview (Income-Related Changes), Simplified Reporting \u2013 Interim Report (What Changes Must be Verified), Simplified Reporting \u2013 Examples (Reporting Requirements), and SNAP COLA (Reporting Requirement Threshold). The OLG also covers BEACON procedures for entering and changing unearned income data (Entering, Changing, and Ending Other (Unearned) Income Data page with Prospective Tab and Source Tab sections). The QC-specific procedures in Steps A-E are appropriately absent from a caseworker guide.",
+    "olg_pages_found": [
+        "Change Reporting \u2013 Overview",
+        "Simplified Reporting \u2013 Interim Report",
+        "Simplified Reporting \u2013 Examples",
+        "Simplified Reporting \u2013 Reporting Requirements During Case Maintenance",
+        "SNAP Annual Cost-of-Living Adjustment (COLA)",
+        "Entering, Changing, and Ending Other (Unearned) Income Data",
+        "Unearned Income Overview"
+    ],
+    "searches_performed": 4,
+    "_elapsed": 136.5183882713318,
+    "_session_id": "07e8e599-ec61-484c-a4b8-a23552541681"
 }

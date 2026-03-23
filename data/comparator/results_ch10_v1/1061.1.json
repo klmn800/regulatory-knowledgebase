@@ -1,0 +1,7 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG covers the mechanics of prospective income calculation extensively — BEACON's Prospective Tab for both earned and unearned income (pages: Entering/Changing Earned Income in BEACON, Entering/Changing Other (Unearned) Income Data) and the gross income test applied during benefit calculation (How SNAP Benefits are Calculated: 'If the Total Income exceeds the household's gross income limit, the household will be denied for over-income'). The child support exclusion from the gross income test is also documented. However, the OLG does not articulate the concept of 'prospective eligibility' as a distinct eligibility framework — it treats prospective income calculation as a BEACON data-entry procedure rather than explaining the policy logic that income tests are applied to prospective (anticipated) income for the budget month. The FNS requirement about what happens when income exceeds the limit due to a variance (and distinguishing included vs. excluded variances per Chapter 7 timeframes) is a QC-review concept with no caseworker equivalent in the OLG, but the underlying policy — that households whose prospective income exceeds the limit are denied — is present.",
+    "olg_pages_found": ["How SNAP Benefits are Calculated", "Entering, Changing, and Ending Earned Income in BEACON", "Entering, Changing, and Ending Other (Unearned) Income Data", "Types of Earned Income", "Child Support Expenses Deduction", "What is SNAP?", "Unclear Information"],
+    "searches_performed": 5
+}

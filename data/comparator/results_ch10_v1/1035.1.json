@@ -1,0 +1,14 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG Unearned Income Overview page explicitly lists 'Workers compensation' as a type of unearned income and notes it is 'verifiable via SDX for clients who receive SSI.' The Verification Chart provides generic unearned income verification guidance listing 'Benefit or award letter' and 'Statement from agency making payments' as acceptable documents \u2014 this would encompass a Workers' Compensation award notice but does not name it specifically. The OLG also has general collateral contact procedures (Collateral Contact page) that would apply when documentary evidence is unavailable, but does not specifically direct workers to contact the Workers' Compensation office as FNS requires. The gap is specificity: FNS identifies the Workers' Compensation award notice as 'best evidence' and prescribes contacting the Workers' Compensation office as the fallback, while the OLG relies on generic verification categories that a worker would need to interpret and apply to workers' compensation cases without specific guidance.",
+    "olg_pages_found": [
+        "Unearned Income Overview",
+        "Verification Chart",
+        "Collateral Contact",
+        "Self-Declaration"
+    ],
+    "searches_performed": 6,
+    "_elapsed": 191.23312616348267,
+    "_session_id": "87f59861-254e-495c-a2f5-da3bf8332d4c"
+}

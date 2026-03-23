@@ -1,14 +1,14 @@
 {
     "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "The OLG Unearned Income Overview page explicitly lists 'Workers compensation' as a type of unearned income and notes it is 'verifiable via SDX for clients who receive SSI.' The Verification Chart provides generic unearned income verification guidance listing 'Benefit or award letter' and 'Statement from agency making payments' as acceptable documents \u2014 this would encompass a Workers' Compensation award notice but does not name it specifically. The OLG also has general collateral contact procedures (Collateral Contact page) that would apply when documentary evidence is unavailable, but does not specifically direct workers to contact the Workers' Compensation office as FNS requires. The gap is specificity: FNS identifies the Workers' Compensation award notice as 'best evidence' and prescribes contacting the Workers' Compensation office as the fallback, while the OLG relies on generic verification categories that a worker would need to interpret and apply to workers' compensation cases without specific guidance.",
+    "note": "The OLG does not mention Workers' Compensation by name anywhere \u2014 a grep of all scraped OLG data returns zero results for 'Workers Compensation' or any variant. The Verification Chart (Cross Programs > Verifications > Verification Types > Verification Chart) includes a generic unearned income row listing 'Benefit or award letter' and 'Statement from agency making payments' as acceptable verification, which would apply to Workers' Compensation by category. The OLG also has general collateral contact procedures (Cross Programs > Verifications > Verification Methods > Collateral Contact). However, two specific FNS requirements are not met: (1) FNS specifies the Workers' Compensation award notice as 'best evidence,' establishing a verification hierarchy \u2014 the OLG lists acceptable documents without ranking them; (2) FNS requires contacting the Workers' Compensation office as a specific fallback when the award notice is unavailable \u2014 the OLG's general collateral contact guidance does not identify the WC office as a specific verification source. The generic verification framework partially covers the requirement, but the absence of Workers' Compensation-specific guidance means workers have no explicit instruction for this income type.",
     "olg_pages_found": [
-        "Unearned Income Overview",
         "Verification Chart",
         "Collateral Contact",
-        "Self-Declaration"
+        "Self-Declaration",
+        "Unearned Income Overview"
     ],
-    "searches_performed": 6,
-    "_elapsed": 191.23312616348267,
-    "_session_id": "87f59861-254e-495c-a2f5-da3bf8332d4c"
+    "searches_performed": 7,
+    "_elapsed": 261.2923934459686,
+    "_session_id": "701340cd-c8ac-4f63-be68-703e7a03adc1"
 }

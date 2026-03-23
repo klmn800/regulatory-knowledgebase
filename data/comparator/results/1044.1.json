@@ -1,22 +1,23 @@
 {
     "classification": "different_standard",
     "confidence": "HIGH",
-    "note": "FNS 1044.1 requires verification of educational grants, scholarships, and loans when a household makes a positive allegation, specifying school contact, provider agency contact, receipts, and prevailing transportation rates. The parent section 1044 further mandates verification 'even if it is waived from counting as income' and requires documentation on Form FNS-380. The OLG takes the opposite position: 'When a client indicates that they are a student, you must not request verification of any type of educational income.' This is reinforced through multiple Q&A examples (e.g., Q12/A12 explicitly states scholarship verification is not needed). Massachusetts treats all educational income as noncountable per 106 CMR 363.230(D) and the OLG, which may explain why verification is not required operationally. However, the FNS verification requirement applies regardless of whether the income is counted, creating a direct conflict between federal QC standards and state operational guidance.",
+    "note": "The OLG and FNS have directly opposing verification standards for educational income. FNS 1044.1 requires that when a household alleges receipt of educational grants, scholarships, or loans, the reviewer must verify income and expenses through school contact, provider agencies, receipts, and prevailing transportation rates. The parent section FNS 1044 further states that educational income 'must be verified and the results documented on Form FNS-380, even if it is waived from counting as income.' In contrast, the OLG (Students > Educational Loans, Grants, Scholarships, and Reimbursements; and Cross Programs > Educational Income - Noncountable) explicitly instructs workers: 'When a client indicates that they are a student, you must not request verification of any type of educational income.' Massachusetts treats all educational income as noncountable and exempts it entirely from verification, while FNS requires verification regardless of countability. This is not a gap but a deliberate policy difference \u2014 the OLG affirmatively prohibits what FNS affirmatively requires. Whether this reflects a permissible state policy choice or a compliance issue would require review of the State Plan and any FNS waivers.",
     "olg_pages_found": [
-        "Students - Educational Loans, Grants, Scholarships, and Reimbursements",
-        "Students - Verifying Student Eligibility",
-        "Students - Student Examples",
+        "Students",
+        "Educational Income - Noncountable for SNAP, TAFDC and EAEDC",
         "Noncountable Income",
-        "Unearned Income Overview - Mandatory Income Averaging"
+        "Unearned Income Overview"
     ],
     "searches_performed": 4,
+    "_elapsed": 177.1199049949646,
+    "_session_id": "8c4c8f03-2f20-46dd-accd-8dd8f580bbb8",
     "_layer3": {
         "classification": "state_differs",
-        "note": "106 CMR 363.230(D) explicitly excludes educational loans, grants, and scholarships from counted income without qualification. CMR 363.210 establishes general verification standards for income but does not separately mandate verification of excluded income categories. FNS Handbook 310 Section 1044.1 requires verification of educational grants/scholarships/loans 'even if waived from counting as income' and specifies verification methods (school contact, provider contact, receipts, transportation rates). Massachusetts has chosen a state policy that treats educational assistance as categorically excluded and non-countable, which appears to eliminate the operational need for verification. However, FNS QC standards still require such verification for audit purposes. The gap reflects a legitimate state-federal difference in implementation approach, not an oversight in the OLG.",
+        "note": "106 CMR 363.230(D) explicitly excludes educational loans, grants, and scholarships from countable income without qualification. CMR 363.210(G) and 366.320(8)(a) establish that verification is required when 'information provided by the applicant is questionable and affects the household's eligibility or benefit level' \u2014 but educational income is categorically excluded, making it inherently unquestionable and non-affecting. Massachusetts regulation allows the OLG's no-verification approach for excluded income categories. FNS Handbook 1044.1 requires verification 'even if it is waived from counting as income,' but this exceeds Massachusetts's regulatory mandate. The state has chosen not to verify educational income; this is a permissible state policy choice under exclusion rules, not a compliance gap.",
         "cmr_sections": [
             "363.230(D)",
-            "363.210",
-            "366.320(8)"
+            "363.210(G)",
+            "366.320(8)(a)"
         ],
         "action_recommended": "investigate",
         "priority": "MEDIUM"

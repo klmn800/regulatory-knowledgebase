@@ -1,0 +1,9 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS 1063.3 is entirely a QC review procedure. It instructs QC reviewers on how to handle earned income sources that were 'never reported to the agency, or reported but never processed' during the error determination process \u2014 specifically, to use verified income from the sample month, apply annualization/proration per Section 1065, or exclude sources within exclusionary timeframes. These are QC error calculation methods, not caseworker policy requirements. The underlying caseworker obligations (clients must report income changes, workers must process reported income) are covered by separate FNS sections and have their own OLG counterparts (e.g., Simplified Reporting, Change Reporting, The Work Number data matching). No OLG coverage of this QC-specific procedure is expected or needed.",
+    "olg_pages_found": [],
+    "searches_performed": 5,
+    "_elapsed": 227.59522986412048,
+    "_session_id": "aa2477da-c3b8-429e-96bc-cb2c6d39ec09"
+}

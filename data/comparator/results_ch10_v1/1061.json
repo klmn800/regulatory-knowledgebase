@@ -1,0 +1,7 @@
+{
+    "classification": "match",
+    "confidence": "HIGH",
+    "note": "The OLG adequately covers FNS 1061's requirements. The gross income test is explicitly documented in 'How SNAP Benefits are Calculated > Step One' ('If the Total Income exceeds the household's gross income limit, the household will be denied for over-income') and the 'Income Limits' page. The elderly/disabled exemption from the gross income test is clearly stated in multiple locations: Step One ('A SNAP household that includes at least one elderly or disabled member is not subject to a gross income test'), the 'Elderly or Disabled Clients' page ('gross income standard exception'), and the 'Income Limits' page ('There is no gross income limit for a household that includes an elderly and/or disabled person'). The net income calculation is covered through the full 6-step benefit calculation methodology. Categorical eligibility exemptions are documented on the 'Categorical Eligibility' page, explicitly stating households are 'considered to have automatically passed a SNAP gross income test, net income test and/or asset test.' The FNS requirement that calculations be 'recorded, documented, and reported' reflects QC review framing; operationally, BEACON records these determinations automatically.",
+    "olg_pages_found": ["How SNAP Benefits are Calculated", "Income Limits", "Elderly or Disabled Clients", "Categorical Eligibility", "Child Support Expenses Deduction"],
+    "searches_performed": 4
+}

@@ -1,0 +1,14 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS Section 1066 is a QC review procedure under '1060 VARIANCE DETERMINATIONS' that prescribes how QC reviewers should audit households with multiple income types (Comparison I: total all income and test against error threshold; Comparison II: evaluate each type separately if Comparison I exceeds threshold). This is audit methodology for error determination, not caseworker policy. The underlying SNAP policy\u2014that all income types must be counted and each type has its own rules\u2014is already covered by the OLG through separate pages for earned income, unearned income, and self-employment (annualized) income, plus the 'How SNAP Benefits are Calculated' page which instructs workers to add together countable earned and unearned income. Workers do not need a Comparison I/II framework; they simply enter all income correctly and BEACON calculates the allotment.",
+    "olg_pages_found": [
+        "How SNAP Benefits are Calculated",
+        "Unearned Income Overview",
+        "Self-Employment SNAP",
+        "Entering, Changing, and Ending Other (Unearned) Income Data"
+    ],
+    "searches_performed": 3,
+    "_elapsed": 142.31756567955017,
+    "_session_id": "102303df-8001-4a0e-9600-68dd4fc03eeb"
+}

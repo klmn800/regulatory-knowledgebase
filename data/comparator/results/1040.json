@@ -1,7 +1,20 @@
 {
-    "classification": "not_applicable",
+    "classification": "partial_match",
     "confidence": "HIGH",
-    "note": "FNS Section 1040 is a parent header section containing only the title 'VERIFICATION STANDARDS FOR OTHER UNEARNED INCOME.' with no substantive policy requirements of its own. All actual verification standards are in its child sections: 1041 (Contributions/Income-In-Kind), 1042 (Deemed Income), 1043 (PA/GA), 1044 (Educational Grants/Scholarships/Loans), 1045 (Other Unearned Income types including foster care, dividends, rental, pensions), and 1046 (TANF). Each subsection contains specific verification procedures and should be evaluated individually. The OLG does address unearned income verification broadly — the Unearned Income Overview page directs staff to use electronic databases (DUA, SSA, SAVE, MobiusView) as primary verification sources, and specific income types like contributions, sponsor deeming, and pensions have dedicated OLG pages with verification procedures — but the granular gap assessment belongs at the subsection level.",
-    "olg_pages_found": ["Unearned Income Overview", "Contribution Income", "Sponsor Deeming", "Noncountable Income", "Simplified Reporting – Interim Report"],
-    "searches_performed": 5
+    "note": "FNS 1040 establishes verification standards for 'other unearned income' covering contributions/income-in-kind (1040), alimony (1041.1), PA/GA (1043), educational income (1044), and other unearned income generally (1045). The OLG covers most of these topics but through dispersed, income-type-specific pages rather than a unified verification framework. Contributions: Well covered \u2014 the OLG's 'Contribution Income' page specifies VC-1 requirements, acceptable documents (FA-1 form or written documentation showing payee, amount, purpose, frequency), and examples. Alimony: Partially covered \u2014 the OLG 'Vendor Payments' page includes an alimony example (Example 4) showing $800 alimony as countable unearned income, but there is no dedicated alimony verification section specifying acceptable documents (divorce decrees, court orders, alimony checks) as FNS 1041.1 does. Educational income: Massachusetts treats all educational income (grants, scholarships, loans, fellowships) as noncountable for SNAP, and the OLG explicitly states 'you must not request verification of any type of educational income' \u2014 a state policy choice that supersedes FNS 1044's detailed verification requirements. PA/GA: The OLG lists assistance payments as unearned income verifiable via electronic databases (SDX/BENDEX/SVES). General verification hierarchy: The OLG establishes a clear framework (electronic databases first \u2192 documentary evidence \u2192 collateral contact \u2192 self-declaration as last resort) in the 'Unearned Income Overview' and 'Self-Declaration' pages. The main gap is the lack of a consolidated verification standards section for other unearned income \u2014 acceptable document types for specific income categories like alimony, annuities, and disability benefits are not enumerated the way FNS 1041.1 enumerates them.",
+    "olg_pages_found": [
+        "Contribution Income",
+        "Vendor Payments",
+        "Unearned Income Overview",
+        "Self-Declaration",
+        "Students",
+        "Educational Income - Noncountable for SNAP, TAFDC and EAEDC",
+        "Unemployment Compensation (UC)",
+        "Federal Veterans Benefits",
+        "Entering, Changing, and Ending Other (Unearned) Income Data",
+        "Verifications at Reevaluation, Recertification and Interim Reports"
+    ],
+    "searches_performed": 7,
+    "_elapsed": 246.36045694351196,
+    "_session_id": "6ab15b78-06c7-419b-919a-e3debf50a3d1"
 }

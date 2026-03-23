@@ -1,0 +1,14 @@
+{
+    "classification": "not_applicable",
+    "confidence": "HIGH",
+    "note": "FNS Section 1063.2 describes QC review procedures for examining earned income in the third effective month following a certification action. The section details Comparison I and II methodology: how QC reviewers verify sample month income, correct EW worksheets, apply the $125 threshold test, and determine error amounts using fluctuating income in the error determinant month. These are federal audit procedures (how reviewers evaluate whether the EW applied policy correctly), not caseworker-actionable policy. The underlying policy concepts ARE covered in the OLG: prospective budgeting procedures appear in 'Entering, Changing, and Ending Earned Income in BEACON' (Calculate the Monthly Prospective Amount, Prospective Tab), income averaging is covered in 'Types of Earned Income' (Income Averaging, Anticipated Income) and 'Unearned Income Overview' (Income Averaging Due to Fluctuating Income), and the $125 change reporting threshold is addressed in 'Change Reporting - Overview' (Income-Related Changes). The QC-specific review steps (Comparison I/II, error threshold tests, error determinant month calculations, 30-day regulatory timeframe adjustments) are audit methodology with no caseworker equivalent.",
+    "olg_pages_found": [
+        "Entering, Changing, and Ending Earned Income in BEACON",
+        "Types of Earned Income",
+        "Unearned Income Overview",
+        "Change Reporting - Overview"
+    ],
+    "searches_performed": 3,
+    "_elapsed": 219.5934817790985,
+    "_session_id": "f259de93-f348-4fc8-a63e-528742642838"
+}

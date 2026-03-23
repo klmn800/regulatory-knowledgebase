@@ -1,13 +1,13 @@
 {
     "classification": "not_applicable",
     "confidence": "HIGH",
-    "note": "FNS 1063.1 is entirely a QC review procedure, not caseworker policy. It describes the Comparison I / Comparison II framework that QC reviewers use to determine whether income errors occurred during the first and second effective months of a certification. The concepts of 'Comparison I allotment test,' 'Comparison II corrected worksheet,' 'error threshold,' and 'AORD review date' are audit methodology \u2014 they instruct reviewers on how to evaluate whether the eligibility worker's actions were correct, not how workers should process cases. The underlying caseworker-facing policies (prospective budgeting, income calculation using four consecutive weeks, BEACON prospective income entry) ARE covered in the OLG under 'Types of Earned Income > Income from Steady Employment,' 'Entering, Changing, and Ending Earned Income in BEACON > Prospective Tab,' and related pages. But the QC testing framework itself has no caseworker equivalent and would not be expected in the OLG.",
+    "note": "FNS Section 1063.1 is entirely a QC review methodology section. It describes how QC reviewers should audit earned income in the first and second effective months of a certification using the Comparison I (verify sample month income against error threshold) and Comparison II (correct EW worksheet errors, determine what changes should have been in effect) framework. The concepts of AORD, error thresholds, and the two-comparison structure are QC audit procedures with no caseworker equivalent. The underlying caseworker-side policies (prospective budgeting, income calculation at certification, processing interim changes) are covered in other FNS sections and have corresponding OLG coverage under 'Types of Earned Income', 'Entering, Changing, and Ending Earned Income in BEACON', and 'Simplified Reporting - Interim Report'. The OLG's 'Quality Assurance Unit' page exists but covers organizational structure, not QC review methodology. This section does not contain SNAP policy requirements that workers need to follow.",
     "olg_pages_found": [
+        "Quality Assurance Unit",
         "Types of Earned Income",
-        "Entering, Changing, and Ending Earned Income in BEACON",
-        "Simplified Reporting \u2013 Interim Report"
+        "Entering, Changing, and Ending Earned Income in BEACON"
     ],
-    "searches_performed": 6,
-    "_elapsed": 271.36862230300903,
-    "_session_id": "4a22bf63-3e16-47f2-8b64-0b2baaa964fa"
+    "searches_performed": 4,
+    "_elapsed": 160.6766881942749,
+    "_session_id": "9e48b380-0275-44f8-9d63-4b913edb75f3"
 }

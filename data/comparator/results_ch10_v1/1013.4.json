@@ -1,0 +1,7 @@
+{
+    "classification": "partial_match",
+    "confidence": "HIGH",
+    "note": "The OLG acknowledges that non-monthly income must be converted to a monthly figure (\"How SNAP Benefits are Calculated\" states: \"if any income or expense is received at a frequency other than monthly (e.g., weekly, biweekly), you must convert it to a monthly figure\"). However, the OLG does not specify the conversion multipliers workers should use for manual calculations. The CMR (106 CMR 364.340) explicitly defines Massachusetts's conversion standard as weekly × 4.333 and biweekly × 2.167 — which differs from the FNS standard of weekly × 4.3 and biweekly × 2.15. This is a permissible state option under FNS 1013.4, which allows states to use their own 'public assistance conversion standard.' The OLG's BEACON procedures (Prospective tab) tell workers to click 'Calculate' and BEACON computes the monthly amount, but the OLG never documents what multiplier BEACON applies. A worker performing a manual calculation would not know to use 4.333/2.167 from the OLG alone. Additionally, the OLG Income Averaging Example 3 instructs workers to 'divide the monthly amount by four weeks for a weekly amount,' implying a multiplier of 4.0, which conflicts with both the CMR (4.333) and FNS (4.3) standards.",
+    "olg_pages_found": ["How SNAP Benefits are Calculated", "Types of Earned Income", "Entering, Changing, and Ending Earned Income in BEACON"],
+    "searches_performed": 6
+}
