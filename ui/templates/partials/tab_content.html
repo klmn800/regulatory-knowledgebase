@@ -1,0 +1,14 @@
+{% if results.result_count == 0 %}
+<div class="no-results">
+    <p>No results found in <strong>{{ SOURCES[source].label }}</strong> for "{{ query }}".</p>
+</div>
+{% else %}
+<div class="results-header">
+    <span class="result-count">{{ results.result_count }} result{{ 's' if results.result_count != 1 }} in {{ SOURCES[source].label }}</span>
+</div>
+<div class="results-list">
+    {% for result in results.results %}
+    {% include "partials/result_card.html" %}
+    {% endfor %}
+</div>
+{% endif %}

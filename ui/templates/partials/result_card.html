@@ -1,0 +1,54 @@
+{% set meta = result.metadata %}
+{% set score = result.score %}
+{% set score_pct = (score * 100)|round|int %}
+
+<div class="result-card">
+    <div class="result-header">
+        <span class="result-rank">#{{ result.rank }}</span>
+        <span class="result-score" title="Similarity: {{ '%.4f'|format(score) }}">{{ score_pct }}%</span>
+
+        {% if source == "olg" %}
+            <span class="result-context">{{ meta.get("breadcrumb", "") }}</span>
+        {% elif source == "fns" %}
+            <span class="result-context">FNS 310 &gt; Ch{{ meta.get("chapter", "") }}: {{ meta.get("chapter_title", "") }}</span>
+        {% elif source == "cmr" %}
+            <span class="result-context">106 CMR {{ meta.get("chapter", "") }} ({{ meta.get("program", "") }})</span>
+        {% endif %}
+    </div>
+
+    <div class="result-meta">
+        {% if source == "olg" %}
+            {% if meta.get("page_title") %}
+                <span class="meta-item"><strong>Page:</strong> {{ meta.page_title }}</span>
+            {% endif %}
+            {% if meta.get("section_heading") %}
+                <span class="meta-item"><strong>Section:</strong> {{ meta.section_heading }}</span>
+            {% endif %}
+            {% if meta.get("last_updated") %}
+                <span class="meta-item"><strong>Updated:</strong> {{ meta.last_updated }}</span>
+            {% endif %}
+        {% elif source == "fns" %}
+            {% if meta.get("section_number") %}
+                <span class="meta-item"><strong>Section:</strong> {{ meta.section_number }} {{ meta.get("section_title", "") }}</span>
+            {% endif %}
+            {% if meta.get("handbook_pages") %}
+                <span class="meta-item"><strong>Pages:</strong> {{ meta.handbook_pages }}{% if meta.get("pdf_pages") %} (PDF p.{{ meta.pdf_pages }}){% endif %}</span>
+            {% endif %}
+        {% elif source == "cmr" %}
+            {% if meta.get("section_number") %}
+                <span class="meta-item"><strong>Section:</strong> {{ meta.section_number }} {{ meta.get("section_title", "") }}</span>
+            {% endif %}
+            {% if meta.get("chapter_title") %}
+                <span class="meta-item"><strong>Chapter:</strong> {{ meta.chapter_title[:80] }}</span>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <div class="result-text">{{ result.text[:500] }}{% if result.text|length > 500 %}...{% endif %}</div>
+
+    {% if source == "olg" and meta.get("url") %}
+        <div class="result-footer">
+            <a href="{{ meta.url }}" target="_blank" class="source-link">View in OLG</a>
+        </div>
+    {% endif %}
+</div>

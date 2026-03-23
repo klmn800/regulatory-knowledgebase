@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<form hx-post="/ask"
+      hx-target="#answer-area"
+      hx-indicator="#ask-spinner"
+      class="ask-form">
+
+    <div class="ask-bar">
+        <input type="text"
+               name="question"
+               placeholder="Ask a question about DTA policy..."
+               autocomplete="off"
+               autofocus>
+        <button type="submit">Ask</button>
+    </div>
+
+    <div class="ask-options">
+        <div class="source-checkboxes">
+            <span class="option-label">Sources:</span>
+            {% for key, src in SOURCES.items() %}
+            <label class="checkbox-label">
+                <input type="checkbox"
+                       name="sources"
+                       value="{{ key }}"
+                       {{ 'checked' if key == DEFAULT_SOURCE }}>
+                {{ src.short_label }}
+            </label>
+            {% endfor %}
+        </div>
+
+        <div class="program-filter">
+            <span class="option-label">Program:</span>
+            <select name="program">
+                <option value="all">All</option>
+                <option value="SNAP">SNAP</option>
+                <option value="TAFDC">TAFDC</option>
+                <option value="EAEDC">EAEDC</option>
+            </select>
+        </div>
+
+        <label class="checkbox-label deep-toggle">
+            <input type="checkbox" name="deep" value="true">
+            Deep analysis
+        </label>
+    </div>
+</form>
+
+<div id="answer-area">
+    <div id="ask-spinner" class="htmx-indicator loading-state">
+        <div class="spinner"></div>
+        <p>Analyzing policy sources...</p>
+    </div>
+</div>
+{% endblock %}

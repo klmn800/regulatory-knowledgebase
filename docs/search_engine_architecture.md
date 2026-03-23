@@ -58,8 +58,16 @@ A policy search tool for DTA policy analysts. Accepts natural-language queries, 
 | Disagreements | Surfaced in synthesis only | Raw search shouldn't editorialize; synthesis can note conflicts |
 | Program filtering | Essential, core UI element | Analysts typically work within one program at a time |
 | Backend framework | FastAPI | Async (good for API calls), auto-docs, Pydantic models, Python-native |
+| Frontend | HTMX + server-rendered HTML | One Python codebase, no Node toolchain. Form→results pattern is ideal for HTMX. |
+| Result layout | Tabbed by source | Clean separation per source. OLG tab pre-selected. Other tabs load on click (lazy). |
 | LLM integration | Claude Agent SDK | Structured agent with tools, same pattern as comparator |
 | Agent prompts | Shared `agents/prompts/` folder | Search agent needs the same DTA policy context as comparator |
+| Search history | Server-side persistence | Analysts can revisit prior searches. Stored in backend database. |
+| Results per tab | 5 (with "show more") | Concise default, matches CLI. Analyst can load more on demand. |
+| Agent retrieval | Iterative, on analyst toggle | Agent works with fixed passages by default. "Dig deeper" toggle lets it search for more. |
+| Authentication | None | Internal tool on trusted network. No login required. |
+| Export | Results exportable (clipboard, CSV) | More useful than bookmarks for analyst workflow. |
+| No-results handling | Suggest other sources | "No OLG results — try CMR or FNS?" with one-click buttons to broaden search. |
 
 ## Tech Stack
 
@@ -67,7 +75,7 @@ A policy search tool for DTA policy analysts. Accepts natural-language queries, 
 - **Vector store**: ChromaDB (existing, 6 collections)
 - **Embeddings**: Voyage AI `voyage-3` (existing)
 - **LLM**: Claude via Agent SDK (for synthesis)
-- **Frontend**: TBD
+- **Frontend**: HTMX + server-rendered HTML (FastAPI templates)
 - **Retrieval layer**: Wraps existing `core/query.py` Python API
 
 ## Architecture Notes
@@ -90,9 +98,18 @@ The FastAPI layer adds:
 
 - Uses Claude Agent SDK
 - Shares prompt templates with comparator (`agents/prompts/`)
-- Receives: original query + retrieved passages (with metadata)
-- Returns: natural-language answer with inline citations + optional disagreement flags
+- **Default mode**: Receives original query + retrieved passages (with metadata). Produces natural-language answer with inline citations. Flags cross-source disagreements when present.
+- **Deep mode** (analyst toggle): Agent gains access to search tools and can pull additional chunks if the initial results are insufficient. Only activated when analyst explicitly requests it.
 - Only invoked on analyst request (not on every search)
+
+### Extensibility — New Sources
+
+New policy sources may be added in the future. The search engine must scale without architectural changes:
+
+- **Backend**: `core/query.py` already uses `_resolve_source_paths()` / `_resolve_source_config()` — adding a source is one dict entry per resolver. The FastAPI layer should discover available sources from these resolvers, not hardcode OLG/CMR/FNS.
+- **UI**: Source checkboxes and tabs should be dynamically generated from the list of available sources, not hardcoded.
+- **Synthesis agent**: Prompt templates should be source-agnostic where possible. Source-specific context (like "CMR uses formal legal language") can be injected via metadata.
+- **Search history**: Source list stored per search record so historical searches remain valid even if sources are added/removed.
 
 ### Relationship to Comparator
 
@@ -104,14 +121,12 @@ The comparator and search engine are **separate tools** with **shared infrastruc
 
 ## Open Questions
 
-- [ ] Frontend framework/approach (React? Plain HTML/JS? Something else?)
-- [ ] How should multi-source results be organized? (Tabbed by source? Interleaved by relevance? Side-by-side?)
-- [ ] Should search history be persisted? (Useful for analysts revisiting prior research)
-- [ ] How many results to show by default? (Current CLI default is 5)
-- [ ] Should the synthesis agent have access to search tools (iterative retrieval), or just receive a fixed set of passages?
-- [ ] Authentication/access control needed? Or internal-only tool?
-- [ ] Should there be a "saved searches" or "bookmarks" feature?
-- [ ] How to handle queries that match nothing? (Suggest reformulations? Broaden to other sources?)
+All initial design questions resolved (2026-03-23). New questions as they arise:
+
+- [ ] Search history storage — SQLite? Or reuse ChromaDB? Need to decide on persistence layer.
+- [ ] Export formats — CSV is clear. What does "copy to clipboard" look like for multi-result output?
+- [ ] HTMX template structure — how to organize Jinja2 templates (base layout, partials for tabs, result cards)
+- [ ] Deployment — how will analysts access this? Local machine? Shared server?
 
 ## File Structure (Planned)
 
@@ -131,7 +146,9 @@ policy_navigator/
 │   ├── search_agent.py           ← New: synthesis agent for search
 │   └── prompts/                  ← Shared prompt templates
 │
-├── ui/                           ← Frontend (TBD)
+├── ui/                           ← HTMX templates + static assets
+│   ├── templates/                ← Jinja2 templates
+│   └── static/                   ← CSS, minimal JS
 │
 ├── core/
 │   ├── embedder.py               ← Existing
@@ -141,3 +158,4 @@ policy_navigator/
 ## Changelog
 
 - **2026-03-18**: Initial design decisions captured. Core flow, tech stack, and user model established.
+- **2026-03-23**: All open design questions resolved. Added: HTMX frontend, tabbed layout, search history, export, synthesis agent deep mode, no-results handling.
