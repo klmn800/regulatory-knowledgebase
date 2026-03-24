@@ -201,7 +201,8 @@ def get_search_clients(source: str) -> dict:
 
 
 def do_search(source: str, query: str, top_n: int = 5,
-              program: str | None = None) -> dict:
+              program: str | None = None,
+              exclude_programs: list[str] | None = None) -> dict:
     """Execute a search against a source. Returns query.py response dict."""
     clients = get_search_clients(source)
     return search_with_client(
@@ -209,6 +210,7 @@ def do_search(source: str, query: str, top_n: int = 5,
         clients=clients,
         collection="sections",
         program=program,
+        exclude_programs=exclude_programs,
         top_n=top_n,
         threshold=0.0,
     )
@@ -222,6 +224,7 @@ def run_standard(
     question: str,
     sources: list[str],
     program: str | None,
+    exclude_programs: list[str] | None,
     config: configparser.ConfigParser,
 ) -> SynthesisResult:
     """Pre-fetch results from all sources, single Claude call to synthesize."""
@@ -242,7 +245,7 @@ def run_standard(
 
     for source in sources:
         print(f"  Searching {SOURCE_LABELS.get(source, source)}...", end="", flush=True)
-        response = do_search(source, question, top_n=results_per_search, program=program)
+        response = do_search(source, question, top_n=results_per_search, program=program, exclude_programs=exclude_programs)
         all_evidence[source] = response["results"]
         search_queries.append(f"{source}: {question}")
 
@@ -292,6 +295,7 @@ def run_deep(
     question: str,
     sources: list[str],
     program: str | None,
+    exclude_programs: list[str] | None,
     config: configparser.ConfigParser,
 ) -> SynthesisResult:
     """Agentic loop — Claude can search iteratively across sources."""
@@ -314,7 +318,7 @@ def run_deep(
 
     for source in sources:
         print(f"  Searching {SOURCE_LABELS.get(source, source)}...", end="", flush=True)
-        response = do_search(source, question, top_n=results_per_search, program=program)
+        response = do_search(source, question, top_n=results_per_search, program=program, exclude_programs=exclude_programs)
         all_evidence[source] = response["results"]
         search_queries.append(f"{source}: {question}")
 
@@ -432,6 +436,7 @@ def run_deep(
                         source, query,
                         top_n=results_per_search,
                         program=program,
+                        exclude_programs=exclude_programs,
                     )
 
                     # Accumulate evidence
@@ -492,6 +497,7 @@ def run_synthesis(
     question: str,
     sources: list[str] | None = None,
     program: str | None = None,
+    exclude_programs: list[str] | None = None,
     deep: bool = False,
     max_searches: int | None = None,
 ) -> SynthesisResult:
@@ -501,7 +507,8 @@ def run_synthesis(
     Args:
         question: Natural language policy question.
         sources: Which sources to search (default: ["olg"]).
-        program: Filter by program (SNAP, TAFDC, EAEDC). OLG/CMR only.
+        program: Filter to only this program (SNAP, TAFDC, EAEDC).
+        exclude_programs: Exclude these programs (keeps cross-program content).
         deep: If True, use agentic loop with iterative search.
         max_searches: Override max search budget for deep mode.
     """
@@ -514,9 +521,9 @@ def run_synthesis(
         config.set("synthesis", "max_searches", str(max_searches))
 
     if deep:
-        return run_deep(question, sources, program, config)
+        return run_deep(question, sources, program, exclude_programs, config)
     else:
-        return run_standard(question, sources, program, config)
+        return run_standard(question, sources, program, exclude_programs, config)
 
 
 # ============================================================

@@ -54,12 +54,23 @@ async def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
 
+PROGRAM_FILTERS = {
+    "all": {"program": None, "exclude_programs": None},
+    "snap": {"program": None, "exclude_programs": ["TAFDC", "EAEDC"]},
+    "tafdc": {"program": None, "exclude_programs": ["SNAP", "EAEDC"]},
+    "eaedc": {"program": None, "exclude_programs": ["SNAP", "TAFDC"]},
+    "snap_only": {"program": "SNAP", "exclude_programs": None},
+    "tafdc_only": {"program": "TAFDC", "exclude_programs": None},
+    "eaedc_only": {"program": "EAEDC", "exclude_programs": None},
+}
+
+
 @app.post("/ask", response_class=HTMLResponse)
 async def ask(
     request: Request,
     question: str = Form(...),
     sources: Optional[list[str]] = Form(None),
-    program: Optional[str] = Form(None),
+    program_filter: str = Form("all"),
     deep: bool = Form(False),
 ):
     """Synthesize an answer to a policy question."""
@@ -70,16 +81,15 @@ async def ask(
     if not sources:
         sources = [DEFAULT_SOURCE]
 
-    # Filter out empty program selection
-    if program == "" or program == "all":
-        program = None
+    pf = PROGRAM_FILTERS.get(program_filter, PROGRAM_FILTERS["all"])
 
     # Run synthesis in a thread to avoid blocking the event loop
     result = await asyncio.to_thread(
         run_synthesis,
         question=question,
         sources=sources,
-        program=program,
+        program=pf["program"],
+        exclude_programs=pf["exclude_programs"],
         deep=deep,
     )
 

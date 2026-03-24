@@ -105,6 +105,11 @@ main {
     background: var(--color-primary-hover);
 }
 
+.ask-bar button[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Options row */
 .ask-options {
     display: flex;
@@ -190,9 +195,20 @@ main {
     display: block;
 }
 
+/* Progress text animation */
+.progress-text {
+    transition: opacity 0.2s ease;
+}
+
 /* Answer card */
 .answer-container {
     margin-top: 0.5rem;
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .answer-card {

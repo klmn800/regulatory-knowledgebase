@@ -4,6 +4,7 @@
 <form hx-post="/ask"
       hx-target="#answer-area"
       hx-indicator="#ask-spinner"
+      hx-disabled-elt=".ask-bar button"
       class="ask-form">
 
     <div class="ask-bar">
@@ -31,11 +32,14 @@
 
         <div class="program-filter">
             <span class="option-label">Program:</span>
-            <select name="program">
-                <option value="all">All</option>
-                <option value="SNAP">SNAP</option>
-                <option value="TAFDC">TAFDC</option>
-                <option value="EAEDC">EAEDC</option>
+            <select name="program_filter">
+                <option value="all">All programs</option>
+                <option value="snap">Exclude TAFDC & EAEDC</option>
+                <option value="tafdc">Exclude SNAP & EAEDC</option>
+                <option value="eaedc">Exclude SNAP & TAFDC</option>
+                <option value="snap_only">SNAP only</option>
+                <option value="tafdc_only">TAFDC only</option>
+                <option value="eaedc_only">EAEDC only</option>
             </select>
         </div>
 
@@ -49,7 +53,43 @@
 <div id="answer-area">
     <div id="ask-spinner" class="htmx-indicator loading-state">
         <div class="spinner"></div>
-        <p>Analyzing policy sources...</p>
+        <p class="progress-text" data-steps='[
+            "Searching policy sources...",
+            "Reading through results...",
+            "Analyzing relevance...",
+            "Composing answer..."
+        ]'>Searching policy sources...</p>
     </div>
 </div>
+
+<script>
+document.addEventListener('htmx:beforeRequest', function(e) {
+    if (e.detail.target && e.detail.target.id === 'answer-area') {
+        var area = document.getElementById('answer-area');
+        var prev = area.querySelector('.answer-container');
+        if (prev) prev.remove();
+
+        const el = document.querySelector('.progress-text');
+        const steps = JSON.parse(el.dataset.steps);
+        let i = 0;
+        el.textContent = steps[0];
+        el._interval = setInterval(function() {
+            i++;
+            if (i < steps.length) {
+                el.style.opacity = 0;
+                setTimeout(function() {
+                    el.textContent = steps[i];
+                    el.style.opacity = 1;
+                }, 200);
+            }
+        }, 3000);
+    }
+});
+document.addEventListener('htmx:afterRequest', function(e) {
+    if (e.detail.target && e.detail.target.id === 'answer-area') {
+        const el = document.querySelector('.progress-text');
+        if (el && el._interval) clearInterval(el._interval);
+    }
+});
+</script>
 {% endblock %}
