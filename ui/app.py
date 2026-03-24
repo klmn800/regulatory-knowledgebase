@@ -24,14 +24,16 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from ui.search import SOURCES, DEFAULT_SOURCE, init_clients, do_search
+from ui.history import init_db, save_search, get_recent, get_by_id
 from agents.synthesis import run_synthesis
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize search clients on startup."""
+    """Initialize search clients and database on startup."""
     print("Initializing search clients...")
     init_clients()
+    init_db()
     print(f"Ready — {len(SOURCES)} sources loaded.")
     yield
 
@@ -93,6 +95,16 @@ async def ask(
         deep=deep,
     )
 
+    # Save to history
+    await asyncio.to_thread(
+        save_search,
+        question=question,
+        sources=sources,
+        program_filter=program_filter,
+        deep=deep,
+        result=result,
+    )
+
     return templates.TemplateResponse(
         request,
         "partials/answer.html",
@@ -103,6 +115,43 @@ async def ask(
         },
     )
 
+
+# ============================================================
+# HISTORY
+# ============================================================
+
+@app.get("/history", response_class=HTMLResponse)
+async def history_page(request: Request):
+    """Full history page."""
+    searches = await asyncio.to_thread(get_recent, 50)
+    return templates.TemplateResponse(
+        request, "history.html", {"searches": searches}
+    )
+
+
+@app.get("/history/recent", response_class=HTMLResponse)
+async def history_recent(request: Request):
+    """Recent searches partial for sidebar."""
+    searches = await asyncio.to_thread(get_recent, 10)
+    return templates.TemplateResponse(
+        request, "partials/history_list.html", {"searches": searches}
+    )
+
+
+@app.get("/history/{search_id}", response_class=HTMLResponse)
+async def history_detail(request: Request, search_id: int):
+    """View a past search result."""
+    entry = await asyncio.to_thread(get_by_id, search_id)
+    if not entry:
+        return HTMLResponse("<p>Search not found.</p>", status_code=404)
+    return templates.TemplateResponse(
+        request, "history_detail.html", {"entry": entry}
+    )
+
+
+# ============================================================
+# RAW SEARCH (power users)
+# ============================================================
 
 @app.post("/search", response_class=HTMLResponse)
 async def search(

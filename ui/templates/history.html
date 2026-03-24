@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="history-page">
+    <div class="history-page-header">
+        <h2>Search History</h2>
+        <a href="/" class="back-link">Back to search</a>
+    </div>
+
+    {% if searches %}
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>Question</th>
+                <th>Sources</th>
+                <th>Time</th>
+                <th>Cost</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in searches %}
+            <tr onclick="window.location='/history/{{ s.id }}'" class="history-row">
+                <td class="history-q">
+                    {{ s.question[:80] }}{% if s.question|length > 80 %}...{% endif %}
+                    {% if s.deep %}<span class="deep-badge">deep</span>{% endif %}
+                </td>
+                <td>{{ s.sources|join(', ') }}</td>
+                <td>{{ s.duration_seconds|round(1) }}s</td>
+                <td>${{ '%.4f'|format(s.cost) }}</td>
+                <td>{{ s.created_at[:16] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="history-empty">No searches yet. <a href="/">Ask a question</a> to get started.</p>
+    {% endif %}
+</div>
+{% endblock %}

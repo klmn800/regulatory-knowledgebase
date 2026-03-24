@@ -47,6 +47,14 @@ header {
     padding: 1rem 2rem;
 }
 
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: var(--max-width);
+    margin: 0 auto;
+}
+
 header h1 {
     font-size: 1.25rem;
     font-weight: 600;
@@ -55,6 +63,22 @@ header h1 {
 header .subtitle {
     font-size: 0.85rem;
     color: var(--color-text-muted);
+}
+
+header nav {
+    display: flex;
+    gap: 1rem;
+}
+
+header nav a {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+header nav a:hover {
+    color: var(--color-primary);
 }
 
 main {
@@ -275,6 +299,22 @@ main {
     color: var(--color-text-muted);
 }
 
+.copy-btn {
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    margin-left: auto;
+}
+
+.copy-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
 /* Evidence section */
 .evidence-section {
     margin-top: 0.5rem;
@@ -407,4 +447,138 @@ main {
 
 .no-results p {
     font-size: 0.95rem;
+}
+
+/* History */
+.history-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.history-page-header h2 {
+    font-size: 1.1rem;
+}
+
+.back-link {
+    font-size: 0.85rem;
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.history-table th {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 2px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.history-table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.history-row {
+    cursor: pointer;
+}
+
+.history-row:hover {
+    background: var(--color-bg);
+}
+
+.history-q {
+    max-width: 400px;
+}
+
+.deep-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    background: var(--color-primary);
+    color: white;
+    margin-left: 0.3rem;
+    vertical-align: middle;
+}
+
+.history-empty {
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-text-muted);
+}
+
+.history-empty a {
+    color: var(--color-primary);
+}
+
+/* History sidebar */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.history-item {
+    display: block;
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    text-decoration: none;
+    color: var(--color-text);
+}
+
+.history-item:hover {
+    background: var(--color-bg);
+}
+
+.history-question {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.history-meta {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+}
+
+/* History detail */
+.detail-question {
+    margin-bottom: 1rem;
+}
+
+.detail-question h2 {
+    font-size: 1.15rem;
+    margin-bottom: 0.3rem;
+}
+
+.detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.detail-meta span {
+    padding-right: 0.5rem;
+    border-right: 1px solid var(--color-border);
+}
+
+.detail-meta span:last-child {
+    border-right: none;
 }

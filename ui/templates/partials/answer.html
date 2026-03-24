@@ -8,6 +8,7 @@
             <span>{{ result.input_tokens|int }} + {{ result.output_tokens|int }} tokens</span>
             <span>${{ '%.4f'|format(result.cost) }}</span>
             <span>{{ result.search_queries|length }} search{{ 'es' if result.search_queries|length != 1 }}</span>
+            <button class="copy-btn" onclick="copyAnswer()" title="Copy answer to clipboard">Copy</button>
         </div>
     </div>
 

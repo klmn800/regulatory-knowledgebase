@@ -1,0 +1,17 @@
+{% if searches %}
+<div class="history-list">
+    {% for s in searches %}
+    <a href="/history/{{ s.id }}" class="history-item">
+        <span class="history-question">{{ s.question[:60] }}{% if s.question|length > 60 %}...{% endif %}</span>
+        <span class="history-meta">
+            {{ s.sources|join(', ') }}
+            {% if s.deep %} | deep{% endif %}
+            | {{ s.duration_seconds|round(1) }}s
+            | {{ s.created_at[:16] }}
+        </span>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<p class="history-empty">No searches yet.</p>
+{% endif %}

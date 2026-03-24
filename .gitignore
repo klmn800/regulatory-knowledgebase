@@ -18,6 +18,9 @@ data/chroma_db/
 data/comparator/sessions/
 data/comparator/.~lock.*
 
+# Search history (user-specific, regeneratable)
+data/search_history.db
+
 # QC analysis (lock files)
 data/qc_analysis/.~lock.*
 
