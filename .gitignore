@@ -17,6 +17,12 @@ data/chroma_db/
 # Comparator outputs (session logs are large, lock files are temp)
 data/comparator/sessions/
 data/comparator/.~lock.*
+data/comparator/*.ods
+data/comparator/*.csv
+data/comparator/*.html
+
+# Author outputs (generated per assignment)
+data/author/
 
 # Search history (user-specific, regeneratable)
 data/search_history.db
@@ -26,6 +32,13 @@ data/qc_analysis/.~lock.*
 
 # Source files (large, not ours to redistribute)
 source_files/
+
+# Reference materials (copyrighted DTA documents, not ours to redistribute)
+agents/references/*.docx
+agents/references/sample_pages/
+
+# Personal notes
+big-to-do-list.txt
 
 # Python
 __pycache__/

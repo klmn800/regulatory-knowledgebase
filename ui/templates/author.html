@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="author-page">
+
+    <div class="author-header">
+        <h2>OLG Author</h2>
+        <p class="author-subtitle">Research, draft, and format OLG pages</p>
+    </div>
+
+    <div class="author-layout">
+
+        <!-- Left: Assignment Form -->
+        <div class="author-form-section">
+            <div class="form-group">
+                <label for="author-name">Assignment Name</label>
+                <input type="text" id="author-name" name="name"
+                       placeholder="e.g. vc1_scripts" autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label for="author-assignment">Assignment</label>
+                <textarea id="author-assignment" name="assignment" rows="8"
+                          placeholder="Describe what OLG content to create..."></textarea>
+            </div>
+
+            <div class="author-actions">
+                <button class="btn btn-primary" onclick="authorRun('research')"
+                        title="Run research phase only (API synthesis)">Research</button>
+                <button class="btn btn-accent" onclick="authorRun('draft')"
+                        title="Launch Claude Code drafter in a terminal window">Draft</button>
+                <button class="btn btn-secondary" onclick="authorRun('format')"
+                        title="Convert draft.md to styled .docx">Format</button>
+                <button class="btn btn-outline" onclick="authorRun('resume')"
+                        title="Resume a previous Claude Code session">Resume</button>
+            </div>
+        </div>
+
+        <!-- Right: Existing Assignments -->
+        <div class="author-assignments-section">
+            <h3>Assignments</h3>
+            <div id="assignments-list"
+                 hx-get="/author/assignments"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <p class="text-muted">Loading...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Results Area -->
+    <div id="author-results">
+        <div id="author-spinner" class="author-loading" style="display:none;">
+            <div class="spinner"></div>
+            <p class="author-progress-text">Warming up...</p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

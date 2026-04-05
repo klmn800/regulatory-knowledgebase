@@ -1,0 +1,15 @@
+<div class="author-result-container">
+    <div class="answer-card">
+        <h3>Research Report</h3>
+        <div class="answer-body">
+            {{ report | markdown | safe }}
+        </div>
+        <div class="answer-meta">
+            <span>{{ duration }}s</span>
+            <span>{{ searches }} search{{ 'es' if searches != 1 }}</span>
+            <span>${{ cost }}</span>
+            <span class="text-muted">{{ name }}</span>
+        </div>
+    </div>
+    <p class="author-next-hint">Research saved. Click <strong>Draft</strong> to launch the Claude Code authoring session.</p>
+</div>

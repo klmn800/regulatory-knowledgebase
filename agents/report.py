@@ -8,6 +8,7 @@ Usage:
 """
 
 import csv
+import json
 import argparse
 import webbrowser
 from pathlib import Path
@@ -290,6 +291,41 @@ th {
 .priority-badge { font-weight: 700; }
 .muted { color: var(--text-faint); font-style: italic; }
 
+/* ── Notes ─────────────────────────────────────────────────── */
+.col-note { width: 1.5rem; text-align: center; padding: 0 !important; }
+.note-indicator {
+    font-size: 0.8125rem; color: var(--text-faint);
+    visibility: hidden; cursor: default;
+}
+.main-row[data-note="true"] .note-indicator { visibility: visible; color: #d97706; }
+
+.note-section { margin-top: 0.25rem; }
+.note-section h4 { color: #d97706 !important; }
+.note-area {
+    width: 100%; min-height: 4rem; max-height: 12rem; resize: vertical;
+    font-family: inherit; font-size: 0.8125rem; line-height: 1.5;
+    padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.375rem;
+    background: var(--bg-surface); color: var(--text-primary);
+    transition: border-color 0.15s;
+}
+.note-area:focus { outline: none; border-color: #d97706; }
+.note-saved {
+    font-size: 0.6875rem; color: #d97706; opacity: 0;
+    transition: opacity 0.3s; margin-left: 0.5rem;
+}
+.note-saved.show { opacity: 1; }
+
+.filter-btn.note-filter-btn.active { background: #d97706; border-color: #d97706; color: #fff; }
+
+/* ── Export button ────────────────────────────────────────── */
+.export-btn {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 0.375rem; padding: 0.25rem 0.75rem;
+    font-size: 0.75rem; color: var(--text-secondary); cursor: pointer;
+    transition: all 0.15s; margin-left: auto;
+}
+.export-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--text-muted); }
+
 /* Hidden (filtered) */
 .main-row.hidden, .detail-row.hidden { display: none !important; }
 
@@ -439,6 +475,7 @@ function applyFilter(showFn) {
         }
     });
     updateCount();
+    updateExportCount();
 }
 
 function filterAll(btn) {
@@ -527,10 +564,128 @@ function showToast(msg) {
     toast._timer = setTimeout(function() { toast.classList.remove('show'); }, 2500);
 }
 
+/* ── Notes ──────────────────────────────────────────────────── */
+var notes = JSON.parse(localStorage.getItem('comparator_notes') || '{}');
+var _noteTimers = {};
+
+function initNotes() {
+    Object.keys(notes).forEach(function(key) {
+        var ta = document.querySelector('.note-area[data-key="' + key + '"]');
+        if (ta) ta.value = notes[key];
+    });
+    document.querySelectorAll('.main-row').forEach(function(r) {
+        var key = r.dataset.key;
+        r.dataset.note = (notes[key] && notes[key].trim()) ? 'true' : 'false';
+        var detail = r.nextElementSibling;
+        if (detail && detail.classList.contains('detail-row')) {
+            detail.dataset.note = r.dataset.note;
+        }
+    });
+    updateNoteCount();
+    updateExportCount();
+}
+
+function onNoteInput(ta) {
+    var key = ta.dataset.key;
+    clearTimeout(_noteTimers[key]);
+    _noteTimers[key] = setTimeout(function() { saveNote(ta); }, 500);
+}
+
+function saveNote(ta) {
+    var key = ta.dataset.key;
+    var val = ta.value.trim();
+    if (val) {
+        notes[key] = ta.value;
+    } else {
+        delete notes[key];
+    }
+    localStorage.setItem('comparator_notes', JSON.stringify(notes));
+    var mainRow = document.querySelector('.main-row[data-key="' + key + '"]');
+    if (mainRow) {
+        mainRow.dataset.note = val ? 'true' : 'false';
+        var detail = mainRow.nextElementSibling;
+        if (detail) detail.dataset.note = mainRow.dataset.note;
+    }
+    var saved = ta.parentElement.querySelector('.note-saved');
+    if (saved) {
+        saved.classList.add('show');
+        clearTimeout(saved._timer);
+        saved._timer = setTimeout(function() { saved.classList.remove('show'); }, 1500);
+    }
+    updateNoteCount();
+}
+
+function updateNoteCount() {
+    var el = document.getElementById('note-count');
+    if (el) {
+        var count = Object.keys(notes).filter(function(k) { return notes[k] && notes[k].trim(); }).length;
+        el.textContent = count;
+    }
+}
+
+function filterNotes(btn) {
+    clearActive();
+    btn.classList.add('active');
+    applyFilter(function(r) { return r.dataset.note === 'true'; });
+}
+
+/* ── CSV Export ─────────────────────────────────────────────── */
+function exportCSV() {
+    var rows = document.querySelectorAll('.main-row:not(.hidden)');
+    if (rows.length === 0) { showToast('No rows to export'); return; }
+    var headers = ['Chapter','Section','Title','Classification','Confidence',
+        'FNS Summary','Layer 1 Note','Layer 2 Note','Layer 3 Note',
+        'OLG Matches','OLG URLs','Action Needed','Priority','CMR Section',
+        'Session ID','Tokens In','Tokens Out','Est Cost','My Notes'];
+    var csvRows = [headers.map(csvEscape).join(',')];
+    rows.forEach(function(r) {
+        var d = JSON.parse(r.dataset.exp);
+        var key = r.dataset.key;
+        var note = notes[key] || '';
+        var fields = [
+            d.ch, d.sec, d.title, d.cls, d.conf, d.summary,
+            d.l1, d.l2, d.l3, d.olg, d.urls, d.action, d.priority,
+            d.cmr, d.sid, d.tin, d.tout, d.cost, note
+        ];
+        csvRows.push(fields.map(csvEscape).join(','));
+    });
+    var csv = csvRows.join('\r\n');
+    var bom = '\uFEFF';
+    var blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var now = new Date();
+    var ds = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    a.href = url;
+    a.download = 'policy_report_export_' + ds + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Exported ' + rows.length + ' rows');
+}
+
+function csvEscape(val) {
+    if (val == null) val = '';
+    val = String(val);
+    if (val.indexOf(',') !== -1 || val.indexOf('"') !== -1 || val.indexOf('\n') !== -1 || val.indexOf('\r') !== -1) {
+        return '"' + val.replace(/"/g, '""') + '"';
+    }
+    return val;
+}
+
+function updateExportCount() {
+    var el = document.getElementById('export-count');
+    if (el) {
+        el.textContent = document.querySelectorAll('.main-row:not(.hidden)').length;
+    }
+}
+
 /* ── Init ───────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', function() {
     initTheme();
     initFavorites();
+    initNotes();
 });
 """
 
@@ -606,7 +761,7 @@ def make_olg_links_html(matches_str: str, urls_str: str) -> str:
 # HTML generation
 # ---------------------------------------------------------------------------
 
-NCOLS = 8  # fav + ch + sec + title + cls + conf + finding + expand
+NCOLS = 9  # fav + note + ch + sec + title + cls + conf + finding + expand
 
 
 def generate_html(rows: list[dict]) -> str:
@@ -674,6 +829,9 @@ def generate_html(rows: list[dict]) -> str:
     h.append('<button class="filter-btn fav-filter-btn" '
              'onclick="filterFavorites(this)">'
              '\u2605 Favorites (<span id="fav-count">0</span>)</button>')
+    h.append('<button class="filter-btn note-filter-btn" '
+             'onclick="filterNotes(this)">'
+             '\u270E Has Notes (<span id="note-count">0</span>)</button>')
     h.append("</div>")
 
     h.append('<div class="filter-group">')
@@ -705,12 +863,15 @@ def generate_html(rows: list[dict]) -> str:
              f"Showing all {total} sections</span>")
     h.append('<button class="toolbar-btn" onclick="expandAll()">Expand visible</button>')
     h.append('<button class="toolbar-btn" onclick="collapseAll()">Collapse all</button>')
+    h.append(f'<button class="export-btn" onclick="exportCSV()">'
+             f'Export CSV (<span id="export-count">{total}</span> rows)</button>')
     h.append("</div>")
 
     # ── Table ──
     h.append('<table id="report-table">')
     h.append("<thead><tr>")
     h.append('<th class="col-fav"></th>')
+    h.append('<th class="col-note"></th>')
     h.append('<th class="col-ch">Ch</th>')
     h.append('<th class="col-sec">Section</th>')
     h.append('<th class="col-title">Title</th>')
@@ -750,12 +911,25 @@ def generate_html(rows: list[dict]) -> str:
         # Determine what to show as the "finding" in the main row
         finding_text = l2 or l1 or ""
 
+        # Export data for CSV download
+        export_data = json.dumps({
+            "ch": ch, "sec": sec, "title": title, "cls": cls, "conf": conf,
+            "summary": summary, "l1": l1, "l2": l2, "l3": l3,
+            "olg": olg_matches, "urls": olg_urls, "action": action,
+            "priority": priority, "cmr": cmr_section, "sid": session_id,
+            "tin": tokens_in, "tout": tokens_out, "cost": cost,
+        }, ensure_ascii=False)
+
         # ── Main row ──
         h.append(f'<tr class="main-row" data-ch="{ch}" data-cls="{cls}" '
                  f'data-act="{act}" data-fnd="{fnd}" data-key="{esc(key)}" '
-                 f'data-fav="false" onclick="toggleRow({i})">')
+                 f'data-fav="false" data-note="false" '
+                 f'data-exp="{esc(export_data)}" '
+                 f'onclick="toggleRow({i})">')
         h.append(f'<td class="col-fav"><button class="fav-btn" data-key="{esc(key)}" '
                  f'onclick="toggleFav(this,event)" title="Favorite">\u2606</button></td>')
+        h.append(f'<td class="col-note"><span class="note-indicator" '
+                 f'data-key="{esc(key)}">\u270E</span></td>')
         h.append(f'<td class="col-ch">{esc(ch)}</td>')
         h.append(f'<td class="col-sec">{esc(sec)}</td>')
         h.append(f'<td class="col-title">{esc(title)}</td>')
@@ -770,7 +944,7 @@ def generate_html(rows: list[dict]) -> str:
         # ── Detail row ──
         h.append(f'<tr class="detail-row" id="detail-{i}" '
                  f'data-ch="{ch}" data-cls="{cls}" data-act="{act}" '
-                 f'data-fnd="{fnd}" data-fav="false">')
+                 f'data-fnd="{fnd}" data-fav="false" data-note="false">')
         h.append(f'<td colspan="{NCOLS}">')
         h.append('<div class="detail-panel">')
 
@@ -800,6 +974,14 @@ def generate_html(rows: list[dict]) -> str:
             h.append("<h4>Layer 3 &mdash; CMR Cross-Check</h4>")
             h.append(f"<p>{esc(l3)}</p>")
             h.append("</div>")
+
+        # My Notes textarea
+        h.append('<div class="detail-section note-section">')
+        h.append('<h4>My Notes <span class="note-saved">Saved</span></h4>')
+        h.append(f'<textarea class="note-area" data-key="{esc(key)}" '
+                 f'oninput="onNoteInput(this)" '
+                 f'placeholder="Add your notes here..."></textarea>')
+        h.append("</div>")
 
         h.append("</div>")  # detail-notes
 
@@ -913,10 +1095,15 @@ def generate_html(rows: list[dict]) -> str:
              "</span> are partial matches that may need OLG updates</li>")
     h.append("<li>Click \u2606 to favorite a row &mdash; favorites persist across "
              "sessions and can be filtered</li>")
+    h.append("<li>Expand a row to add notes in the <strong>My Notes</strong> textarea "
+             "&mdash; notes auto-save to your browser and a \u270E icon appears on "
+             "annotated rows</li>")
+    h.append("<li>Click <strong>Export CSV</strong> to download the currently visible "
+             "(filtered) rows as a CSV file, including your notes</li>")
     h.append("<li>Click a Session ID to copy the full CLI command "
              "(<code>claude --resume &lt;ID&gt;</code>) to your clipboard</li>")
     h.append("<li>Use the filter buttons to focus on specific chapters, classifications, "
-             "or your favorites</li>")
+             "favorites, or rows with notes</li>")
     h.append("<li>Toggle dark mode with the button in the top-right corner</li>")
     h.append("</ul>")
     h.append("</footer>")

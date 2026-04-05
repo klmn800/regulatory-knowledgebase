@@ -226,6 +226,7 @@ def run_standard(
     program: str | None,
     exclude_programs: list[str] | None,
     config: configparser.ConfigParser,
+    prompt_name: str = "synthesis",
 ) -> SynthesisResult:
     """Pre-fetch results from all sources, single Claude call to synthesize."""
     start = time.time()
@@ -234,7 +235,7 @@ def run_standard(
     max_tokens = config.getint("synthesis", "max_tokens", fallback=1500)
     results_per_search = config.getint("synthesis", "results_per_search", fallback=5)
 
-    system_prompt = load_prompt("synthesis", with_preamble=True)
+    system_prompt = load_prompt(prompt_name, with_preamble=True)
     api_key = config.get("api", "anthropic_api_key")
     client = anthropic.Anthropic(api_key=api_key)
 
@@ -297,6 +298,7 @@ def run_deep(
     program: str | None,
     exclude_programs: list[str] | None,
     config: configparser.ConfigParser,
+    prompt_name: str = "synthesis",
 ) -> SynthesisResult:
     """Agentic loop — Claude can search iteratively across sources."""
     start = time.time()
@@ -307,7 +309,7 @@ def run_deep(
     results_per_search = config.getint("synthesis", "results_per_search", fallback=5)
     max_turns = 15
 
-    system_prompt = load_prompt("synthesis", with_preamble=True)
+    system_prompt = load_prompt(prompt_name, with_preamble=True)
     api_key = config.get("api", "anthropic_api_key")
     client = anthropic.Anthropic(api_key=api_key)
 
@@ -500,6 +502,8 @@ def run_synthesis(
     exclude_programs: list[str] | None = None,
     deep: bool = False,
     max_searches: int | None = None,
+    prompt_name: str = "synthesis",
+    config_overrides: dict | None = None,
 ) -> SynthesisResult:
     """
     Answer a policy question by searching and synthesizing across sources.
@@ -511,6 +515,8 @@ def run_synthesis(
         exclude_programs: Exclude these programs (keeps cross-program content).
         deep: If True, use agentic loop with iterative search.
         max_searches: Override max search budget for deep mode.
+        prompt_name: Which prompt file to use (default: "synthesis").
+        config_overrides: Dict of synthesis config overrides (e.g. max_tokens).
     """
     if sources is None:
         sources = ["olg"]
@@ -520,10 +526,16 @@ def run_synthesis(
     if max_searches is not None:
         config.set("synthesis", "max_searches", str(max_searches))
 
+    if config_overrides:
+        for key, value in config_overrides.items():
+            config.set("synthesis", key, str(value))
+
     if deep:
-        return run_deep(question, sources, program, exclude_programs, config)
+        return run_deep(question, sources, program, exclude_programs, config,
+                        prompt_name=prompt_name)
     else:
-        return run_standard(question, sources, program, exclude_programs, config)
+        return run_standard(question, sources, program, exclude_programs, config,
+                            prompt_name=prompt_name)
 
 
 # ============================================================

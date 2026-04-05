@@ -47,13 +47,14 @@ def run_claude_task(
     log_dir: Path = None,
     task_id: str = None,
     windowed: bool = False,
+    parse_json: bool = True,
 ) -> dict:
     """
     Run a task via Claude Code CLI and collect the result.
 
-    The prompt should instruct the session to write its structured output
-    as JSON to `result_file`. After the session completes, this function
-    reads and parses that file.
+    The prompt should instruct the session to write its output to
+    `result_file`. After the session completes, this function reads
+    that file (as JSON if parse_json=True, as plain text otherwise).
 
     Args:
         prompt:      Full prompt text to send to Claude Code.
@@ -95,13 +96,14 @@ def run_claude_task(
 
     if windowed:
         return _run_windowed(prompt_file, result_file, timeout, cwd,
-                             log_dir, task_id, start)
+                             log_dir, task_id, start, parse_json)
     else:
         return _run_piped(prompt, result_file, timeout, cwd,
-                          log_dir, task_id, start)
+                          log_dir, task_id, start, parse_json)
 
 
-def _run_piped(prompt, result_file, timeout, cwd, log_dir, task_id, start):
+def _run_piped(prompt, result_file, timeout, cwd, log_dir, task_id, start,
+               parse_json=True):
     """Run claude in pipe mode — stdout captured as JSON, not visible."""
     try:
         proc = subprocess.run(
@@ -158,12 +160,13 @@ def _run_piped(prompt, result_file, timeout, cwd, log_dir, task_id, start):
         session_file = log_dir / f"session_{task_id}.md"
         session_file.write_text(session_log, encoding="utf-8")
 
-    result = _read_result(result_file, session_log, elapsed)
+    result = _read_result(result_file, session_log, elapsed, parse_json)
     result["session_id"] = session_id
     return result
 
 
-def _run_windowed(prompt_file, result_file, timeout, cwd, log_dir, task_id, start):
+def _run_windowed(prompt_file, result_file, timeout, cwd, log_dir, task_id, start,
+                  parse_json=True):
     """Run claude in a visible console window — user watches output live.
 
     Uses the same pattern as the proven autofix system: launches claude
@@ -221,6 +224,7 @@ def _run_windowed(prompt_file, result_file, timeout, cwd, log_dir, task_id, star
         result_file,
         "(windowed mode — output was in console window)",
         elapsed,
+        parse_json,
     )
     result["session_id"] = None  # Not available in windowed mode
     return result
@@ -259,7 +263,7 @@ def _auto_accept_bypass_prompt():
         print("  You may need to manually press 2 + Enter in the Claude window")
 
 
-def _read_result(result_file, session_log, elapsed):
+def _read_result(result_file, session_log, elapsed, parse_json=True):
     """Read and parse the result file. Shared by both modes."""
     if not result_file.exists():
         return {
@@ -270,8 +274,18 @@ def _read_result(result_file, session_log, elapsed):
             "error": f"Result file not created: {result_file}",
         }
 
+    raw = result_file.read_text(encoding="utf-8")
+
+    if not parse_json:
+        return {
+            "result": raw,
+            "session_log": session_log,
+            "elapsed": elapsed,
+            "success": True,
+            "error": None,
+        }
+
     try:
-        raw = result_file.read_text(encoding="utf-8")
         parsed = json.loads(raw)
     except json.JSONDecodeError as e:
         return {

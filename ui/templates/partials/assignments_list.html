@@ -1,0 +1,16 @@
+{% if assignments %}
+<div class="assignment-list">
+    {% for a in assignments %}
+    <div class="assignment-item" onclick="loadAssignment('{{ a.name }}')">
+        <div class="assignment-name">{{ a.name }}</div>
+        <div class="assignment-badges">
+            {% if a.has_research %}<span class="phase-badge phase-done" title="Research complete">R</span>{% else %}<span class="phase-badge" title="Research not run">R</span>{% endif %}
+            {% if a.has_draft %}<span class="phase-badge phase-done" title="Draft complete">D</span>{% else %}<span class="phase-badge" title="Draft not run">D</span>{% endif %}
+            {% if a.has_docx %}<span class="phase-badge phase-done" title=".docx ready">F</span>{% else %}<span class="phase-badge" title="Format not run">F</span>{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No assignments yet. Create one above.</p>
+{% endif %}
