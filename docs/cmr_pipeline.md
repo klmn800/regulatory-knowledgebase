@@ -6,16 +6,16 @@
 - **Format**: 18 PDFs, 342 pages total, ~592 regulation sections
 - **Programs**: SNAP (chapters 360-367), TAFDC/EAEDC (chapters 701-708), Cross-Program (327, 343)
 - **Citation format**: `106 CMR 362.330(A)(1)(a)`
-- **Location**: `source_files/cmr/*.pdf`
+- **Location**: `raw/cmr/*.pdf`
 
 ## Pipeline Overview
 
 | Stage | Module | Input | Output |
 |-------|--------|-------|--------|
-| Parse | `sources/cmr/parser.py` | 18 PDFs | 592 JSON files in `data/cmr/parsed_sections/` |
-| Chunk | `sources/cmr/chunker.py` | 592 JSON files | `chapter_chunks.json` (18) + `section_chunks.json` (1,275) |
-| Embed | `core/embedder.py --source cmr` | Chunk JSON files | ChromaDB collections `cmr_chapters`, `cmr_sections` |
-| Query | `core/query.py --source cmr` | User query | Ranked results with metadata |
+| Parse | `rag/cmr/parser.py` | 18 PDFs | 592 JSON files in `index/cmr/parsed_sections/` |
+| Chunk | `rag/cmr/chunker.py` | 592 JSON files | `chapter_chunks.json` (18) + `section_chunks.json` (1,275) |
+| Embed | `rag/embedder.py --source cmr` | Chunk JSON files | ChromaDB collections `cmr_chapters`, `cmr_sections` |
+| Query | `rag/query.py --source cmr` | User query | Ranked results with metadata |
 
 ---
 
@@ -116,25 +116,25 @@ Self-contained chunker mirroring FNS/OLG patterns.
 
 ```bash
 # Parsing
-python sources/cmr/parser.py                    # Parse all 18 PDFs
-python sources/cmr/parser.py --chapter 362       # Parse one chapter
-python sources/cmr/parser.py --dry-run            # Show sections, don't write
+python rag/cmr/parser.py                    # Parse all 18 PDFs
+python rag/cmr/parser.py --chapter 362       # Parse one chapter
+python rag/cmr/parser.py --dry-run            # Show sections, don't write
 
 # Chunking
-python sources/cmr/chunker.py                    # Generate chunks
-python sources/cmr/chunker.py --stats             # Statistics only
-python sources/cmr/chunker.py --preview 2         # Preview first 2 chapters
+python rag/cmr/chunker.py                    # Generate chunks
+python rag/cmr/chunker.py --stats             # Statistics only
+python rag/cmr/chunker.py --preview 2         # Preview first 2 chapters
 
 # Embedding
-python core/embedder.py --source cmr --dry-run    # Cost estimate
-python core/embedder.py --source cmr              # Embed into ChromaDB
-python core/embedder.py --source cmr --force      # Re-embed from scratch
+python rag/embedder.py --source cmr --dry-run    # Cost estimate
+python rag/embedder.py --source cmr              # Embed into ChromaDB
+python rag/embedder.py --source cmr --force      # Re-embed from scratch
 
 # Querying
-python core/query.py "income deduction" --source cmr
-python core/query.py "work requirements" --source cmr --program SNAP
-python core/query.py "income" --source cmr --collection chapters
-python core/query.py --source cmr --list-programs
+python rag/query.py "income deduction" --source cmr
+python rag/query.py "work requirements" --source cmr --program SNAP
+python rag/query.py "income" --source cmr --collection chapters
+python rag/query.py --source cmr --list-programs
 ```
 
 ---

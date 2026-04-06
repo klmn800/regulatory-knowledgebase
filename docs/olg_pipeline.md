@@ -152,7 +152,7 @@ End users: AI agents, human policy writers, and programmatic search/retrieval.
 | Total tokens | 1,688,645 |
 | Total cost | $0.10 |
 | Model | voyage-3 (1,024 dimensions) |
-| Vector store | ChromaDB persistent at `chroma_db/` |
+| Vector store | ChromaDB persistent at `index/chroma_db/` |
 | Collections | `pages` (1,202 docs), `sections` (6,785 chunks) |
 
 **Config notes:**
@@ -174,11 +174,11 @@ chromadb
 
 ### What was built
 
-`query.py` — a search interface serving three audiences:
+`rag/query.py` — a search interface serving three audiences:
 
-1. **Humans (CLI)** — `python query.py "income deduction"` with formatted output
+1. **Humans (CLI)** — `python rag/query.py "income deduction"` with formatted output
 2. **AI agents (Python API)** — `from query import search` or `create_client()` + `search_with_client()` for repeated queries
-3. **Programs (JSON)** — `python query.py "income deduction" --json`
+3. **Programs (JSON)** — `python rag/query.py "income deduction" --json`
 
 ### CLI flags
 
@@ -228,32 +228,29 @@ r2 = search_with_client("expedited benefits", clients)
 ## Project files reference
 
 ```
-new_olg_rag/
-├── PROJECT.md              ← this file
-├── requirements.txt        ← Python dependencies
-├── config.ini              ← API keys and settings (Phase 2)
+policy_navigator/
+├── rag/
+│   ├── olg/
+│   │   ├── extractor.py        ← HAR → URL list + TOC hierarchy
+│   │   ├── parser.py           ← HTML → structured JSON (pure parser)
+│   │   ├── scraper.py          ← Fetch + parse + save (orchestration)
+│   │   └── chunker.py          ← JSON → chunks with merge/split
+│   ├── embedder.py             ← Chunks → Voyage AI → ChromaDB (shared)
+│   └── query.py                ← Search interface — CLI, Python API, JSON (shared)
 │
-├── extractor.py            ← HAR → URL list + TOC hierarchy
-├── parser.py               ← HTML → structured JSON (pure parser)
-├── scraper.py              ← Fetch + parse + save (orchestration)
-├── chunker.py              ← JSON → chunks with merge/split (Phase 2, COMPLETE)
-├── embedder.py             ← Chunks → Voyage AI → ChromaDB (Phase 2)
-├── query.py                ← Search interface — CLI, Python API, JSON (Phase 3, COMPLETE)
+├── index/
+│   ├── olg/
+│   │   ├── scraped_pages/      ← 1,202 JSON files
+│   │   ├── page_chunks.json    ← 1,202 page-level documents
+│   │   ├── section_chunks.json ← 6,785 section-level chunks
+│   │   ├── policy_urls.txt     ← 1,204 URLs (flat list)
+│   │   ├── policy_manifest.json← URLs + titles + breadcrumbs
+│   │   ├── policy_toc.json     ← Full hierarchical TOC
+│   │   ├── scrape_progress.json← Scraper resume state
+│   │   └── scrape_report.txt   ← Scrape summary
+│   └── chroma_db/              ← ChromaDB persistent storage (shared)
 │
-├── page_chunks.json        ← 1,202 page-level documents (chunker output)
-├── section_chunks.json     ← 6,785 section-level chunks (chunker output)
-│
-├── policy_urls.txt         ← 1,204 URLs (flat list)
-├── policy_manifest.json    ← URLs + titles + breadcrumbs
-├── policy_toc.json         ← Full hierarchical TOC
-│
-├── scraped_pages/          ← 1,202 JSON files (Phase 1 output)
-│   └── *.json
-├── scrape_progress.json    ← Scraper resume state
-├── scrape_report.txt       ← Scrape summary
-│
-├── chroma_db/              ← ChromaDB persistent storage (Phase 2)
-└── eohhs.ehs.state.ma.us.har  ← Original HAR capture (reference only)
+└── raw/                        ← Source files (gitignored)
 ```
 
 ---
@@ -262,22 +259,22 @@ new_olg_rag/
 
 ```bash
 # Phase 1 (already complete)
-python extractor.py                    # HAR → URLs + TOC
-python scraper.py                      # Fetch all pages
-python scraper.py --batch 10           # Test with 10 pages
-python scraper.py --program SNAP       # Scrape one program
-python scraper.py --retry-failed       # Re-attempt failures
+python rag/olg/extractor.py                    # HAR → URLs + TOC
+python rag/olg/scraper.py                      # Fetch all pages
+python rag/olg/scraper.py --batch 10           # Test with 10 pages
+python rag/olg/scraper.py --program SNAP       # Scrape one program
+python rag/olg/scraper.py --retry-failed       # Re-attempt failures
 
 # Phase 2 (complete)
-python chunker.py                      # Generate chunks from scraped pages
-python embedder.py                     # Embed chunks and store in ChromaDB
+python rag/olg/chunker.py                      # Generate chunks from scraped pages
+python rag/embedder.py --source olg            # Embed chunks and store in ChromaDB
 
 # Phase 3 — Query (complete)
-python query.py "income deduction"                    # Basic search
-python query.py "expedited SNAP" --program SNAP       # Filter by program
-python query.py "benefit calculation" --top 10        # More results
-python query.py "eligibility rules" --collection pages  # Search pages
-python query.py "income limits" --context             # Include parent page
-python query.py "work requirements" --json            # JSON output
-python query.py --list-programs                       # Show programs
+python rag/query.py "income deduction"                    # Basic search
+python rag/query.py "expedited SNAP" --program SNAP       # Filter by program
+python rag/query.py "benefit calculation" --top 10        # More results
+python rag/query.py "eligibility rules" --collection pages  # Search pages
+python rag/query.py "income limits" --context             # Include parent page
+python rag/query.py "work requirements" --json            # JSON output
+python rag/query.py --list-programs                       # Show programs
 ```

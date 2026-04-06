@@ -27,8 +27,8 @@ from fastapi.templating import Jinja2Templates
 
 from ui.search import SOURCES, DEFAULT_SOURCE, init_clients, do_search
 from ui.history import init_db, save_search, get_recent, get_by_id
-from agents.synthesis import run_synthesis
-from agents.author import (
+from tools.synthesis import run_synthesis
+from programs.author.author import (
     load_config as load_author_config,
     get_output_dir,
     run_research,

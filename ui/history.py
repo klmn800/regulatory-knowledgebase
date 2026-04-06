@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DB_PATH = PROJECT_ROOT / "data" / "search_history.db"
+DB_PATH = PROJECT_ROOT / "output" / "search_history.db"
 
 
 def _get_conn() -> sqlite3.Connection:

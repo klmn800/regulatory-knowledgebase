@@ -27,7 +27,7 @@ The OLG side is fully built:
 | OLG scraper + parser | Complete | 1,202 pages scraped, structured JSON |
 | OLG chunker | Complete | 6,785 section chunks + 1,202 page docs |
 | OLG embeddings | Complete | Voyage AI (voyage-3) in ChromaDB |
-| OLG query interface | Complete | `query.py` — CLI, Python API, JSON output |
+| OLG query interface | Complete | `rag/query.py` — CLI, Python API, JSON output |
 
 **What's missing**: The FNS Handbook side — parsing, chunking, embedding — plus the
 comparison agent that brings both sides together.
@@ -186,9 +186,9 @@ is the input; structured, inspectable JSON files are the output.
 
 ### Phase 1: Parse the FNS Handbook
 
-**Input**: `FNS Handbook 310 1.13.26.pdf`
+**Input**: `raw/FNS Handbook 310 1.13.26.pdf`
 
-**New module**: `fns_parser.py`
+**New module**: `rag/fns/parser.py`
 
 **Process**:
 1. Open PDF with pdfplumber
@@ -202,7 +202,7 @@ is the input; structured, inspectable JSON files are the output.
 9. Extract cross-references ("See Section NNN")
 10. Build hierarchical section metadata (chapter, level, parent section)
 
-**Output**: `fns_sections/` directory with one JSON file per section, structured like:
+**Output**: `index/fns/parsed_sections/` directory with one JSON file per section, structured like:
 
 ```json
 {
@@ -227,7 +227,7 @@ The `flags` field captures issues: `["side_by_side_page", "manual_review_needed"
 
 ### Phase 2: Chunk and Embed
 
-**Reuse/adapt**: `chunker.py` and `embedder.py` patterns
+**Reuse/adapt**: `rag/fns/chunker.py` and `rag/embedder.py` patterns
 
 - Most sections are naturally chunk-sized (median ~960 chars in OLG; likely similar here)
 - Apply same merge/split rules: merge tiny sections (<200 chars), split oversized ones
@@ -236,11 +236,11 @@ The `flags` field captures issues: `["side_by_side_page", "manual_review_needed"
 
 ### Phase 3: Comparison Agent
 
-**New module**: `comparator.py`
+**New module**: `programs/comparator/comparator.py`
 
 For each FNS section (or at least Chapters 7–11):
 1. Pull the FNS section text
-2. Use it to query the OLG RAG (`query.py` API) for matching state policy
+2. Use it to query the OLG RAG (`rag/query.py` API) for matching state policy
 3. Send both texts to Claude with a comparison prompt
 4. Record Claude's analysis: match / difference / no state equivalent
 5. Output structured comparison report
@@ -277,12 +277,12 @@ For each FNS section (or at least Chapters 7–11):
 
 ## Next Steps
 
-1. [ ] Build `fns_parser.py` — PDF to structured JSON
+1. [ ] Build `rag/fns/parser.py` — PDF to structured JSON
 2. [ ] Verify parser output — spot-check sections, especially the 11 flagged pages
 3. [ ] Adapt chunker for FNS sections
 4. [ ] Embed FNS chunks into ChromaDB
 5. [ ] Design comparison prompt
-6. [ ] Build `comparator.py`
+6. [ ] Build `programs/comparator/comparator.py`
 7. [ ] Run comparison on Chapters 8–11 first
 8. [ ] Review results, iterate on prompt if needed
 9. [ ] Expand to remaining chapters

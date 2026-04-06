@@ -14,10 +14,10 @@ All three sources are fully parsed, chunked, embedded, and searchable via a shar
 
 | Capability | What | How to use it |
 |-----------|------|---------------|
-| **Search** | Ask policy questions, get synthesized answers with citations | Web UI or `core/query.py` CLI |
-| **Compare** | Find gaps between federal rules and OLG coverage | `agents/comparator.py` CLI |
-| **Author** | Research, draft, and format new OLG pages | Web UI or `agents/author.py` CLI |
-| **Report** | Browse comparator findings in a filterable HTML report | `agents/report.py --open` |
+| **Search** | Ask policy questions, get synthesized answers with citations | Web UI or `rag/query.py` CLI |
+| **Compare** | Find gaps between federal rules and OLG coverage | `programs/comparator/comparator.py` CLI |
+| **Author** | Research, draft, and format new OLG pages | Web UI or `programs/author/author.py` CLI |
+| **Report** | Browse comparator findings in a filterable HTML report | `programs/comparator/report.py --open` |
 
 ---
 
@@ -44,22 +44,22 @@ Three tabs:
 
 ```bash
 # Search
-python core/query.py "income verification" --source olg
-python core/query.py "income deduction" --source fns --top 10 --full
-python core/query.py "work requirements" --source cmr --program SNAP
-python core/query.py "income limits" --exclude-programs "TAFDC,EAEDC"
+python rag/query.py "income verification" --source olg
+python rag/query.py "income deduction" --source fns --top 10 --full
+python rag/query.py "work requirements" --source cmr --program SNAP
+python rag/query.py "income limits" --exclude-programs "TAFDC,EAEDC"
 
 # Author an OLG page
-python agents/author.py "Consolidate all VC-1 scripts" --name vc1_scripts
-python agents/author.py --name vc1_scripts --research-only
-python agents/author.py --name vc1_scripts --draft-only
-python agents/author.py --name vc1_scripts --resume
+python programs/author/author.py "Consolidate all VC-1 scripts" --name vc1_scripts
+python programs/author/author.py --name vc1_scripts --research-only
+python programs/author/author.py --name vc1_scripts --draft-only
+python programs/author/author.py --name vc1_scripts --resume
 
 # Run comparator
-python agents/comparator.py --chapter 10 --engine claude-code --parallel 5
+python programs/comparator/comparator.py --chapter 10 --engine claude-code --parallel 5
 
 # Generate HTML report from comparator results
-python agents/report.py --open
+python programs/comparator/report.py --open
 ```
 
 ---
@@ -72,13 +72,13 @@ Each source follows **Parse > Chunk > Embed > Query**:
 
 | Source | Parser | Documents | Chunks |
 |--------|--------|-----------|--------|
-| OLG | `sources/olg/scraper.py` + `parser.py` | 1,202 pages | 6,785 sections |
-| FNS | `sources/fns/parser.py` | 14 chapters | 722 sections |
-| CMR | `sources/cmr/parser.py` | 18 chapters | 1,275 sections |
+| OLG | `rag/olg/scraper.py` + `parser.py` | 1,202 pages | 6,785 sections |
+| FNS | `rag/fns/parser.py` | 14 chapters | 722 sections |
+| CMR | `rag/cmr/parser.py` | 18 chapters | 1,275 sections |
 
 Two-tier chunking: broad documents for topic discovery, granular chunks for specific answers. Context prefixes baked into embeddings capture hierarchical position (e.g., `SNAP > Application Processing > Expedited Benefits`).
 
-### Search Engine (`ui/` + `agents/synthesis.py`)
+### Search Engine (`ui/` + `tools/synthesis.py`)
 
 FastAPI backend with HTMX frontend. No heavy JS framework -- server-rendered HTML partials.
 
@@ -86,7 +86,7 @@ FastAPI backend with HTMX frontend. No heavy JS framework -- server-rendered HTM
 - **Deep mode**: Agentic loop with iterative RAG searches (up to 8 rounds)
 - Search history persisted to SQLite with full evidence snapshots
 
-### Comparator (`agents/comparator.py`)
+### Comparator (`programs/comparator/comparator.py`)
 
 Four-layer pipeline comparing FNS requirements against OLG coverage:
 
@@ -97,9 +97,9 @@ Four-layer pipeline comparing FNS requirements against OLG coverage:
 | L2 | Deep investigation: agentic search, 3-7 queries | Claude Code CLI |
 | L3 | CMR cross-check for confirmed gaps | Haiku API |
 
-All 5 FNS policy chapters complete (270 sections analyzed). Results in `data/comparator/results/` with per-chapter CSVs. See [docs/comparator.md](docs/comparator.md).
+All 5 FNS policy chapters complete (270 sections analyzed). Results in `index/comparator/results/` with per-chapter CSVs. See [docs/comparator.md](docs/comparator.md).
 
-### OLG Authoring Pipeline (`agents/author.py`)
+### OLG Authoring Pipeline (`programs/author/author.py`)
 
 Three-phase pipeline that takes a policy assignment and produces a formatted OLG page:
 
@@ -129,31 +129,37 @@ Assignment (text)
 The web UI launches the Claude Code drafting phase in a visible terminal window so you can watch it work and debug if needed.
 
 **Reference materials** (gitignored, must be provided):
-- `agents/references/2026 OLG Template.docx` -- Word template with OLG styles
-- `agents/references/OLG Writer's Manual.docx` -- Writing rules
-- `agents/references/sample_pages/` -- Example OLG pages for style analysis
+- `programs/author/references/2026 OLG Template.docx` -- Word template with OLG styles
+- `programs/author/references/OLG Writer's Manual.docx` -- Writing rules
+- `programs/author/references/sample_pages/` -- Example OLG pages for style analysis
 
 **Style guide** (committed):
-- `agents/references/olg_style_guide.md` -- Evidence-based guide extracted from the manual + 9 sample pages. Covers voice, structure, formatting, terminology, and page types.
+- `programs/author/references/olg_style_guide.md` -- Evidence-based guide extracted from the manual + 9 sample pages. Covers voice, structure, formatting, terminology, and page types.
 
-Output goes to `data/author/{name}/` with all deliverables.
+Output goes to `output/author/{name}/` with all deliverables.
 
-### HTML Report (`agents/report.py`)
+### HTML Report (`programs/comparator/report.py`)
 
 Single-page HTML report generated from comparator CSVs. Features: dark mode, favorites, expandable detail rows, filter by chapter/classification/findings. Session ID click copies the full `claude --resume <UUID>` command.
 
 ```bash
-python agents/report.py --open
+python programs/comparator/report.py --open
 ```
 
-### Shared Core (`core/`)
+### RAG Core (`rag/`)
 
 | Module | Role |
 |--------|------|
-| `core/query.py` | Unified search. CLI + Python API. `--source olg\|fns\|cmr`, program filtering, similarity scoring. |
-| `core/embedder.py` | Batch embedding via Voyage AI. Token-aware batching, resume, cost estimation. |
-| `core/claude_code_runner.py` | Subprocess wrapper for Claude Code CLI. Piped or windowed mode. Session ID capture for resume. |
-| `core/docx_writer.py` | Markdown to styled .docx using OLG template. Handles headings, lists (XML numPr), tables, callouts. |
+| `rag/query.py` | Unified search. CLI + Python API. `--source olg\|fns\|cmr`, program filtering, similarity scoring. |
+| `rag/embedder.py` | Batch embedding via Voyage AI. Token-aware batching, resume, cost estimation. |
+
+### Shared Tools (`tools/`)
+
+| Module | Role |
+|--------|------|
+| `tools/synthesis.py` | RAG synthesis (standard + deep mode). Used by search engine and author research. |
+| `tools/claude_code_runner.py` | Subprocess wrapper for Claude Code CLI. Piped or windowed mode. Session ID capture for resume. |
+| `tools/docx_writer.py` | Markdown to styled .docx using OLG template. Handles headings, lists (XML numPr), tables, callouts. |
 
 ---
 
@@ -164,30 +170,33 @@ policy_navigator/
 ├── config.ini               # API keys, model settings (gitignored)
 ├── requirements.txt
 │
-├── sources/                  # Parse/chunk pipelines
+├── rag/                      # RAG pipeline (parse/chunk/embed/query)
+│   ├── query.py              #   unified search (--source olg|fns|cmr)
+│   ├── embedder.py           #   batch embedding pipeline
 │   ├── olg/                  #   scraper, parser, extractor, chunker
 │   ├── fns/                  #   parser, chunker
 │   └── cmr/                  #   parser, chunker
 │
-├── core/                     # Shared infrastructure
-│   ├── query.py              #   unified search (--source olg|fns|cmr)
-│   ├── embedder.py           #   batch embedding pipeline
+├── tools/                    # Shared tools used by programs
+│   ├── synthesis.py          #   RAG synthesis (standard + deep)
 │   ├── claude_code_runner.py #   Claude Code CLI wrapper
 │   └── docx_writer.py        #   markdown -> styled .docx
 │
-├── agents/                   # Higher-level tools
-│   ├── author.py             #   OLG authoring pipeline
-│   ├── synthesis.py          #   RAG synthesis (standard + deep)
-│   ├── comparator.py         #   FNS vs OLG comparison engine
-│   ├── qc_analyzer.py        #   QC error gap analysis
-│   ├── report.py             #   HTML report generator
-│   ├── prompts/              #   LLM prompt templates
-│   │   ├── domain_preamble.md
-│   │   ├── synthesis.md
-│   │   ├── author_research.md
-│   │   └── author_draft.md
-│   └── references/           #   Style guide + templates (docx gitignored)
-│       └── olg_style_guide.md
+├── programs/                 # Purpose-built programs
+│   ├── author/               #   OLG authoring pipeline
+│   │   ├── author.py
+│   │   ├── prompts/          #     author-specific prompt templates
+│   │   └── references/       #     style guide + templates (docx gitignored)
+│   │       └── olg_style_guide.md
+│   ├── comparator/           #   FNS vs OLG comparison engine
+│   │   ├── comparator.py
+│   │   └── report.py         #     HTML report generator
+│   └── qc/                   #   QC error gap analysis
+│       └── qc_analyzer.py
+│
+├── prompts/                  # Shared LLM prompt templates
+│   ├── domain_preamble.md
+│   └── synthesis.md
 │
 ├── ui/                       # Web interface
 │   ├── app.py                #   FastAPI application
@@ -196,16 +205,18 @@ policy_navigator/
 │   ├── static/               #   CSS + JS
 │   └── templates/            #   Jinja2 + HTMX
 │
-├── data/                     # Generated data (mostly gitignored)
+├── index/                    # Parsed/chunked/vector data (mostly gitignored)
 │   ├── olg/                  #   scraped pages, chunks
 │   ├── fns/                  #   parsed sections, chunks
 │   ├── cmr/                  #   parsed sections, chunks
 │   ├── chroma_db/            #   shared vector store (6 collections)
-│   ├── comparator/           #   comparison results, CSVs
+│   └── comparator/           #   comparison results, CSVs
+│
+├── output/                   # Program deliverables (gitignored)
 │   └── author/               #   authoring pipeline outputs
 │
-├── docs/                     # Architecture docs
-└── source_files/             # PDFs, HAR files (gitignored)
+├── raw/                      # PDFs, HAR files (gitignored)
+└── docs/                     # Architecture docs
 ```
 
 ## Configuration

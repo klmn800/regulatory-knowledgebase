@@ -1,41 +1,44 @@
 # Secrets
 config.ini
 
-# Data (large, regeneratable)
-data/olg/scraped_pages/
-data/olg/page_chunks.json
-data/olg/section_chunks.json
-data/olg/scrape_progress.json
-data/fns/parsed_sections/
-data/fns/chapter_chunks.json
-data/fns/section_chunks.json
-data/cmr/parsed_sections/
-data/cmr/chapter_chunks.json
-data/cmr/section_chunks.json
-data/chroma_db/
+# Index data (large, regeneratable)
+index/olg/scraped_pages/
+index/olg/page_chunks.json
+index/olg/section_chunks.json
+index/olg/scrape_progress.json
+index/fns/parsed_sections/
+index/fns/chapter_chunks.json
+index/fns/section_chunks.json
+index/cmr/parsed_sections/
+index/cmr/chapter_chunks.json
+index/cmr/section_chunks.json
+index/chroma_db/
 
 # Comparator outputs (session logs are large, lock files are temp)
-data/comparator/sessions/
-data/comparator/.~lock.*
-data/comparator/*.ods
-data/comparator/*.csv
-data/comparator/*.html
+output/comparator/sessions/
+output/comparator/.~lock.*
+output/comparator/*.ods
+output/comparator/*.csv
+output/comparator/*.html
 
 # Author outputs (generated per assignment)
-data/author/
+output/author/
 
 # Search history (user-specific, regeneratable)
-data/search_history.db
+output/search_history.db
 
 # QC analysis (lock files)
-data/qc_analysis/.~lock.*
+output/qc_analysis/.~lock.*
 
-# Source files (large, not ours to redistribute)
-source_files/
+# Raw source files (large, not ours to redistribute)
+raw/
+
+# QC inputs (CSV data files)
+programs/qc/inputs/
 
 # Reference materials (copyrighted DTA documents, not ours to redistribute)
-agents/references/*.docx
-agents/references/sample_pages/
+programs/author/references/*.docx
+programs/author/references/sample_pages/
 
 # Personal notes
 big-to-do-list.txt

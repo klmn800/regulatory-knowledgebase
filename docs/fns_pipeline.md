@@ -15,22 +15,20 @@ comparator bridges both systems but neither depends on the other for core functi
 - **Edition**: October 2025, through QC PM 26-04, Change 2 (January 13, 2026)
 - **File**: `FNS Handbook 310 1.13.26.pdf` (4.8 MB, 306 PDF pages)
 - **Content**: 289 content pages, ~96,500 words, 14 chapters, 483 numbered sections
-- **Location**: `../new_olg_rag/FNS Handbook 310 1.13.26.pdf`
+- **Location**: `raw/FNS Handbook 310 1.13.26.pdf`
 
 ## Related Resources
 
-- **PRD**: `../tasks/0002-prd-fns-handbook-rag.md`
-- **Brainstorm**: `../tasks/0002-brainstorm-fns-handbook.md`
-- **OLG RAG project**: `../new_olg_rag/PROJECT.md`
+- **Brainstorm**: `docs/fns_brainstorm.md`
+- **OLG pipeline**: `docs/olg_pipeline.md`
 
 ## Architecture
 
-- **Sibling project** to `new_olg_rag/` — independent directory, shared ChromaDB
 - **Shared ChromaDB**: FNS collections (`fns_chapters`, `fns_sections`) live alongside OLG
-  collections (`pages`, `sections`) in `new_olg_rag/chroma_db/`
-- **Comparator** lives here, imports OLG query API when needed
+  collections (`pages`, `sections`) in `index/chroma_db/`
+- **Comparator** in `programs/comparator/comparator.py` imports OLG query API when needed
 - **No dependency from OLG → FNS**: The OLG RAG works standalone. Only the comparator
-  (in this project) crosses the boundary.
+  crosses the boundary.
 
 ---
 
@@ -38,7 +36,7 @@ comparator bridges both systems but neither depends on the other for core functi
 
 ### What was built
 
-`fns_parser.py` — Extracts structured sections from the handbook PDF using pdfplumber.
+`rag/fns/parser.py` — Extracts structured sections from the handbook PDF using pdfplumber.
 
 **Process**:
 1. Open PDF with pdfplumber
@@ -51,7 +49,7 @@ comparator bridges both systems but neither depends on the other for core functi
 8. Extract tables via `pdfplumber.extract_tables()`
 9. Extract cross-references ("See Section 622", "Chapter 7") as normalized metadata
 10. Build section hierarchy from numbering scheme (chapter, level, parent)
-11. Output one JSON file per section to `parsed_sections/`
+11. Output one JSON file per section to `index/fns/parsed_sections/`
 
 ### Parse results (2026-03-07)
 
@@ -143,7 +141,7 @@ comparator bridges both systems but neither depends on the other for core functi
 
 ### What was built
 
-`sources/fns/chunker.py` — Self-contained chunker producing two-tier output.
+`rag/fns/chunker.py` — Self-contained chunker producing two-tier output.
 
 **Chunker**:
 - 14 chapter-level documents (13K-95K chars) for broad topic matching
@@ -155,8 +153,8 @@ comparator bridges both systems but neither depends on the other for core functi
 - `example_text` field excluded — garbled OCR column-separation artifacts
 
 **Shared module updates**:
-- `core/embedder.py` — added `--source fns` flag with path routing to `fns_chapters`/`fns_sections` collections
-- `core/query.py` — added `--source fns` flag, FNS-specific display formatting, chapter listing via `--list-programs`
+- `rag/embedder.py` — added `--source fns` flag with path routing to `fns_chapters`/`fns_sections` collections
+- `rag/query.py` — added `--source fns` flag, FNS-specific display formatting, chapter listing via `--list-programs`
 
 ### Embedding results
 
@@ -172,7 +170,7 @@ comparator bridges both systems but neither depends on the other for core functi
 
 ## Phase 3: Comparator Agent (NOT STARTED)
 
-Now planned as a **source-pair-agnostic** comparison tool in `agents/comparator.py`, not FNS-specific. See the comparator discussion in CLAUDE.md.
+Now planned as a **source-pair-agnostic** comparison tool in `programs/comparator/comparator.py`, not FNS-specific. See the comparator discussion in CLAUDE.md.
 
 ---
 
@@ -201,25 +199,25 @@ Now planned as a **source-pair-agnostic** comparison tool in `agents/comparator.
 
 ```bash
 # Parsing (complete)
-python sources/fns/parser.py                        # Parse full handbook
-python sources/fns/parser.py --chapter 10            # Parse one chapter
-python sources/fns/parser.py --pages 195-200         # Parse specific PDF pages
-python sources/fns/parser.py --dry-run               # Show sections found, don't write
+python rag/fns/parser.py                        # Parse full handbook
+python rag/fns/parser.py --chapter 10            # Parse one chapter
+python rag/fns/parser.py --pages 195-200         # Parse specific PDF pages
+python rag/fns/parser.py --dry-run               # Show sections found, don't write
 
 # Chunking (complete)
-python sources/fns/chunker.py                        # Generate chunks
-python sources/fns/chunker.py --stats                # Statistics only
-python sources/fns/chunker.py --preview 2            # Preview first 2 chapters
+python rag/fns/chunker.py                        # Generate chunks
+python rag/fns/chunker.py --stats                # Statistics only
+python rag/fns/chunker.py --preview 2            # Preview first 2 chapters
 
 # Embedding (complete)
-python core/embedder.py --source fns --dry-run       # Cost estimate
-python core/embedder.py --source fns                 # Embed into ChromaDB
-python core/embedder.py --source fns --force         # Re-embed from scratch
+python rag/embedder.py --source fns --dry-run       # Cost estimate
+python rag/embedder.py --source fns                 # Embed into ChromaDB
+python rag/embedder.py --source fns --force         # Re-embed from scratch
 
 # Querying (complete)
-python core/query.py "income deduction" --source fns
-python core/query.py "income" --source fns --collection chapters
-python core/query.py --source fns --list-programs
+python rag/query.py "income deduction" --source fns
+python rag/query.py "income" --source fns --collection chapters
+python rag/query.py --source fns --list-programs
 ```
 
 ---
@@ -227,23 +225,27 @@ python core/query.py --source fns --list-programs
 ## Project files reference
 
 ```
-fns_handbook_rag/
-├── PROJECT.md              ← this file
-├── requirements.txt
-├── config.ini              ← API keys, paths, settings (gitignored)
-├── .gitignore
+policy_navigator/
+├── rag/
+│   ├── fns/
+│   │   ├── parser.py           ← PDF → structured JSON sections (Phase 1, COMPLETE)
+│   │   └── chunker.py          ← Sections → chunks with merge/split (Phase 2)
+│   ├── embedder.py             ← Chunks → Voyage AI → ChromaDB (shared)
+│   └── query.py                ← Search interface (shared)
 │
-├── fns_parser.py           ← PDF → structured JSON sections (Phase 1, COMPLETE)
-├── chunker.py              ← Sections → chunks with merge/split (Phase 2)
-├── embedder.py             ← Chunks → Voyage AI → ChromaDB (Phase 2)
-├── query.py                ← Search interface (Phase 2)
-├── comparator.py           ← FNS vs OLG comparison agent (Phase 3)
+├── programs/
+│   └── comparator/
+│       └── comparator.py       ← FNS vs OLG comparison agent (Phase 3)
 │
-├── parsed_sections/        ← 482 JSON files (one per handbook section)
-│   └── ch{NN}_{section}.json
-├── chapter_chunks.json     ← Chapter-level documents (Phase 2)
-├── section_chunks.json     ← Section-level chunks (Phase 2)
-└── reports/                ← Comparison output (Phase 3)
+├── index/
+│   └── fns/
+│       ├── parsed_sections/    ← 482 JSON files (one per handbook section)
+│       │   └── ch{NN}_{section}.json
+│       ├── chapter_chunks.json ← Chapter-level documents
+│       └── section_chunks.json ← Section-level chunks
+│
+└── output/
+    └── comparator/             ← Comparison output
 ```
 
 Dependencies: `pdfplumber`, `chromadb`, `voyageai`, `anthropic`, `openpyxl`

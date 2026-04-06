@@ -6,7 +6,7 @@ The comparator is a four-layer pipeline that systematically compares every FNS H
 
 ```mermaid
 flowchart TD
-    START([FNS Sections<br/>data/fns/parsed_sections/]) --> L0
+    START([FNS Sections<br/>index/fns/parsed_sections/]) --> L0
 
     subgraph L0 ["Layer 0: Pre-Classification"]
         L0{classify_sections<br/>Haiku API}
@@ -17,7 +17,7 @@ flowchart TD
     L0_PASS --> RAG
 
     subgraph L1 ["Layer 1: Triage"]
-        RAG[multi_query_olg<br/>ChromaDB search<br/>core/query.py] --> L1_CALL
+        RAG[multi_query_olg<br/>ChromaDB search<br/>rag/query.py] --> L1_CALL
         L1_CALL{run_layer1<br/>Haiku API}
         L1_CALL -->|"match (HIGH)"| L1_DONE[Accept L1 verdict]
         L1_CALL -->|"not_applicable (HIGH)"| L1_DONE
@@ -28,13 +28,13 @@ flowchart TD
 
     subgraph L2 ["Layer 2: Deep Investigation"]
         ENGINE{engine?}
-        ENGINE -->|claude-code| L2_CC[run_layer2_claude_code<br/>Claude Code CLI session<br/>core/claude_code_runner.py]
+        ENGINE -->|claude-code| L2_CC[run_layer2_claude_code<br/>Claude Code CLI session<br/>tools/claude_code_runner.py]
         ENGINE -->|api| L2_API[run_layer2<br/>Haiku/Sonnet API<br/>Agentic tool loop]
 
-        L2_CC -->|"Searches OLG via<br/>python core/query.py"| L2_RESULT
+        L2_CC -->|"Searches OLG via<br/>python rag/query.py"| L2_RESULT
         L2_API -->|"Searches OLG via<br/>search_olg tool_use"| L2_RESULT
 
-        L2_RESULT[Result JSON<br/>data/comparator/results/sec.json]
+        L2_RESULT[Result JSON<br/>output/comparator/results/sec.json]
     end
 
     L2_RESULT --> L3_CHECK
@@ -79,16 +79,16 @@ For each section that passes L0:
 2. Haiku classifies based on the FNS text + top OLG matches
 3. HIGH confidence `match` or `not_applicable` stops here; everything else escalates to L2
 
-Prompt: `agents/prompts/layer1_triage.md`
+Prompt: `prompts/layer1_triage.md`
 
 ### Layer 2: Deep Investigation
 
 The most expensive layer. An agentic search loop that autonomously queries the OLG, follows cross-references, and builds a comprehensive assessment.
 
-**Claude Code engine** (`run_layer2_claude_code` > `core/claude_code_runner.py`):
+**Claude Code engine** (`run_layer2_claude_code` > `tools/claude_code_runner.py`):
 - Spawns a Claude Code CLI session via `claude -p --output-format json --dangerously-skip-permissions`
-- The session uses `python core/query.py` to search the OLG and `Read` to check FNS cross-references
-- Writes its result JSON to `data/comparator/results/{section_number}.json`
+- The session uses `python rag/query.py` to search the OLG and `Read` to check FNS cross-references
+- Writes its result JSON to `output/comparator/results/{section_number}.json`
 - Session ID captured for later conversation resume via `claude --resume {id}`
 - Parallel execution: `--parallel N` runs N concurrent L2 sessions
 - Cost: $0 marginal (subscription), ~2.5 min per section sequential, ~1 min/section at parallel 5
@@ -98,7 +98,7 @@ The most expensive layer. An agentic search loop that autonomously queries the O
 - Agentic loop: Claude calls tools, gets results, decides next search
 - Cost: ~$0.25 per section (Haiku), higher for Sonnet
 
-Prompt: `agents/prompts/layer2_investigation.md` (API), `agents/prompts/layer2_claude_code.md` (CLI)
+Prompt: `prompts/layer2_investigation.md` (API), `prompts/layer2_claude_code.md` (CLI)
 
 ### Layer 3: CMR Cross-Check (`run_layer3`)
 
@@ -107,7 +107,7 @@ Only fires when L2 finds a gap or conflict:
 2. Haiku analyzes whether the CMR supports the OLG position, requires something different, or is silent
 3. Result written back into the section's result JSON
 
-Prompt: `agents/prompts/layer3_validation.md`
+Prompt: `prompts/layer3_validation.md`
 
 ## Classification Taxonomy
 
@@ -124,37 +124,37 @@ Prompt: `agents/prompts/layer3_validation.md`
 
 ```bash
 # Full comparison run (Claude Code engine)
-python agents/comparator.py --chapter 10 --engine claude-code
+python programs/comparator/comparator.py --chapter 10 --engine claude-code
 
 # Parallel execution (5 concurrent L2 workers)
-python agents/comparator.py --chapter 10 --engine claude-code --parallel 5
+python programs/comparator/comparator.py --chapter 10 --engine claude-code --parallel 5
 
 # Full comparison run (API engine)
-python agents/comparator.py --chapter 10 --engine api
+python programs/comparator/comparator.py --chapter 10 --engine api
 
 # Specific sections only
-python agents/comparator.py --chapter 10 --sections "1013.4,1036,1044" --engine claude-code
+python programs/comparator/comparator.py --chapter 10 --sections "1013.4,1036,1044" --engine claude-code
 
 # Windowed mode (visible console windows, for debugging)
-python agents/comparator.py --chapter 10 --engine claude-code --windowed
+python programs/comparator/comparator.py --chapter 10 --engine claude-code --windowed
 
 # Pre-classify sections (Layer 0 only)
-python agents/comparator.py --classify --chapter 10
+python programs/comparator/comparator.py --classify --chapter 10
 
 # Dry run (show what would be processed)
-python agents/comparator.py --chapter 10 --dry-run
+python programs/comparator/comparator.py --chapter 10 --dry-run
 
 # Compile result JSONs into CSV
-python agents/comparator.py --compile --chapter 10
+python programs/comparator/comparator.py --compile --chapter 10
 
 # Resume an interrupted run
-python agents/comparator.py --chapter 10 --engine claude-code --resume
+python programs/comparator/comparator.py --chapter 10 --engine claude-code --resume
 ```
 
 ## Output Files
 
 ```
-data/comparator/
+output/comparator/
 ├── results/                              # Per-section L2 verdicts (JSON)
 │   ├── 1013.4.json                       #   Also serves as resume markers
 │   ├── 1036.json                         #   L3 results stored as _layer3 key
@@ -179,12 +179,12 @@ This restores the full conversation context -- all searches performed, OLG pages
 
 | File | Role |
 |------|------|
-| `agents/comparator.py` | Main comparator engine (all layers, CSV output) |
-| `core/claude_code_runner.py` | Claude Code CLI subprocess wrapper |
-| `core/query.py` | Shared search interface (OLG, FNS, CMR) |
-| `agents/prompts/domain_preamble.md` | Domain context shared across all prompts |
-| `agents/prompts/layer0_classify.md` | L0 classification prompt |
-| `agents/prompts/layer1_triage.md` | L1 triage prompt |
-| `agents/prompts/layer2_investigation.md` | L2 investigation prompt (API) |
-| `agents/prompts/layer2_claude_code.md` | L2 investigation prompt (CLI) |
-| `agents/prompts/layer3_validation.md` | L3 CMR cross-check prompt |
+| `programs/comparator/comparator.py` | Main comparator engine (all layers, CSV output) |
+| `tools/claude_code_runner.py` | Claude Code CLI subprocess wrapper |
+| `rag/query.py` | Shared search interface (OLG, FNS, CMR) |
+| `prompts/domain_preamble.md` | Domain context shared across all prompts |
+| `prompts/layer0_classify.md` | L0 classification prompt |
+| `prompts/layer1_triage.md` | L1 triage prompt |
+| `prompts/layer2_investigation.md` | L2 investigation prompt (API) |
+| `prompts/layer2_claude_code.md` | L2 investigation prompt (CLI) |
+| `prompts/layer3_validation.md` | L3 CMR cross-check prompt |

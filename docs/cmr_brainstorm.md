@@ -40,7 +40,7 @@ The language reads like formal legal regulation with deeply nested hierarchical 
 ## Pipeline Assessment
 
 ### What's similar to FNS/OLG
-- Same pipeline shape: PDF parsing --> structured JSON --> chunking --> embedding --> ChromaDB
+- Same pipeline shape: PDF parsing --> structured JSON --> chunking --> embedding --> ChromaDB (in `index/chroma_db/`)
 - Same embedding model (Voyage voyage-3) works well -- legal text is information-dense but still natural language
 - Same query interface pattern
 - Would get its own collections in the shared ChromaDB (e.g., `cmr_chapters`, `cmr_sections`)
@@ -96,4 +96,4 @@ Each step delivers standalone value.
 
 ## Project Restructuring
 
-Decision made to consolidate into a single project directory (moving out of `solutions_laboratory/` root) so everything lives in one workspace with one CLAUDE.md. The new structure will be determined in the new workspace based on what currently exists.
+Decision made to consolidate into a single project directory (moving out of `solutions_laboratory/` root) so everything lives in one workspace with one CLAUDE.md. The project is now organized under `policy_navigator/` with `rag/` (source pipelines + shared query/embedder), `tools/` (shared utilities), `programs/` (comparator, author, qc), `index/` (data), `output/` (results), and `raw/` (source files).

@@ -23,7 +23,7 @@ A policy search tool for DTA policy analysts. Accepts natural-language queries, 
 ┌─────────────────────────────────────────────────────┐
 │  FastAPI Backend                                    │
 │  - Routes query to selected ChromaDB collections    │
-│  - Uses existing core/query.py infrastructure       │
+│  - Uses existing rag/query.py infrastructure         │
 │  - Returns ranked passages organized by source      │
 └──────────────────┬──────────────────────────────────┘
                    │
@@ -43,7 +43,7 @@ A policy search tool for DTA policy analysts. Accepts natural-language queries, 
 │  - Receives query + retrieved passages              │
 │  - Produces natural-language answer with citations   │
 │  - Flags cross-source disagreements when present    │
-│  - Uses shared prompts from agents/prompts/         │
+│  - Uses shared prompts from prompts/                │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -61,7 +61,7 @@ A policy search tool for DTA policy analysts. Accepts natural-language queries, 
 | Frontend | HTMX + server-rendered HTML | One Python codebase, no Node toolchain. Form→results pattern is ideal for HTMX. |
 | Result layout | Tabbed by source | Clean separation per source. OLG tab pre-selected. Other tabs load on click (lazy). |
 | LLM integration | Claude Agent SDK | Structured agent with tools, same pattern as comparator |
-| Agent prompts | Shared `agents/prompts/` folder | Search agent needs the same DTA policy context as comparator |
+| Agent prompts | Shared `prompts/` folder | Search agent needs the same DTA policy context as comparator |
 | Search history | Server-side persistence | Analysts can revisit prior searches. Stored in backend database. |
 | Results per tab | 5 (with "show more") | Concise default, matches CLI. Analyst can load more on demand. |
 | Agent retrieval | Iterative, on analyst toggle | Agent works with fixed passages by default. "Dig deeper" toggle lets it search for more. |
@@ -76,13 +76,13 @@ A policy search tool for DTA policy analysts. Accepts natural-language queries, 
 - **Embeddings**: Voyage AI `voyage-3` (existing)
 - **LLM**: Claude via Agent SDK (for synthesis)
 - **Frontend**: HTMX + server-rendered HTML (FastAPI templates)
-- **Retrieval layer**: Wraps existing `core/query.py` Python API
+- **Retrieval layer**: Wraps existing `rag/query.py` Python API
 
 ## Architecture Notes
 
 ### Retrieval Layer
 
-The search engine's retrieval backend wraps `core/query.py`, which already provides:
+The search engine's retrieval backend wraps `rag/query.py`, which already provides:
 - Multi-source support (`--source olg|fns|cmr`)
 - Program filtering (`--program SNAP`)
 - Two-tier collections (page/chapter level + section level)
@@ -97,7 +97,7 @@ The FastAPI layer adds:
 ### Synthesis Agent
 
 - Uses Claude Agent SDK
-- Shares prompt templates with comparator (`agents/prompts/`)
+- Shares prompt templates with comparator (`prompts/`)
 - **Default mode**: Receives original query + retrieved passages (with metadata). Produces natural-language answer with inline citations. Flags cross-source disagreements when present.
 - **Deep mode** (analyst toggle): Agent gains access to search tools and can pull additional chunks if the initial results are insufficient. Only activated when analyst explicitly requests it.
 - Only invoked on analyst request (not on every search)
@@ -106,7 +106,7 @@ The FastAPI layer adds:
 
 New policy sources may be added in the future. The search engine must scale without architectural changes:
 
-- **Backend**: `core/query.py` already uses `_resolve_source_paths()` / `_resolve_source_config()` — adding a source is one dict entry per resolver. The FastAPI layer should discover available sources from these resolvers, not hardcode OLG/CMR/FNS.
+- **Backend**: `rag/query.py` already uses `_resolve_source_paths()` / `_resolve_source_config()` — adding a source is one dict entry per resolver. The FastAPI layer should discover available sources from these resolvers, not hardcode OLG/CMR/FNS.
 - **UI**: Source checkboxes and tabs should be dynamically generated from the list of available sources, not hardcoded.
 - **Synthesis agent**: Prompt templates should be source-agnostic where possible. Source-specific context (like "CMR uses formal legal language") can be injected via metadata.
 - **Search history**: Source list stored per search record so historical searches remain valid even if sources are added/removed.
@@ -114,8 +114,8 @@ New policy sources may be added in the future. The search engine must scale with
 ### Relationship to Comparator
 
 The comparator and search engine are **separate tools** with **shared infrastructure**:
-- Both use ChromaDB collections via `core/query.py`
-- Both use Claude agents with shared prompts in `agents/prompts/`
+- Both use ChromaDB collections via `rag/query.py`
+- Both use Claude agents with shared prompts in `prompts/`
 - Comparator: systematic pairwise analysis (research tool)
 - Search engine: ad-hoc query answering (daily-use tool)
 
@@ -132,25 +132,23 @@ All initial design questions resolved (2026-03-23). New questions as they arise:
 
 ```
 policy_navigator/
-├── api/                          ← FastAPI backend (new)
-│   ├── main.py                   ← App entry point, CORS, lifespan
-│   ├── routes/
-│   │   ├── search.py             ← Search endpoints
-│   │   └── synthesize.py         ← Synthesis endpoint (calls agent)
-│   └── models/
-│       ├── requests.py           ← Pydantic request models
-│       └── responses.py          ← Pydantic response models
-│
-├── agents/
-│   ├── comparator.py             ← Existing
-│   ├── search_agent.py           ← New: synthesis agent for search
-│   └── prompts/                  ← Shared prompt templates
-│
-├── ui/                           ← HTMX templates + static assets
+├── ui/                           ← FastAPI backend + HTMX templates + static assets
+│   ├── app.py                    ← App entry point, routes
+│   ├── search.py                 ← Search service layer + source registry
+│   ├── history.py                ← SQLite search history
 │   ├── templates/                ← Jinja2 templates
 │   └── static/                   ← CSS, minimal JS
 │
-├── core/
+├── programs/
+│   └── comparator/
+│       └── comparator.py         ← Existing comparator
+│
+├── tools/
+│   └── synthesis.py              ← RAG synthesis (standard + deep)
+│
+├── prompts/                      ← Shared prompt templates
+│
+├── rag/
 │   ├── embedder.py               ← Existing
 │   └── query.py                  ← Existing (search engine wraps this)
 ```
