@@ -247,6 +247,23 @@ function authorResume(sessionId) {
         });
 }
 
+/* Navigate to a specific version of a phase output */
+function authorViewVersion(phase, versionNum) {
+    var nameEl = document.getElementById('author-name');
+    var name = nameEl ? nameEl.value.trim() : '';
+    if (!name) return;
+
+    var resultsArea = document.getElementById('author-results');
+    var url = '/author/view/' + encodeURIComponent(name) + '/' + phase + '?v=' + versionNum;
+
+    fetch(url)
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            resultsArea.innerHTML = html;
+            htmx.process(resultsArea);
+        });
+}
+
 function loadAssignment(name) {
     fetch('/author/load/' + encodeURIComponent(name))
         .then(function(resp) { return resp.json(); })

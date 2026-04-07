@@ -160,17 +160,58 @@ def save_format_version(output_dir: Path) -> Path:
 # LOAD helpers — called to render view templates
 # ============================================================
 
-def load_version_view(output_dir: Path, phase: str) -> dict | None:
-    """Load the latest version's data for template rendering.
+def load_version_view(
+    output_dir: Path,
+    phase: str,
+    version_num: int | None = None,
+) -> dict | None:
+    """Load a version's data for template rendering, with navigation metadata.
 
-    Returns None if no output exists (neither versioned nor unversioned).
+    Args:
+        output_dir: Assignment output directory.
+        phase: "research", "draft", or "format".
+        version_num: Specific version number to load. None = latest.
+
+    Returns dict with view data plus navigation keys:
+        total_versions, version_index (1-based), has_prev, has_next,
+        prev_version, next_version (version numbers for arrow links).
+    Returns None if no output exists.
     """
-    latest = latest_version(output_dir, phase)
-    if latest:
-        return _load_from_version_dir(latest, phase)
+    versions = list_versions(output_dir, phase)
+    total = len(versions)
 
-    # Fallback: check for pre-versioning top-level files
-    return _load_unversioned_view(output_dir, phase)
+    if total == 0:
+        # Try unversioned fallback
+        view = _load_unversioned_view(output_dir, phase)
+        if view:
+            view.update(total_versions=0, version_index=0,
+                        has_prev=False, has_next=False)
+        return view
+
+    # Find the target version
+    if version_num is not None:
+        target_idx = None
+        for i, d in enumerate(versions):
+            if _parse_version_num(d.name) == version_num:
+                target_idx = i
+                break
+        if target_idx is None:
+            target_idx = total - 1  # fallback to latest
+    else:
+        target_idx = total - 1  # latest
+
+    view = _load_from_version_dir(versions[target_idx], phase)
+    view["total_versions"] = total
+    view["version_index"] = target_idx + 1  # 1-based for display
+    view["has_prev"] = target_idx > 0
+    view["has_next"] = target_idx < total - 1
+
+    if view["has_prev"]:
+        view["prev_version"] = _parse_version_num(versions[target_idx - 1].name)
+    if view["has_next"]:
+        view["next_version"] = _parse_version_num(versions[target_idx + 1].name)
+
+    return view
 
 
 def _load_from_version_dir(version_dir: Path, phase: str) -> dict:

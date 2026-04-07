@@ -244,13 +244,15 @@ async def author_load(request: Request, name: str):
 
 
 @app.get("/author/view/{name}/{phase}", response_class=HTMLResponse)
-async def author_view(request: Request, name: str, phase: str):
-    """Return a read-only view of the latest output for a phase."""
+async def author_view(
+    request: Request, name: str, phase: str, v: Optional[int] = None,
+):
+    """Return a view of a specific (or latest) version for a phase."""
     if phase not in ("research", "draft", "format"):
         return HTMLResponse("<p>Invalid phase.</p>", status_code=400)
 
     output_dir = get_output_dir(name)
-    view = load_version_view(output_dir, phase)
+    view = load_version_view(output_dir, phase, version_num=v)
 
     if not view:
         return HTMLResponse("")

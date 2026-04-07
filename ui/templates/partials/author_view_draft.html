@@ -1,7 +1,22 @@
 <div class="author-result-container">
     <!-- Version bar -->
     <div class="author-version-bar">
-        <span class="version-label">Draft <span class="version-id">{{ view.version_label }}</span></span>
+        <div class="version-nav">
+            <span class="version-phase">Draft</span>
+            {% if view.total_versions > 1 %}
+            <button class="btn-nav{% if not view.has_prev %} disabled{% endif %}"
+                    {% if view.has_prev %}onclick="authorViewVersion('draft', {{ view.prev_version }})"{% endif %}
+                    title="Previous version">&lsaquo;</button>
+            <span class="version-id">v{{ view.version_index }} of {{ view.total_versions }}</span>
+            <button class="btn-nav{% if not view.has_next %} disabled{% endif %}"
+                    {% if view.has_next %}onclick="authorViewVersion('draft', {{ view.next_version }})"{% endif %}
+                    title="Next version">&rsaquo;</button>
+            {% elif not view.is_unversioned %}
+            <span class="version-id">v1</span>
+            {% else %}
+            <span class="version-id">unversioned</span>
+            {% endif %}
+        </div>
         <div class="version-actions">
             {% if view.session_id %}
             <button class="btn btn-sm btn-outline" onclick="authorResume('{{ view.session_id }}')">Resume</button>
