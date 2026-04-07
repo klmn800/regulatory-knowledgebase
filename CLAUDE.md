@@ -104,10 +104,10 @@ FastAPI + HTMX web interface at `http://127.0.0.1:8001`. Run with `python ui/app
 | Tab | What it does |
 |-----|-------------|
 | **Ask** | Type a question, get a synthesized answer with citations from OLG/CMR/FNS. Standard or deep (agentic) mode. |
-| **Author** | Enter an assignment, click buttons to run Research/Draft/Format phases. Draft spawns a visible Claude Code terminal. |
+| **Author** | Enter an assignment, click buttons to run Research/Draft/Format phases. Draft spawns a visible Claude Code terminal. Each run is versioned with navigable history. |
 | **History** | Browse past searches with full evidence snapshots. |
 
-Key files: `ui/app.py` (FastAPI routes), `ui/search.py` (source registry), `ui/history.py` (SQLite persistence), `tools/synthesis.py` (RAG synthesis with `prompt_name` and `config_overrides` support).
+Key files: `ui/app.py` (FastAPI routes), `ui/search.py` (source registry), `ui/history.py` (SQLite persistence), `ui/versioning.py` (author output versioning), `tools/synthesis.py` (RAG synthesis with `prompt_name` and `config_overrides` support).
 
 ### Comparator (`programs/comparator/comparator.py`)
 
@@ -134,7 +134,9 @@ Three-phase pipeline: **Research → Author → Format**
 
 CLI: `python programs/author/author.py "assignment" --name name`. Flags: `--research-only`, `--draft-only`, `--resume`, `--no-docx`, `--assignment-file`.
 
-Web UI: Author tab with buttons for each phase. Draft spawns a Claude Code terminal window for live observation.
+Web UI: Author tab with buttons for each phase. Draft spawns a Claude Code terminal window for live observation. Clicking a phase button shows existing output with version navigation (left/right arrows) and a "Run Again" button; draft views include a Resume button wired to the version-specific session ID.
+
+Output versioning (`ui/versioning.py`): Each UI-triggered run creates a numbered version directory (e.g., `research/001_20260406-1430/`) with the output files, assignment text used (`input.txt`), and metadata. Top-level files always hold the latest version for phase-to-phase handoff. CLI runs are not versioned.
 
 Output directory: `output/author/{name}/`
 
@@ -273,6 +275,7 @@ policy_navigator/
 │   ├── app.py                       ← FastAPI application
 │   ├── search.py                    ← search service layer + source registry
 │   ├── history.py                   ← SQLite search history
+│   ├── versioning.py                ← author output versioning
 │   ├── static/                      ← CSS + JS
 │   └── templates/                   ← Jinja2 + HTMX partials
 │
@@ -312,7 +315,7 @@ policy_navigator/
 - **CMR parsed data**: `index/cmr/parsed_sections/*.json` (~592 files)
 - **Shared vector store**: `index/chroma_db/` (6 collections)
 - **Comparator results**: `output/comparator/results/` (per-section JSONs), `output/comparator/FNS-{ch}.csv`
-- **Author outputs**: `output/author/{name}/` (research_report.md, draft.md, output.docx, session_id.txt)
+- **Author outputs**: `output/author/{name}/` (top-level latest + `research/`, `drafts/`, `formats/` version dirs)
 - **QC analysis outputs**: `output/qc_analysis/`
 - **Search history**: `output/search_history.db`
 - **FNS source PDF**: `raw/FNS Handbook 310 1.13.26.pdf`

@@ -37,7 +37,7 @@ python ui/app.py
 
 Three tabs:
 - **Ask** -- Type a policy question, get a synthesized answer with evidence from OLG/CMR/FNS
-- **Author** -- Enter an assignment, run the research/draft/format pipeline with buttons
+- **Author** -- Enter an assignment, run the research/draft/format pipeline with buttons. Each run is versioned with navigable history.
 - **History** -- Browse past searches
 
 ### CLI
@@ -136,7 +136,7 @@ The web UI launches the Claude Code drafting phase in a visible terminal window 
 **Style guide** (committed):
 - `programs/author/references/olg_style_guide.md` -- Evidence-based guide extracted from the manual + 9 sample pages. Covers voice, structure, formatting, terminology, and page types.
 
-Output goes to `output/author/{name}/` with all deliverables.
+Output goes to `output/author/{name}/` with all deliverables. UI-triggered runs create versioned subdirectories (`research/001_...`, `drafts/001_...`, `formats/001_...`) preserving full history with assignment text and metadata. Top-level files always hold the latest version.
 
 ### HTML Report (`programs/comparator/report.py`)
 
