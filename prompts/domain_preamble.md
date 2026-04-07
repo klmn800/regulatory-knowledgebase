@@ -2,7 +2,7 @@
 
 ## What You're Analyzing
 
-You are comparing policy documents for the Massachusetts Department of Transitional Assistance (DTA), the state agency that administers SNAP (food assistance) benefits.
+You are working with policy documents from the Massachusetts Department of Transitional Assistance (DTA), the state agency that administers SNAP (food assistance) benefits.
 
 ## The Three Sources (in priority order)
 
@@ -11,52 +11,6 @@ You are comparing policy documents for the Massachusetts Department of Transitio
 2. **106 CMR (Code of Massachusetts Regulations)** — Massachusetts state regulations implementing SNAP. These are the legally binding rules that govern DTA's program. They translate federal requirements into state-specific policy, sometimes adding state options or different thresholds.
 
 3. **OLG (Online Guide)** — DTA's internal staff guide. This is the authoritative reference that all DTA staff use: eligibility workers processing cases, supervisors reviewing work, trainers teaching new staff, policy staff writing guidance, and hearings officers adjudicating appeals. Workers primarily operate in BEACON (DTA's eligibility system) and consult the OLG when they encounter policy questions or unusual situations.
-
-## What the OLG Should Cover
-
-The OLG is maintained by a dedicated policy team. For case management topics, a well-written OLG page typically includes:
-- **The policy rule** — what the requirement is, who it applies to, any thresholds or exceptions
-- **BEACON procedures** — how to carry out the rule in DTA's eligibility system (data entry, screens, workflows)
-
-Not every topic needs both. Some policies are informational (no worker action required). Some processes are automated in BEACON (e.g., sending a Notice of Missed Interview) with no manual worker steps. But for most eligibility, income, deduction, and verification topics, the OLG should explain both what the rule is AND how to apply it.
-
-## What "Adequate Coverage" Means
-
-A topic is adequately covered when a DTA worker reading the OLG would:
-- Know the rule exists
-- Understand who it applies to and when
-- Know what to do (or know that it's automated)
-- Know what verification is required
-- Be able to process the case correctly without needing to look elsewhere
-
-A topic is NOT adequately covered if:
-- The OLG mentions the topic but doesn't explain the rule clearly enough to act on
-- The policy is stated but BEACON procedures are missing (for topics that need them)
-- Verification requirements are missing or incomplete
-- Key thresholds, exceptions, or edge cases from the federal/state rules are omitted
-- The worker would need to guess or ask a supervisor to handle the situation correctly
-- The topic is rich enough that it deserves more explanation than currently exists
-
-## What Constitutes a Real Gap vs. a Non-Issue
-
-**Real gaps** (report these):
-- A federal rule that the OLG doesn't cover at all
-- A verification standard the OLG doesn't mention (e.g., FNS requires VBA Award notice for VA income, OLG doesn't specify acceptable documents)
-- A threshold or calculation method that differs between sources without explanation
-- Policy that exists in the OLG but lacks the BEACON procedures workers need to carry it out
-
-**Not gaps** (don't flag these):
-- FNS describes a QC review procedure that has no caseworker equivalent (audit methodology, error calculation, QC sampling)
-- The OLG covers the same rule using different terminology or organization (states implement federal rules in their own way)
-- The OLG provides more detail or stricter requirements than FNS (states can exceed federal minimums)
-- Minor wording differences that don't change the practical meaning
-
-
-## Important Notes
-
-- **When sources disagree, the disagreement IS the finding.** Don't try to reconcile conflicts — document them. The state regulation (CMR) governs actual practice, but gaps between CMR and FNS are also worth noting.
-- **States have flexibility.** Massachusetts may implement federal rules differently through state options. A difference is not automatically a gap — it may be an intentional state policy choice. Note regardless.
-- **The goal is dual-purpose.** Findings will be used both to improve the OLG (fill gaps, add missing content) and as a compliance report documenting alignment with federal and state requirements.
 
 ## Glossary
 

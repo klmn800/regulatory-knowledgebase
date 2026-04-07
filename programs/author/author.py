@@ -170,13 +170,22 @@ def compose_authoring_prompt(
     assignment: str,
     name: str,
     config: configparser.ConfigParser,
+    draft_file: Path | None = None,
 ) -> str:
-    """Compose the full prompt for the Claude Code authoring session."""
-    output_dir = get_output_dir(name)
-    draft_file = output_dir / "draft.md"
+    """Compose the full prompt for the Claude Code authoring session.
 
-    # Load prompt components
-    preamble = load_text(SHARED_PROMPTS_DIR / "domain_preamble.md") or ""
+    Args:
+        draft_file: Where Claude should write the draft. Defaults to
+            output/author/{name}/draft.md (top-level). The UI passes
+            a version directory path so the draft is written directly
+            to the versioned location.
+    """
+    output_dir = get_output_dir(name)
+    if draft_file is None:
+        draft_file = output_dir / "draft.md"
+
+    # Load prompt components (no domain preamble — style guide + draft prompt
+    # + research report provide all needed context for the authoring agent)
     author_prompt = load_text(PROMPTS_DIR / "author_draft.md") or ""
 
     # Load style guide if available
@@ -191,12 +200,9 @@ def compose_authoring_prompt(
         research_report = "(No research was conducted. Use the search tools to find relevant content.)"
 
     # Compose the full prompt
-    parts = [preamble, "\n\n---\n\n"]
-
-    if style_guide:
-        parts.append("## OLG Style Guide\n\n")
-        parts.append(style_guide)
-        parts.append("\n\n---\n\n")
+    # Order: role/process → assignment → research → style guide → output
+    # Style guide placed late so it's fresh in context when the agent drafts.
+    parts = []
 
     parts.append(author_prompt)
     parts.append("\n\n---\n\n")
@@ -209,11 +215,22 @@ def compose_authoring_prompt(
     parts.append(research_report)
     parts.append("\n\n---\n\n")
 
-    parts.append(f"## Output Instructions\n\n")
+    if style_guide:
+        parts.append("## OLG Style Guide\n\n")
+        parts.append(style_guide)
+        parts.append("\n\n---\n\n")
+
+    parts.append("## Output Instructions\n\n")
     parts.append(f"Write your draft to: `{draft_file}`\n\n")
     parts.append(
-        "Use the Write tool to create the file. Write clean markdown.\n"
-        "Include the Author's Notes section at the end after a `---` separator."
+        "Use the Write tool to create the file. Write clean markdown "
+        "with proper heading hierarchy.\n\n"
+        "At the end of the draft, include a `---` separator followed by "
+        "a brief **Author's Notes** section with:\n"
+        "- Any areas where you had to make judgment calls about structure or content\n"
+        "- Any gaps you couldn't fill from available sources\n"
+        "- Suggestions for the reviewer (content that should be verified, links to add, etc.)\n"
+        "- Any system improvement suggestions (see the prompt above)\n"
     )
 
     return "".join(parts)
@@ -287,6 +304,22 @@ def run_format(name: str, config: configparser.ConfigParser) -> Path | None:
     print(f"\n{'='*60}")
     print("PHASE 3: FORMAT (.docx)")
     print(f"{'='*60}")
+
+    # Check latest versioned draft first — it's the authoritative copy.
+    # The top-level draft.md is a convenience copy that may be stale if
+    # the user closed the terminal before the bat file copied it up.
+    drafts_dir = output_dir / "drafts"
+    if drafts_dir.exists():
+        version_dirs = sorted(
+            (d for d in drafts_dir.iterdir() if d.is_dir()),
+            key=lambda d: d.name,
+        )
+        if version_dirs:
+            versioned = version_dirs[-1] / "draft.md"
+            if versioned.exists():
+                import shutil
+                shutil.copy2(versioned, draft_file)
+                print(f"  Using draft from {versioned.parent.name}")
 
     if not draft_file.exists():
         print(f"  ERROR: No draft found at {draft_file}")
