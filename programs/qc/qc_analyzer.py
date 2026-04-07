@@ -45,6 +45,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_FILE = PROJECT_ROOT / "config.ini"
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 OUTPUT_DIR = PROJECT_ROOT / "output" / "qc_analysis"
+ANALYSIS_DIR = OUTPUT_DIR  # alias for UI imports
 CHECKPOINT_FILE = OUTPUT_DIR / "qc_checkpoint.json"
 
 APPENDED_COLUMNS = [
@@ -316,12 +317,17 @@ def format_olg_results_for_prompt(results: list[dict]) -> str:
 
 def load_csv(filepath: Path) -> tuple[list[str], list[dict]]:
     """Load QC report CSV. Returns (fieldnames, rows_as_dicts).
-    Handles UTF-8 BOM encoding."""
-    with open(filepath, "r", encoding="utf-8-sig", newline="") as f:
-        reader = csv.DictReader(f)
-        fieldnames = list(reader.fieldnames)
-        rows = list(reader)
-    return fieldnames, rows
+    Tries UTF-8 (with BOM), falls back to cp1252 for Windows-exported CSVs."""
+    for encoding in ("utf-8-sig", "cp1252"):
+        try:
+            with open(filepath, "r", encoding=encoding, newline="") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames)
+                rows = list(reader)
+            return fieldnames, rows
+        except UnicodeDecodeError:
+            continue
+    raise ValueError(f"Could not decode {filepath.name} as UTF-8 or CP1252")
 
 
 def select_rows(rows: list[dict], sample: int = None,
@@ -367,6 +373,116 @@ def load_checkpoint() -> dict | None:
         with open(CHECKPOINT_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return None
+
+
+# ============================================================
+# PER-ANALYSIS DIRECTORY MANAGEMENT
+# ============================================================
+
+def get_analysis_dir(name: str) -> Path:
+    """Return (and create) the directory for a named analysis."""
+    d = ANALYSIS_DIR / name
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "results").mkdir(exist_ok=True)
+    return d
+
+
+def save_finding(analysis_dir: Path, row_index: int, data: dict) -> Path:
+    """Write a per-finding JSON to results/row_NNN.json."""
+    path = analysis_dir / "results" / f"row_{row_index:03d}.json"
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return path
+
+
+def load_finding(analysis_dir: Path, row_index: int) -> dict | None:
+    """Read a single finding JSON. Returns None if not found."""
+    path = analysis_dir / "results" / f"row_{row_index:03d}.json"
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return None
+
+
+def load_all_findings(analysis_dir: Path) -> list[dict]:
+    """Read all finding JSONs, sorted by row_index."""
+    results_dir = analysis_dir / "results"
+    if not results_dir.exists():
+        return []
+    findings = []
+    for path in sorted(results_dir.glob("row_*.json")):
+        with open(path, "r", encoding="utf-8") as f:
+            findings.append(json.load(f))
+    findings.sort(key=lambda f: f.get("row_index", 0))
+    return findings
+
+
+def save_meta(analysis_dir: Path, meta: dict) -> None:
+    """Write meta.json for an analysis."""
+    path = analysis_dir / "meta.json"
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=2, ensure_ascii=False)
+
+
+def load_meta(analysis_dir: Path) -> dict | None:
+    """Read meta.json. Returns None if not found."""
+    path = analysis_dir / "meta.json"
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return None
+
+
+def generate_summary_csv(analysis_dir: Path) -> Path:
+    """Build a summary CSV from all finding JSONs."""
+    findings = load_all_findings(analysis_dir)
+    if not findings:
+        return None
+
+    csv_path = analysis_dir / "summary.csv"
+
+    summary_columns = [
+        "row_index", "review_number", "tao", "error_amount",
+        "determination", "error_type", "policy_issues", "coverage",
+        "confidence", "gap_description", "olg_references",
+        "searches_performed",
+    ]
+    # Add cross-check columns if present
+    if any("_cmr_check" in f for f in findings):
+        summary_columns.extend([
+            "cmr_classification", "cmr_sections", "cmr_note",
+        ])
+    if any("_fns_check" in f for f in findings):
+        summary_columns.extend([
+            "fns_classification", "fns_sections", "fns_note",
+        ])
+
+    with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=summary_columns,
+                                extrasaction="ignore")
+        writer.writeheader()
+        for finding in findings:
+            row = {k: finding.get(k, "") for k in summary_columns}
+            # Flatten list fields
+            refs = finding.get("olg_references", [])
+            if isinstance(refs, list):
+                row["olg_references"] = "; ".join(str(r) for r in refs)
+            # Flatten cross-check fields
+            cmr = finding.get("_cmr_check", {})
+            if cmr:
+                row["cmr_classification"] = cmr.get("classification", "")
+                secs = cmr.get("cmr_sections", [])
+                row["cmr_sections"] = "; ".join(secs) if isinstance(secs, list) else str(secs)
+                row["cmr_note"] = cmr.get("note", "")
+            fns = finding.get("_fns_check", {})
+            if fns:
+                row["fns_classification"] = fns.get("classification", "")
+                secs = fns.get("fns_sections", [])
+                row["fns_sections"] = "; ".join(secs) if isinstance(secs, list) else str(secs)
+                row["fns_note"] = fns.get("note", "")
+            writer.writerow(row)
+
+    return csv_path
 
 
 # ============================================================
@@ -731,6 +847,451 @@ def build_output_row(original_row: dict, extractor_result: dict,
     output["Searches_Performed"] = str(judge_result.get("searches_performed", 0))
 
     return output
+
+
+# ============================================================
+# UI-FACING PIPELINE FUNCTIONS
+# ============================================================
+
+def run_extract(analysis_dir: Path, rows: list[dict],
+                config: configparser.ConfigParser = None) -> list[dict]:
+    """Run the Extractor on CSV rows and save per-finding JSONs.
+
+    Args:
+        analysis_dir: Path to the analysis directory (from get_analysis_dir).
+        rows: List of CSV row dicts (from load_csv).
+        config: Optional config; loaded from config.ini if not provided.
+
+    Returns:
+        List of extracted finding dicts.
+    """
+    if config is None:
+        config = load_config()
+
+    extractor_model = config.get("qc_analyzer", "extractor_model")
+    extractor_prompt = load_prompt("qc_extractor", with_preamble=True)
+
+    api_key = config.get("api", "anthropic_api_key")
+    claude = anthropic.Anthropic(api_key=api_key)
+
+    cost_tracker = CostTracker()
+    cost_tracker.extractor_model = extractor_model
+
+    start_time = time.time()
+    findings = []
+    for row_idx, row in enumerate(rows, start=1):
+        findings_text = row.get("QC Findings", "").strip()
+        if not findings_text:
+            continue
+
+        extractor_input = build_extractor_input(row)
+        extractor_result = run_extractor(
+            extractor_input, claude, extractor_model, extractor_prompt,
+            cost_tracker=cost_tracker,
+        )
+
+        queries = extractor_result.get("search_queries", [])
+        if not isinstance(queries, list):
+            queries = [str(queries)]
+
+        # Clean parenthetical noise from determination
+        det = row.get("Food Stamp Determination", "")
+        det = re.sub(r"\s*\(Complete [^)]+\)", "", det).strip()
+
+        raw_error_type = row.get("Type Of Errors", "")
+        error_type = " / ".join(p.strip() for p in raw_error_type.split(";") if p.strip())
+
+        finding = {
+            "row_index": row_idx,
+            "review_number": row.get("Review Number", ""),
+            "apid": row.get("APID", ""),
+            "tao": row.get("TAO", ""),
+            "error_amount": row.get("Error Amount", ""),
+            "determination": det,
+            "error_type": error_type,
+            "finding_narrative": findings_text,
+            "non_concur_reason": row.get("Non-Concur Reason", "").strip(),
+            "policy_issues": extractor_result.get("policy_issues", ""),
+            "search_queries": queries,
+            "phase": "extracted",
+        }
+        save_finding(analysis_dir, row_idx, finding)
+        findings.append(finding)
+
+    elapsed = round(time.time() - start_time, 1)
+
+    # Update meta
+    meta = load_meta(analysis_dir) or {}
+    if "phases" not in meta:
+        meta["phases"] = {}
+    meta["phases"]["extracted"] = True
+    if "cost" not in meta:
+        meta["cost"] = {}
+    meta["cost"]["extractor"] = round(cost_tracker.extractor_cost(), 4)
+    meta["extract_stats"] = {
+        "timestamp": datetime.now().isoformat(),
+        "duration_sec": elapsed,
+        "rows_processed": len(findings),
+        "model": extractor_model,
+        "tokens_in": cost_tracker.extractor_input,
+        "tokens_out": cost_tracker.extractor_output,
+        "cost": round(cost_tracker.extractor_cost(), 4),
+    }
+    save_meta(analysis_dir, meta)
+
+    return findings
+
+
+def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
+                    config: configparser.ConfigParser = None) -> list[dict]:
+    """Run Seed Search + Judge on extracted findings.
+
+    Args:
+        analysis_dir: Path to the analysis directory.
+        row_indices: Optional list of 1-based row indices to investigate.
+                     Defaults to all extracted findings.
+        config: Optional config; loaded from config.ini if not provided.
+
+    Returns:
+        List of updated finding dicts with investigation results.
+    """
+    if config is None:
+        config = load_config()
+
+    judge_model = config.get("qc_analyzer", "judge_model")
+    max_judge_searches = config.getint("qc_analyzer", "max_judge_searches",
+                                       fallback=10)
+    olg_results_per_search = config.getint("qc_analyzer",
+                                           "olg_results_per_search",
+                                           fallback=5)
+    seed_results_per_query = config.getint("qc_analyzer",
+                                           "seed_results_per_query",
+                                           fallback=5)
+    judge_prompt = load_prompt("qc_judge", with_preamble=True)
+
+    api_key = config.get("api", "anthropic_api_key")
+    claude = anthropic.Anthropic(api_key=api_key)
+    olg_clients = create_client(source="olg")
+
+    # Load upload.csv to get full row data for the judge
+    csv_path = analysis_dir / "upload.csv"
+    if csv_path.exists():
+        _, all_rows = load_csv(csv_path)
+    else:
+        all_rows = []
+
+    # Determine which findings to investigate
+    if row_indices is None:
+        all_findings = load_all_findings(analysis_dir)
+        row_indices = [f["row_index"] for f in all_findings
+                       if f.get("phase") == "extracted"]
+
+    cost_tracker = CostTracker()
+    cost_tracker.judge_model = judge_model
+
+    start_time = time.time()
+    results = []
+    for row_idx in row_indices:
+        finding = load_finding(analysis_dir, row_idx)
+        if not finding:
+            continue
+
+        # Get original CSV row for the judge (provides full finding narrative)
+        if 1 <= row_idx <= len(all_rows):
+            original_row = all_rows[row_idx - 1]
+        else:
+            original_row = {"QC Findings": finding.get("finding_narrative", "")}
+
+        extractor_result = {
+            "policy_issues": finding.get("policy_issues", ""),
+            "search_queries": finding.get("search_queries", []),
+        }
+
+        # Seed search
+        seed_results = run_seed_searches(
+            extractor_result["search_queries"], olg_clients,
+            results_per_query=seed_results_per_query,
+        )
+
+        # Judge
+        judge_result = run_judge(
+            original_row, extractor_result, seed_results, olg_clients,
+            claude, judge_model, judge_prompt,
+            max_searches=max_judge_searches,
+            results_per_search=olg_results_per_search,
+            cost_tracker=cost_tracker,
+        )
+
+        # Update finding with judge results
+        finding["phase"] = "investigated"
+        finding["coverage"] = judge_result.get("coverage", "Unknown")
+        finding["confidence"] = judge_result.get("confidence", "LOW")
+        finding["olg_references"] = judge_result.get("olg_references", [])
+        finding["gap_description"] = judge_result.get("gap_description", "")
+        finding["reasoning"] = judge_result.get("reasoning", "")
+        finding["searches_performed"] = judge_result.get("searches_performed", 0)
+        finding["all_search_queries"] = judge_result.get("all_search_queries", [])
+
+        save_finding(analysis_dir, row_idx, finding)
+        results.append(finding)
+
+    elapsed = round(time.time() - start_time, 1)
+
+    # Update meta
+    meta = load_meta(analysis_dir) or {}
+    if "phases" not in meta:
+        meta["phases"] = {}
+    meta["phases"]["investigated"] = True
+    meta["investigated_rows"] = row_indices
+    if "cost" not in meta:
+        meta["cost"] = {}
+    meta["cost"]["judge"] = round(cost_tracker.judge_cost(), 4)
+    meta["investigate_stats"] = {
+        "timestamp": datetime.now().isoformat(),
+        "duration_sec": elapsed,
+        "rows_processed": len(results),
+        "model": judge_model,
+        "tokens_in": cost_tracker.judge_input,
+        "tokens_out": cost_tracker.judge_output,
+        "cost": round(cost_tracker.judge_cost(), 4),
+    }
+    save_meta(analysis_dir, meta)
+
+    return results
+
+
+# ============================================================
+# CROSS-CHECK FUNCTIONS (CMR / FNS)
+# ============================================================
+
+def _format_source_results_for_prompt(results: list[dict], source: str) -> str:
+    """Format CMR or FNS search results for inclusion in a cross-check prompt."""
+    if not results:
+        return f"No {source.upper()} matches found."
+
+    parts = []
+    for i, result in enumerate(results):
+        meta = result["metadata"]
+        if source == "cmr":
+            sec_num = meta.get("section_number", "")
+            sec_title = meta.get("section_title", "")
+            label = f"{sec_num} {sec_title}".strip()
+        else:
+            sec_num = meta.get("section_number", meta.get("title", ""))
+            sec_title = meta.get("section_title", "")
+            label = f"{sec_num} {sec_title}".strip()
+
+        score = result["score"]
+        text = result["text"][:1000]
+
+        header = f"[{source.upper()} Match {i+1}] Score: {score:.2f} | {label}"
+        parts.append(f"{header}\n{text}")
+        if len(result["text"]) > 1000:
+            parts.append("... (truncated)")
+        parts.append("")
+
+    return "\n".join(parts)
+
+
+def _build_crosscheck_user_message(finding: dict, source_results_formatted: str,
+                                   source: str) -> str:
+    """Build the user message for a CMR or FNS cross-check call."""
+    parts = [
+        f"## QC Error\n",
+        f"Review #{finding.get('review_number', '?')} ({finding.get('tao', '?')})",
+        f"Determination: {finding.get('determination', '?')}",
+        f"Error Type: {finding.get('error_type', '?')}",
+        f"Narrative: {finding.get('finding_narrative', 'N/A')}",
+        f"",
+        f"## Extracted Policy Issue\n",
+        f"{finding.get('policy_issues', 'N/A')}",
+        f"",
+        f"## OLG Coverage Finding\n",
+        f"Coverage: {finding.get('coverage', 'Unknown')}",
+    ]
+    gap = finding.get("gap_description", "")
+    if gap:
+        parts.append(f"Gap: {gap}")
+    reasoning = finding.get("reasoning", "")
+    if reasoning:
+        parts.append(f"Reasoning: {reasoning}")
+
+    parts.extend([
+        f"",
+        f"## {source.upper()} Search Results\n",
+        source_results_formatted,
+    ])
+    return "\n".join(parts)
+
+
+def run_cmr_check(analysis_dir: Path, row_indices: list[int] = None,
+                  config: configparser.ConfigParser = None) -> list[dict]:
+    """Run CMR cross-check on investigated findings.
+
+    Args:
+        analysis_dir: Path to the analysis directory.
+        row_indices: Optional list of 1-based row indices. Defaults to
+                     all Partial/Gap findings.
+        config: Optional config; loaded from config.ini if not provided.
+
+    Returns:
+        List of updated finding dicts with _cmr_check added.
+    """
+    if config is None:
+        config = load_config()
+
+    model = config.get("qc_analyzer", "cmr_check_model",
+                       fallback="claude-haiku-4-5-20251001")
+    prompt = load_prompt("qc_cmr_check", with_preamble=True)
+
+    api_key = config.get("api", "anthropic_api_key")
+    claude = anthropic.Anthropic(api_key=api_key)
+    cmr_clients = create_client(source="cmr")
+
+    # Default to Partial/Gap findings if no indices given
+    if row_indices is None:
+        all_findings = load_all_findings(analysis_dir)
+        row_indices = [
+            f["row_index"] for f in all_findings
+            if f.get("coverage") in ("Partial", "Gap")
+        ]
+
+    results = []
+    for row_idx in row_indices:
+        finding = load_finding(analysis_dir, row_idx)
+        if not finding:
+            continue
+
+        # Search CMR using the finding's policy issues
+        query = finding.get("policy_issues", "")
+        if not query:
+            continue
+
+        search_response = search_with_client(
+            query, cmr_clients,
+            collection="sections",
+            top_n=5,
+            threshold=0.0,
+        )
+
+        formatted = _format_source_results_for_prompt(
+            search_response["results"], "cmr"
+        )
+        user_message = _build_crosscheck_user_message(finding, formatted, "CMR")
+
+        response = claude.messages.create(
+            model=model,
+            max_tokens=500,
+            system=prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+
+        text = response.content[0].text.strip()
+        check_result = extract_json(text, fallback_classification="cmr_silent")
+
+        # Normalize the result
+        cmr_check = {
+            "classification": check_result.get("classification", "cmr_silent"),
+            "cmr_sections": check_result.get("cmr_sections", []),
+            "note": check_result.get("note", ""),
+        }
+
+        finding["_cmr_check"] = cmr_check
+        save_finding(analysis_dir, row_idx, finding)
+        results.append(finding)
+
+    # Update meta
+    meta = load_meta(analysis_dir) or {}
+    if "phases" not in meta:
+        meta["phases"] = {}
+    meta["phases"]["cmr_checked"] = True
+    save_meta(analysis_dir, meta)
+
+    return results
+
+
+def run_fns_check(analysis_dir: Path, row_indices: list[int] = None,
+                  config: configparser.ConfigParser = None) -> list[dict]:
+    """Run FNS cross-check on investigated findings.
+
+    Args:
+        analysis_dir: Path to the analysis directory.
+        row_indices: Optional list of 1-based row indices. Defaults to
+                     all Partial/Gap findings.
+        config: Optional config; loaded from config.ini if not provided.
+
+    Returns:
+        List of updated finding dicts with _fns_check added.
+    """
+    if config is None:
+        config = load_config()
+
+    model = config.get("qc_analyzer", "fns_check_model",
+                       fallback="claude-haiku-4-5-20251001")
+    prompt = load_prompt("qc_fns_check", with_preamble=True)
+
+    api_key = config.get("api", "anthropic_api_key")
+    claude = anthropic.Anthropic(api_key=api_key)
+    fns_clients = create_client(source="fns")
+
+    # Default to Partial/Gap findings if no indices given
+    if row_indices is None:
+        all_findings = load_all_findings(analysis_dir)
+        row_indices = [
+            f["row_index"] for f in all_findings
+            if f.get("coverage") in ("Partial", "Gap")
+        ]
+
+    results = []
+    for row_idx in row_indices:
+        finding = load_finding(analysis_dir, row_idx)
+        if not finding:
+            continue
+
+        query = finding.get("policy_issues", "")
+        if not query:
+            continue
+
+        search_response = search_with_client(
+            query, fns_clients,
+            collection="sections",
+            top_n=5,
+            threshold=0.0,
+        )
+
+        formatted = _format_source_results_for_prompt(
+            search_response["results"], "fns"
+        )
+        user_message = _build_crosscheck_user_message(finding, formatted, "FNS")
+
+        response = claude.messages.create(
+            model=model,
+            max_tokens=500,
+            system=prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+
+        text = response.content[0].text.strip()
+        check_result = extract_json(text, fallback_classification="fns_silent")
+
+        fns_check = {
+            "classification": check_result.get("classification", "fns_silent"),
+            "fns_sections": check_result.get("fns_sections", []),
+            "note": check_result.get("note", ""),
+        }
+
+        finding["_fns_check"] = fns_check
+        save_finding(analysis_dir, row_idx, finding)
+        results.append(finding)
+
+    # Update meta
+    meta = load_meta(analysis_dir) or {}
+    if "phases" not in meta:
+        meta["phases"] = {}
+    meta["phases"]["fns_checked"] = True
+    save_meta(analysis_dir, meta)
+
+    return results
 
 
 # ============================================================

@@ -399,9 +399,12 @@ def generate_docx(
 
     if template_path and Path(template_path).exists():
         doc = Document(str(template_path))
-        # Clear the template's body content but keep styles
+        # Clear the template's body content but keep styles and section properties.
+        # w:sectPr defines page size/margins and must be preserved — python-docx
+        # needs it for operations like add_table() that compute block width.
         for element in doc.element.body[:]:
-            doc.element.body.remove(element)
+            if element.tag != qn('w:sectPr'):
+                doc.element.body.remove(element)
         has_template = True
     else:
         doc = Document()

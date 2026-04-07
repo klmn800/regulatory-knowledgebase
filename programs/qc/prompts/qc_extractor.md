@@ -48,4 +48,10 @@ Pay special attention to QC Comments and Disagree Reason columns when present. T
 
 Respond with ONLY a JSON object (no markdown, no code fences, no explanation):
 
-{"policy_issues": "1-3 sentences describing the abstract policy/procedure question(s) this error reveals. No client names, no dollar amounts, no dates. Focus on what type of guidance a worker would need.", "search_queries": ["query 1", "query 2", "query 3"]}
+{"policy_issues": "Short Topic Heading: 1-3 sentences describing the abstract policy/procedure question(s) this error reveals. No client names, no dollar amounts, no dates. Focus on what type of guidance a worker would need.", "search_queries": ["query 1", "query 2", "query 3"]}
+
+The policy_issues field MUST start with a short topic heading (2-5 words) followed by a colon and space, then the description. The heading should name the primary policy area so a reviewer can scan a list of issues without reading the full text. Examples:
+- "Interim Report and Earned Income: Failure to process..."
+- "Shelter Deduction Verification: Worker did not..."
+- "Disability Status Coding: Procedures for verifying..."
+- "Change Reporting Requirements: Whether a client must..."

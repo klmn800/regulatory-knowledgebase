@@ -1,0 +1,39 @@
+<div class="author-result-container">
+    <div class="answer-card">
+        <h3 style="margin-bottom:0.75rem;">Upload Preview: {{ name }}</h3>
+        <div class="answer-meta" style="border-top:none; padding-top:0; margin-top:0; margin-bottom:0.75rem;">
+            <span>{{ filename }}</span>
+            <span>{{ total_rows }} rows</span>
+            <span>{{ columns | length }} columns</span>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="qc-table">
+                <thead>
+                    <tr>
+                        <th style="width:35px;">#</th>
+                        <th>Review #</th>
+                        <th>APID</th>
+                        <th>Determination</th>
+                        <th>Error Type</th>
+                        <th>Findings (preview)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in preview_rows %}
+                    <tr>
+                        <td>{{ row.index }}</td>
+                        <td>{{ row.review_number }}</td>
+                        <td>{{ row.apid }}</td>
+                        <td>{{ row.determination }}</td>
+                        <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ row.error_type }}</td>
+                        <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ row.finding_preview }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <p class="author-next-hint">Click <strong>Extract</strong> to identify policy issues in each finding.</p>
+</div>

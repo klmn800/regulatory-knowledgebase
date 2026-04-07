@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="qc-page">
+
+    <div class="author-header">
+        <h2>QC Analysis</h2>
+        <p class="author-subtitle">Analyze QC findings against OLG, CMR, and FNS</p>
+    </div>
+
+    <div class="author-layout">
+
+        <!-- Left: Analysis Form -->
+        <div class="author-form-section">
+            <div class="form-group">
+                <label for="qc-name">Analysis Name</label>
+                <input type="text" id="qc-name" name="name"
+                       placeholder="e.g. Sept-2025-QC-Report" autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label for="qc-file">Upload QC CSV</label>
+                <input type="file" id="qc-file" accept=".csv"
+                       style="font-size:0.85rem;">
+            </div>
+
+            <div class="qc-actions">
+                <button class="btn btn-primary" onclick="qcRun('upload')"
+                        title="Upload and preview CSV">Upload</button>
+                <button class="btn btn-primary" onclick="qcRun('extract')"
+                        title="Extract policy issues from findings">Extract</button>
+                <button class="btn btn-accent" onclick="qcRun('investigate')"
+                        title="Investigate OLG coverage for selected rows">Investigate</button>
+                <button class="btn btn-secondary" onclick="qcRun('cmr_check')"
+                        title="Cross-check against CMR">CMR</button>
+                <button class="btn btn-secondary" onclick="qcRun('fns_check')"
+                        title="Cross-check against FNS">FNS</button>
+            </div>
+        </div>
+
+        <!-- Right: Existing Analyses -->
+        <div class="author-assignments-section">
+            <h3>Analyses</h3>
+            <div id="qc-analyses-list"
+                 hx-get="/qc/analyses"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <p class="text-muted">Loading...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Results Area -->
+    <div id="qc-results">
+        <div id="qc-spinner" class="author-loading" style="display:none;">
+            <div class="spinner"></div>
+            <p class="qc-progress-text">Warming up...</p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

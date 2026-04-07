@@ -1,0 +1,212 @@
+<div class="author-result-container">
+    <div class="author-version-bar">
+        <div class="version-nav">
+            <span class="version-phase">Investigate</span>
+            {% if meta and meta.phases %}
+                {% if meta.phases.get('cmr_checked') %}<span class="version-phase" style="margin-left:0.5rem;">CMR</span>{% endif %}
+                {% if meta.phases.get('fns_checked') %}<span class="version-phase" style="margin-left:0.5rem;">FNS</span>{% endif %}
+            {% endif %}
+        </div>
+        <div class="version-actions">
+            {% if meta and meta.phases and meta.phases.get('fns_checked') %}
+            <button class="btn btn-sm btn-outline" onclick="qcRerun('fns_check')">Re-run FNS</button>
+            {% endif %}
+            {% if meta and meta.phases and meta.phases.get('cmr_checked') %}
+            <button class="btn btn-sm btn-outline" onclick="qcRerun('cmr_check')">Re-run CMR</button>
+            {% endif %}
+            <button class="btn btn-sm btn-outline" onclick="qcRerun('investigate')">Run Again</button>
+        </div>
+    </div>
+
+    <div class="answer-card">
+        <h3 style="margin-bottom:0.5rem;">Investigation Results: {{ name }}</h3>
+
+        {% set adequate_count = findings | selectattr('coverage', 'equalto', 'Adequate') | list | length %}
+        {% set partial_count = findings | selectattr('coverage', 'equalto', 'Partial') | list | length %}
+        {% set gap_count = findings | selectattr('coverage', 'equalto', 'Gap') | list | length %}
+        {% set extracted_only = findings | rejectattr('coverage', 'defined') | list | length %}
+
+        <div class="qc-stats">
+            <span class="qc-stat" style="color:var(--color-score-high);">{{ adequate_count }} Adequate</span>
+            <span class="qc-stat" style="color:var(--color-score-mid);">{{ partial_count }} Partial</span>
+            <span class="qc-stat" style="color:#dc2626;">{{ gap_count }} Gap</span>
+            {% if extracted_only > 0 %}
+            <span class="qc-stat" style="color:var(--color-text-muted);">{{ extracted_only }} Not investigated</span>
+            {% endif %}
+        </div>
+
+        <div class="qc-filter-bar">
+            <button class="qc-filter-btn active" onclick="qcFilter('all', this)">All ({{ findings|length }})</button>
+            <button class="qc-filter-btn" onclick="qcFilter('Adequate', this)">Adequate ({{ adequate_count }})</button>
+            <button class="qc-filter-btn" onclick="qcFilter('Partial', this)">Partial ({{ partial_count }})</button>
+            <button class="qc-filter-btn" onclick="qcFilter('Gap', this)">Gap ({{ gap_count }})</button>
+            <a href="/qc/download/{{ name }}" class="btn btn-sm btn-outline" style="text-decoration:none; margin-left:auto;">
+                Download CSV
+            </a>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="qc-table" id="qc-results-table">
+                <thead>
+                    <tr>
+                        <th style="width:35px;">#</th>
+                        <th>Review #</th>
+                        <th>APID</th>
+                        <th>Error Type</th>
+                        <th>Coverage</th>
+                        {% if findings | selectattr('_cmr_check', 'defined') | list | length > 0 %}
+                        <th>CMR</th>
+                        {% endif %}
+                        {% if findings | selectattr('_fns_check', 'defined') | list | length > 0 %}
+                        <th>FNS</th>
+                        {% endif %}
+                        <th>Policy Issue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in findings %}
+                    <tr class="clickable-row qc-result-row" data-coverage="{{ f.coverage | default('none') }}" onclick="qcToggleDetail({{ f.row_index }})">
+                        <td>{{ f.row_index }}</td>
+                        <td>{{ f.review_number }}</td>
+                        <td>{{ f.apid }}</td>
+                        <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.error_type }}</td>
+                        <td>
+                            {% if f.coverage == 'Adequate' %}
+                            <span class="coverage-badge adequate">Adequate</span>
+                            {% elif f.coverage == 'Partial' %}
+                            <span class="coverage-badge partial">Partial</span>
+                            {% elif f.coverage == 'Gap' %}
+                            <span class="coverage-badge gap">Gap</span>
+                            {% elif f.coverage %}
+                            <span class="coverage-badge" style="background:var(--color-border);">{{ f.coverage }}</span>
+                            {% else %}
+                            <span style="color:var(--color-text-muted); font-size:0.78rem;">--</span>
+                            {% endif %}
+                        </td>
+                        {% if findings | selectattr('_cmr_check', 'defined') | list | length > 0 %}
+                        <td>
+                            {% if f._cmr_check %}
+                                {% set cmr_cls = f._cmr_check.classification %}
+                                {% if cmr_cls == 'cmr_covers_topic' %}
+                                <span class="xcheck-badge covers" title="{{ f._cmr_check.note }}">Covers</span>
+                                {% elif cmr_cls == 'cmr_silent' %}
+                                <span class="xcheck-badge silent" title="{{ f._cmr_check.note }}">Silent</span>
+                                {% elif cmr_cls == 'cmr_differs' %}
+                                <span class="xcheck-badge differs" title="{{ f._cmr_check.note }}">Differs</span>
+                                {% else %}
+                                <span class="xcheck-badge silent">{{ cmr_cls }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        {% if findings | selectattr('_fns_check', 'defined') | list | length > 0 %}
+                        <td>
+                            {% if f._fns_check %}
+                                {% set fns_cls = f._fns_check.classification %}
+                                {% if fns_cls == 'fns_requires' %}
+                                <span class="xcheck-badge requires" title="{{ f._fns_check.note }}">Requires</span>
+                                {% elif fns_cls == 'fns_silent' %}
+                                <span class="xcheck-badge silent" title="{{ f._fns_check.note }}">Silent</span>
+                                {% elif fns_cls == 'fns_differs' %}
+                                <span class="xcheck-badge differs" title="{{ f._fns_check.note }}">Differs</span>
+                                {% else %}
+                                <span class="xcheck-badge silent">{{ fns_cls }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.policy_issues }}</td>
+                    </tr>
+                    <tr id="qc-detail-{{ f.row_index }}" class="qc-detail-row" style="display:none;">
+                        <td colspan="10">
+                            <div class="qc-detail-content">
+                                <h4>Policy Issues</h4>
+                                <p>{{ f.policy_issues }}</p>
+
+                                {% if f.reasoning %}
+                                <h4>Reasoning</h4>
+                                <p>{{ f.reasoning }}</p>
+                                {% endif %}
+
+                                {% if f.gap_description and f.coverage != 'Adequate' %}
+                                <h4>Gap Description</h4>
+                                <p>{{ f.gap_description }}</p>
+                                {% endif %}
+
+                                {% if f.olg_references %}
+                                <h4>OLG References</h4>
+                                <p>{{ f.olg_references | join('; ') if f.olg_references is iterable and f.olg_references is not string else f.olg_references }}</p>
+                                {% endif %}
+
+                                {% if f._cmr_check %}
+                                <h4>CMR Cross-Check</h4>
+                                <p><strong>{{ f._cmr_check.classification }}</strong>
+                                {% if f._cmr_check.cmr_sections %} ({{ f._cmr_check.cmr_sections | join(', ') }}){% endif %}</p>
+                                <p>{{ f._cmr_check.note }}</p>
+                                {% endif %}
+
+                                {% if f._fns_check %}
+                                <h4>FNS Cross-Check</h4>
+                                <p><strong>{{ f._fns_check.classification }}</strong>
+                                {% if f._fns_check.fns_sections %} ({{ f._fns_check.fns_sections | join(', ') }}){% endif %}</p>
+                                <p>{{ f._fns_check.note }}</p>
+                                {% endif %}
+
+                                <p style="margin-top:0.75rem; font-size:0.75rem; color:var(--color-text-muted);">
+                                    {{ f.tao }} | {{ f.determination }} |
+                                    {% if f.searches_performed is defined %}{{ f.searches_performed }} searches{% endif %}
+                                    {% if f.confidence is defined %} | Confidence: {{ f.confidence }}{% endif %}
+                                </p>
+
+                                <div style="margin-top:0.5rem;">
+                                    {% if f.coverage in ('Partial', 'Gap') and f.gap_description %}
+                                    <button class="btn btn-sm btn-outline"
+                                            onclick="event.stopPropagation(); sendToAuthor('{{ name }}', {{ f.row_index }}, '{{ f.gap_description | replace("'", "\\'") | truncate(200) }}')">
+                                        Send to Author
+                                    </button>
+                                    {% endif %}
+                                    <a href="/qc/finding/{{ name }}/{{ f.row_index }}" target="_blank"
+                                       class="btn btn-sm btn-outline" style="text-decoration:none; margin-left:0.25rem;"
+                                       onclick="event.stopPropagation();">
+                                        View JSON
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if meta and meta.investigate_stats %}
+        {% set s = meta.investigate_stats %}
+        <div class="answer-meta">
+            <span>{{ s.timestamp[:16] | replace('T', ' ') }}</span>
+            <span>{{ s.duration_sec }}s ({{ s.rows_processed }} rows)</span>
+            <span>{{ '{:,}'.format(s.tokens_in) }} in / {{ '{:,}'.format(s.tokens_out) }} out tokens</span>
+            <span>${{ s.cost }}</span>
+            <span class="text-muted">{{ s.model }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function qcFilter(coverage, btn) {
+    var rows = document.querySelectorAll('.qc-result-row');
+    var detailRows = document.querySelectorAll('.qc-detail-row');
+    detailRows.forEach(function(r) { r.style.display = 'none'; });
+
+    rows.forEach(function(row) {
+        if (coverage === 'all' || row.dataset.coverage === coverage) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    document.querySelectorAll('.qc-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+}
+</script>

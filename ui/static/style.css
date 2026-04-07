@@ -896,3 +896,177 @@ main {
     border-top: 1px solid var(--color-border);
     margin: 0;
 }
+
+/* ============================================================
+   QC ANALYSIS PAGE
+   ============================================================ */
+
+.qc-page {
+    max-width: var(--max-width);
+}
+
+.qc-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.qc-progress-text {
+    transition: opacity 0.2s ease;
+    font-size: 0.9rem;
+}
+
+/* Coverage badges */
+.coverage-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+}
+
+.coverage-badge.adequate {
+    background: var(--color-score-high);
+    color: white;
+}
+
+.coverage-badge.partial {
+    background: var(--color-score-mid);
+    color: white;
+}
+
+.coverage-badge.gap {
+    background: #dc2626;
+    color: white;
+}
+
+/* Cross-check badges */
+.xcheck-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+}
+
+.xcheck-badge.covers, .xcheck-badge.requires {
+    background: #7c3aed;
+    color: white;
+}
+
+.xcheck-badge.silent {
+    background: var(--color-border);
+    color: var(--color-text-muted);
+}
+
+.xcheck-badge.differs {
+    background: #ea580c;
+    color: white;
+}
+
+/* Triage / results table */
+.qc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.qc-table th {
+    text-align: left;
+    padding: 0.5rem 0.5rem;
+    border-bottom: 2px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-weight: 600;
+    font-size: 0.78rem;
+}
+
+.qc-table td {
+    padding: 0.4rem 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: top;
+}
+
+.qc-table tr.clickable-row {
+    cursor: pointer;
+}
+
+.qc-table tr.clickable-row:hover {
+    background: var(--color-bg);
+}
+
+.qc-detail-row td {
+    padding: 0.75rem 1rem;
+    background: var(--color-bg);
+    font-size: 0.82rem;
+    line-height: 1.6;
+}
+
+.qc-detail-content {
+    max-width: 700px;
+}
+
+.qc-detail-content h4 {
+    font-size: 0.85rem;
+    margin: 0.75rem 0 0.25rem;
+    color: var(--color-text);
+}
+
+.qc-detail-content h4:first-child {
+    margin-top: 0;
+}
+
+.qc-detail-content p {
+    margin: 0.25rem 0;
+}
+
+/* Filter bar */
+.qc-filter-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    align-items: center;
+}
+
+.qc-filter-btn {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+}
+
+.qc-filter-btn:hover, .qc-filter-btn.active {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* Stats summary */
+.qc-stats {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.qc-stat {
+    font-weight: 600;
+}
+
+/* Selection count */
+.qc-selection-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+}
+
+.form-group input[type="file"] {
+    padding: 0.4rem 0;
+}

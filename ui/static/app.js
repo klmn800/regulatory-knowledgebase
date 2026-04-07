@@ -341,12 +341,20 @@ var FNS_CHECK_STEPS = [
 var _qcInterval = null;
 
 function qcShowProgress(steps) {
+    var resultsArea = document.getElementById('qc-results');
     var spinner = document.getElementById('qc-spinner');
+
+    if (!spinner && resultsArea) {
+        resultsArea.innerHTML =
+            '<div id="qc-spinner" class="author-loading" style="display:none;">' +
+            '<div class="spinner"></div>' +
+            '<p class="qc-progress-text">Warming up...</p>' +
+            '</div>';
+        spinner = document.getElementById('qc-spinner');
+    }
+
     var textEl = spinner ? spinner.querySelector('.qc-progress-text') : null;
     if (!spinner || !textEl) return;
-
-    var prev = document.querySelector('.author-result-container');
-    if (prev) prev.remove();
 
     spinner.style.display = 'block';
     textEl.textContent = steps[0];
@@ -372,6 +380,54 @@ function qcHideProgress() {
         clearInterval(_qcInterval);
         _qcInterval = null;
     }
+}
+
+var QC_PHASE_LABELS = {
+    extract: 'extraction',
+    investigate: 'investigation',
+    cmr_check: 'CMR cross-check',
+    fns_check: 'FNS cross-check',
+};
+
+function qcRerun(action) {
+    var label = QC_PHASE_LABELS[action] || action;
+    if (!confirm('Run ' + label + ' again? This will overwrite existing results.')) return;
+
+    var nameEl = document.getElementById('qc-name');
+    var name = nameEl ? nameEl.value.trim() : '';
+    if (!name) return;
+
+    var resultsArea = document.getElementById('qc-results');
+    var formData = new FormData();
+    formData.append('name', name);
+    formData.append('rerun', '1');
+
+    var steps;
+    if (action === 'extract') steps = EXTRACT_STEPS;
+    else if (action === 'investigate') steps = INVESTIGATE_STEPS;
+    else if (action === 'cmr_check') steps = CMR_CHECK_STEPS;
+    else if (action === 'fns_check') steps = FNS_CHECK_STEPS;
+
+    if (steps) qcShowProgress(steps);
+
+    var buttons = document.querySelectorAll('.qc-actions .btn');
+    buttons.forEach(function(b) { b.disabled = true; });
+
+    fetch('/qc/' + action, { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            qcHideProgress();
+            resultsArea.innerHTML = html;
+            htmx.process(resultsArea);
+            htmx.ajax('GET', '/qc/analyses', '#qc-analyses-list');
+        })
+        .catch(function(err) {
+            qcHideProgress();
+            resultsArea.innerHTML = '<p>Error: ' + err.message + '</p>';
+        })
+        .finally(function() {
+            buttons.forEach(function(b) { b.disabled = false; });
+        });
 }
 
 function qcRun(action) {
@@ -452,9 +508,13 @@ function loadQcAnalysis(name) {
             var resultsArea = document.getElementById('qc-results');
             var phase = data.latest_phase;
 
-            /* Map phase to the view endpoint */
+            /* Map meta phase names to view endpoint names */
             var viewPhase = null;
-            if (phase === 'fns_checked' || phase === 'cmr_checked' || phase === 'investigated') {
+            if (phase === 'fns_checked') {
+                viewPhase = 'fns_check';
+            } else if (phase === 'cmr_checked') {
+                viewPhase = 'cmr_check';
+            } else if (phase === 'investigated') {
                 viewPhase = 'investigate';
             } else if (phase === 'extracted') {
                 viewPhase = 'extract';

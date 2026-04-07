@@ -1,0 +1,18 @@
+{% if analyses %}
+<div class="assignment-list">
+    {% for a in analyses %}
+    <div class="assignment-item" onclick="loadQcAnalysis('{{ a.name }}')">
+        <div class="assignment-name" title="{{ a.name }}">{{ a.name }}</div>
+        <div class="assignment-badges">
+            {% if a.phases.uploaded %}<span class="phase-badge phase-done" title="Uploaded">U</span>{% else %}<span class="phase-badge" title="Not uploaded">U</span>{% endif %}
+            {% if a.phases.extracted %}<span class="phase-badge phase-done" title="Extracted">E</span>{% else %}<span class="phase-badge" title="Not extracted">E</span>{% endif %}
+            {% if a.phases.investigated %}<span class="phase-badge phase-done" title="Investigated">I</span>{% else %}<span class="phase-badge" title="Not investigated">I</span>{% endif %}
+            {% if a.phases.cmr_checked %}<span class="phase-badge phase-done" title="CMR checked">C</span>{% else %}<span class="phase-badge" title="CMR not checked">C</span>{% endif %}
+            {% if a.phases.fns_checked %}<span class="phase-badge phase-done" title="FNS checked">F</span>{% else %}<span class="phase-badge" title="FNS not checked">F</span>{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No analyses yet. Upload a CSV above.</p>
+{% endif %}
