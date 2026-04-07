@@ -1,0 +1,30 @@
+<div class="author-result-container">
+    <!-- Version bar -->
+    <div class="author-version-bar">
+        <span class="version-label">Research <span class="version-id">{{ view.version_label }}</span></span>
+        <button class="btn btn-sm btn-outline" onclick="authorRerun('research')">Run Again</button>
+    </div>
+
+    {% if view.input_text %}
+    <details class="author-input-block">
+        <summary>Assignment text used</summary>
+        <pre class="author-input-text">{{ view.input_text }}</pre>
+    </details>
+    {% endif %}
+
+    <div class="answer-card">
+        <div class="answer-body">
+            {{ view.report | markdown | safe }}
+        </div>
+        {% if view.duration or view.cost or view.searches %}
+        <div class="answer-meta">
+            {% if view.duration %}<span>{{ view.duration }}s</span>{% endif %}
+            {% if view.searches %}<span>{{ view.searches }} search{{ 'es' if view.searches != 1 }}</span>{% endif %}
+            {% if view.cost %}<span>${{ view.cost }}</span>{% endif %}
+            {% if view.model %}<span class="text-muted">{{ view.model }}</span>{% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <p class="author-next-hint">Click <strong>Draft</strong> to launch the Claude Code authoring session.</p>
+</div>

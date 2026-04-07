@@ -10,6 +10,7 @@ import asyncio
 import subprocess
 import sys
 import time
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
@@ -27,6 +28,13 @@ from fastapi.templating import Jinja2Templates
 
 from ui.search import SOURCES, DEFAULT_SOURCE, init_clients, do_search
 from ui.history import init_db, save_search, get_recent, get_by_id
+from ui.versioning import (
+    save_research_version,
+    save_draft_version,
+    save_format_version,
+    load_version_view,
+    version_count,
+)
 from tools.synthesis import run_synthesis
 from programs.author.author import (
     load_config as load_author_config,
@@ -229,20 +237,61 @@ async def author_load(request: Request, name: str):
         "has_draft": (output_dir / "draft.md").exists(),
         "has_docx": (output_dir / "output.docx").exists(),
         "has_session": (output_dir / "session_id.txt").exists(),
+        "research_versions": version_count(output_dir, "research"),
+        "draft_versions": version_count(output_dir, "draft"),
+        "format_versions": version_count(output_dir, "format"),
     })
+
+
+@app.get("/author/view/{name}/{phase}", response_class=HTMLResponse)
+async def author_view(request: Request, name: str, phase: str):
+    """Return a read-only view of the latest output for a phase."""
+    if phase not in ("research", "draft", "format"):
+        return HTMLResponse("<p>Invalid phase.</p>", status_code=400)
+
+    output_dir = get_output_dir(name)
+    view = load_version_view(output_dir, phase)
+
+    if not view:
+        return HTMLResponse("")
+
+    template_map = {
+        "research": "partials/author_view_research.html",
+        "draft": "partials/author_view_draft.html",
+        "format": "partials/author_view_format.html",
+    }
+    return templates.TemplateResponse(
+        request, template_map[phase], {"view": view, "name": name}
+    )
 
 
 @app.post("/author/research", response_class=HTMLResponse)
 async def author_research(
     request: Request,
     name: str = Form(...),
-    assignment: str = Form(...),
+    assignment: str = Form(""),
+    rerun: str = Form(""),
 ):
-    """Run the research phase (Phase 1)."""
+    """Run the research phase, or show existing output if not a rerun."""
     name = name.strip()
     assignment = assignment.strip()
-    if not name or not assignment:
-        return HTMLResponse("<p>Name and assignment are required.</p>")
+    if not name:
+        return HTMLResponse("<p>Assignment name is required.</p>")
+
+    output_dir = get_output_dir(name)
+
+    # View-before-run: if output exists and this isn't a rerun, show it
+    if rerun != "1":
+        view = load_version_view(output_dir, "research")
+        if view:
+            return templates.TemplateResponse(
+                request, "partials/author_view_research.html",
+                {"view": view, "name": name},
+            )
+
+    # Actually running — assignment required
+    if not assignment:
+        return HTMLResponse("<p>Enter an assignment description for research.</p>")
 
     config = load_author_config()
 
@@ -250,15 +299,14 @@ async def author_research(
         run_research, assignment, name, config,
     )
 
+    # Save versioned copy
+    save_research_version(output_dir, assignment, result)
+
+    # Show the newly created version
+    view = load_version_view(output_dir, "research")
     return templates.TemplateResponse(
-        request, "partials/author_research_result.html",
-        {
-            "report": result.answer,
-            "duration": f"{result.duration_seconds:.1f}",
-            "searches": len(result.search_queries),
-            "cost": f"{result.cost:.4f}",
-            "name": name,
-        },
+        request, "partials/author_view_research.html",
+        {"view": view, "name": name},
     )
 
 
@@ -267,13 +315,24 @@ async def author_draft(
     request: Request,
     name: str = Form(...),
     assignment: str = Form(""),
+    rerun: str = Form(""),
 ):
-    """Spawn a Claude Code terminal for the drafting phase (Phase 2)."""
+    """Spawn a Claude Code terminal, or show existing draft if not a rerun."""
     name = name.strip()
     if not name:
         return HTMLResponse("<p>Assignment name is required.</p>")
 
     output_dir = get_output_dir(name)
+
+    # View-before-run: if draft exists and this isn't a rerun, show it
+    if rerun != "1":
+        view = load_version_view(output_dir, "draft")
+        if view:
+            return templates.TemplateResponse(
+                request, "partials/author_view_draft.html",
+                {"view": view, "name": name},
+            )
+
     config = load_author_config()
 
     # Load assignment from form or saved file
@@ -286,7 +345,6 @@ async def author_draft(
         return HTMLResponse("<p>No assignment text found. Enter one or run Research first.</p>")
 
     # Compose the prompt and write to a space-free temp path
-    # (Claude Code's @file syntax doesn't handle spaces well)
     prompt = compose_authoring_prompt(assignment, name, config)
     prompt_file = DATA_DIR / ".draft_prompt.md"
     prompt_file.write_text(prompt, encoding="utf-8")
@@ -297,13 +355,21 @@ async def author_draft(
     draft_file = output_dir / "draft.md"
     prompt_path = str(prompt_file.resolve())
 
-    # Launch Claude Code in interactive mode with a short initial message
-    # that tells it to read and execute the full prompt file.
-    # (@file just reads context; we need Claude to follow instructions)
+    # Generate and save session ID upfront so Resume works later
+    session_id = str(uuid.uuid4())
+    session_file = output_dir / "session_id.txt"
+    session_file.write_text(session_id, encoding="utf-8")
+
+    # Create version directory for this draft run
+    version_dir = save_draft_version(output_dir, assignment, session_id)
+
+    # Launch Claude Code in interactive mode with a pre-assigned session ID
     initial_msg = (
         f"Your full assignment is in {prompt_path} — it has the research findings, "
         f"style guide, and output instructions. Please read it and take it from there."
     )
+
+    # .bat copies draft.md into the version dir after Claude exits
     bat_file = DATA_DIR / ".run_draft.bat"
     bat_file.write_text(
         f'@echo off\n'
@@ -312,8 +378,14 @@ async def author_draft(
         f'echo.\n'
         f'echo  Authoring: {name}\n'
         f'echo  Draft output: {draft_file}\n'
+        f'echo  Session ID: {session_id}\n'
         f'echo.\n'
-        f'claude --dangerously-skip-permissions "{initial_msg}"\n'
+        f'claude --session-id {session_id} "{initial_msg}"\n'
+        f'echo.\n'
+        f'if exist "{draft_file}" (\n'
+        f'    copy "{draft_file}" "{version_dir}\\draft.md"\n'
+        f'    echo  Draft copied to version directory.\n'
+        f')\n'
         f'echo.\n'
         f'echo  === Draft session complete ===\n'
         f'echo.\n'
@@ -332,11 +404,10 @@ async def author_draft(
         f"## Claude Code Terminal Launched\n\n"
         f"A new terminal window has opened running the drafting session for **{name}**.\n\n"
         f"You'll see Claude Code's interactive UI — watch it think, search, and write.\n\n"
-        f"**Note:** You may need to accept the permissions bypass prompt (press `2` then Enter).\n\n"
         f"When it finishes, the draft will be at:\n"
         f"`{draft_file}`\n\n"
         f"Then click **Format** to generate the .docx.\n\n"
-        f"*The session ID will be visible at the top of the terminal for resume later.*"
+        f"Session ID `{session_id}` saved — **Resume** will work for this session."
     )
 
     return templates.TemplateResponse(
@@ -349,15 +420,25 @@ async def author_draft(
 async def author_format(
     request: Request,
     name: str = Form(...),
+    rerun: str = Form(""),
 ):
-    """Run the format phase (Phase 3) — draft.md to .docx."""
+    """Run the format phase, or show existing .docx if not a rerun."""
     name = name.strip()
     if not name:
         return HTMLResponse("<p>Assignment name is required.</p>")
 
     output_dir = get_output_dir(name)
-    draft_file = output_dir / "draft.md"
 
+    # View-before-run: if .docx exists and this isn't a rerun, show it
+    if rerun != "1":
+        view = load_version_view(output_dir, "format")
+        if view:
+            return templates.TemplateResponse(
+                request, "partials/author_view_format.html",
+                {"view": view, "name": name},
+            )
+
+    draft_file = output_dir / "draft.md"
     if not draft_file.exists():
         return HTMLResponse(
             f"<p>No draft found at <code>{draft_file}</code>. "
@@ -368,24 +449,25 @@ async def author_format(
     docx_path = await asyncio.to_thread(run_format, name, config)
 
     if docx_path and docx_path.exists():
-        msg = (
-            f"## .docx Generated\n\n"
-            f"Formatted document ready: `{docx_path.name}`\n\n"
-            f"[Download {docx_path.name}](/author/download/{name})"
+        save_format_version(output_dir)
+        view = load_version_view(output_dir, "format")
+        return templates.TemplateResponse(
+            request, "partials/author_view_format.html",
+            {"view": view, "name": name},
         )
     else:
         msg = "## Format Failed\n\nCould not generate .docx. Check the server console for details."
-
-    return templates.TemplateResponse(
-        request, "partials/author_action_result.html",
-        {"message": msg},
-    )
+        return templates.TemplateResponse(
+            request, "partials/author_action_result.html",
+            {"message": msg},
+        )
 
 
 @app.post("/author/resume", response_class=HTMLResponse)
 async def author_resume(
     request: Request,
     name: str = Form(...),
+    session_id: str = Form(""),
 ):
     """Resume a previous Claude Code session in a new terminal."""
     name = name.strip()
@@ -393,15 +475,19 @@ async def author_resume(
         return HTMLResponse("<p>Assignment name is required.</p>")
 
     output_dir = get_output_dir(name)
-    session_file = output_dir / "session_id.txt"
 
-    if not session_file.exists():
-        return HTMLResponse(
-            f"<p>No session ID found for <strong>{name}</strong>. "
-            f"Run the Draft phase first.</p>"
-        )
+    # Use provided session_id (from version view) or fall back to top-level file
+    session_id = session_id.strip()
+    if not session_id:
+        session_file = output_dir / "session_id.txt"
 
-    session_id = session_file.read_text(encoding="utf-8").strip()
+        if not session_file.exists():
+            return HTMLResponse(
+                f"<p>No session ID found for <strong>{name}</strong>. "
+                f"Run the Draft phase first.</p>"
+            )
+
+        session_id = session_file.read_text(encoding="utf-8").strip()
 
     # Spawn a resume terminal
     bat_file = output_dir / "run_resume.bat"

@@ -34,6 +34,10 @@ Usage:
     python query.py "income" --source fns --context
     python query.py --source fns --list-programs
 
+    # Chunk ID lookup (retrieve specific chunk + neighbors)
+    python query.py --source olg --chunk-id sec__SNAP__Eligibility__Stu_Students__035
+    python query.py --source olg --chunk-id sec__SNAP__Eligibility__Stu_Students__035 --neighbors 1
+
 Configuration:
     See config.ini for API key, model, and ChromaDB settings.
 """
@@ -242,6 +246,61 @@ def query_collection(
 # ============================================================
 # CONTEXT FETCHING
 # ============================================================
+
+def fetch_chunks_by_id(
+    chunk_id: str,
+    clients: dict,
+    neighbors: int = 0,
+) -> list[dict]:
+    """
+    Retrieve specific chunk(s) by ID from ChromaDB.
+
+    Parses the numeric suffix from the chunk ID and optionally
+    fetches neighboring chunks by incrementing/decrementing the index.
+
+    Args:
+        chunk_id: The exact chunk ID (e.g., 'sec__SNAP__Eligibility__Stu_Students__035').
+        clients: Dict from create_client().
+        neighbors: Number of chunks before and after to include (default 0).
+
+    Returns:
+        List of dicts with 'id', 'text', 'metadata' keys, ordered by chunk index.
+        Missing IDs (e.g., before first or after last chunk) are silently skipped.
+    """
+    coll = clients["granular_collection"]
+
+    # Parse the chunk ID: split off the numeric suffix after the last '__'
+    sep = "__"
+    parts = chunk_id.rsplit(sep, 1)
+    if len(parts) != 2 or not parts[1].isdigit():
+        # Can't parse — just try the exact ID
+        ids_to_fetch = [chunk_id]
+    else:
+        base = parts[0]
+        index = int(parts[1])
+        width = len(parts[1])  # preserve zero-padding width
+        ids_to_fetch = [
+            f"{base}{sep}{str(i).zfill(width)}"
+            for i in range(max(0, index - neighbors), index + neighbors + 1)
+        ]
+
+    result = coll.get(
+        ids=ids_to_fetch,
+        include=["documents", "metadatas"],
+    )
+
+    # Build result list, preserving order of ids_to_fetch
+    found = {}
+    for i, rid in enumerate(result["ids"]):
+        found[rid] = {
+            "id": rid,
+            "text": result["documents"][i],
+            "metadata": result["metadatas"][i],
+        }
+
+    # Return in index order, skipping any IDs not found
+    return [found[rid] for rid in ids_to_fetch if rid in found]
+
 
 def fetch_parent_context(
     parent_id: str,
@@ -613,6 +672,8 @@ def _format_olg_result(lines: list[str], result: dict, meta: dict,
     if last_updated:
         lines.append(f"     Updated: {last_updated}")
 
+    lines.append(f"     Chunk:   {result['id']}")
+
 
 def _format_fns_result(lines: list[str], result: dict, meta: dict,
                        score: float, collection: str) -> None:
@@ -640,6 +701,8 @@ def _format_fns_result(lines: list[str], result: dict, meta: dict,
         if section_count:
             lines.append(f"     Sections: {section_count}")
 
+    lines.append(f"     Chunk:   {result['id']}")
+
 
 def _format_cmr_result(lines: list[str], result: dict, meta: dict,
                        score: float, collection: str) -> None:
@@ -663,6 +726,80 @@ def _format_cmr_result(lines: list[str], result: dict, meta: dict,
             lines.append(f"     Sections: {section_count}")
         if chapter_title:
             lines.append(f"     Title:    {chapter_title[:60]}")
+
+    lines.append(f"     Chunk:   {result['id']}")
+
+
+def format_chunk_lookup_text(
+    chunks: list[dict],
+    target_id: str,
+    source: str,
+    show_full: bool = True,
+    max_text_length: int = DEFAULT_MAX_TEXT_LENGTH,
+) -> str:
+    """Format chunk lookup results for the terminal."""
+    lines = []
+    lines.append(f"Chunk lookup: {target_id} (+{len(chunks) - 1} neighbors)"
+                 if len(chunks) > 1
+                 else f"Chunk lookup: {target_id}")
+    lines.append(f"Found {len(chunks)} chunk(s)")
+    lines.append("")
+
+    if not chunks:
+        lines.append("No chunks found with that ID.")
+        return "\n".join(lines)
+
+    for chunk in chunks:
+        meta = chunk["metadata"]
+        text = chunk["text"]
+        is_target = chunk["id"] == target_id
+
+        lines.append("=" * 60)
+
+        marker = " <<< target" if is_target and len(chunks) > 1 else ""
+        lines.append(f"Chunk: {chunk['id']}{marker}")
+
+        page_title = meta.get("page_title", meta.get("chapter_title", ""))
+        section = meta.get("section_heading", meta.get("section_title", ""))
+        if page_title:
+            lines.append(f"     Page:    {page_title}")
+        if section:
+            lines.append(f"     Section: {section}")
+
+        url = meta.get("url", "")
+        if url:
+            lines.append(f"     URL:     {url}")
+
+        lines.append("")
+
+        if show_full:
+            display_text = text
+        else:
+            if len(text) > max_text_length:
+                display_text = text[:max_text_length].rstrip() + "..."
+            else:
+                display_text = text
+
+        wrapped = textwrap.fill(display_text, width=70,
+                                initial_indent="     ",
+                                subsequent_indent="     ")
+        lines.append(wrapped)
+        lines.append("")
+
+    lines.append("=" * 60)
+    return "\n".join(lines)
+
+
+def format_chunk_lookup_json(chunks: list[dict], target_id: str,
+                             source: str) -> str:
+    """Format chunk lookup results as JSON."""
+    response = {
+        "target_chunk_id": target_id,
+        "source": source,
+        "chunk_count": len(chunks),
+        "chunks": chunks,
+    }
+    return json.dumps(response, indent=2, ensure_ascii=False)
 
 
 def format_result_json(response: dict) -> str:
@@ -804,6 +941,10 @@ Examples:
   python query.py "income" --source fns --collection chapters
   python query.py "income" --source fns --context       # Parent chapter
   python query.py --source fns --list-programs          # Show chapters
+
+  # Chunk ID lookup
+  python query.py --chunk-id sec__SNAP__Eligibility__Stu_Students__035
+  python query.py --chunk-id sec__SNAP__Eligibility__Stu_Students__035 --neighbors 1
         """,
     )
     parser.add_argument(
@@ -851,8 +992,38 @@ Examples:
         "--list-programs", action="store_true",
         help="List available programs (OLG) or chapters (FNS) and exit",
     )
+    parser.add_argument(
+        "--chunk-id",
+        help="Retrieve a specific chunk by ID (no search). "
+             "E.g., sec__SNAP__Eligibility__Stu_Students__035",
+    )
+    parser.add_argument(
+        "--neighbors", type=int, default=0,
+        help="With --chunk-id, also return N chunks before and after (default: 0)",
+    )
     args = parser.parse_args()
 
+    # --- Chunk ID lookup mode ---
+    if args.chunk_id:
+        clients = create_client(source=args.source)
+        chunks = fetch_chunks_by_id(
+            args.chunk_id, clients, neighbors=args.neighbors
+        )
+        if args.output_json:
+            print(format_chunk_lookup_json(chunks, args.chunk_id, args.source))
+        else:
+            # Chunk lookups show full text by default (--full is implicit)
+            print(format_chunk_lookup_text(
+                chunks, args.chunk_id, args.source, show_full=True
+            ))
+        return
+
+    # --- Info mode ---
+    if args.list_programs:
+        _print_info(args.source)
+        return
+
+    # --- Search mode ---
     # Validate --collection against --source
     source_config = _resolve_source_config(args.source)
     valid_collections = {source_config["broad_name"], source_config["granular_name"]}
@@ -863,12 +1034,8 @@ Examples:
               f"{', '.join(sorted(valid_collections))}")
         sys.exit(1)
 
-    if args.list_programs:
-        _print_info(args.source)
-        return
-
     if not args.query:
-        parser.error("Search query is required (or use --list-programs)")
+        parser.error("Search query is required (or use --list-programs / --chunk-id)")
 
     exclude = None
     if args.exclude_programs:

@@ -1,0 +1,18 @@
+<div class="author-result-container">
+    <!-- Version bar -->
+    <div class="author-version-bar">
+        <span class="version-label">Format <span class="version-id">{{ view.version_label }}</span></span>
+        <button class="btn btn-sm btn-outline" onclick="authorRerun('format')">Run Again</button>
+    </div>
+
+    <div class="answer-card">
+        {% if view.has_docx %}
+        <div class="answer-body">
+            <h3>.docx Generated</h3>
+            <p><a href="/author/download/{{ name }}">Download {{ name }}.docx</a></p>
+        </div>
+        {% else %}
+        <p class="text-muted">No .docx file found.</p>
+        {% endif %}
+    </div>
+</div>

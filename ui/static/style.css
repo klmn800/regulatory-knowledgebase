@@ -797,3 +797,69 @@ main {
     color: var(--color-text-muted);
     font-size: 0.85rem;
 }
+
+/* Version bar */
+.author-version-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.version-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.version-id {
+    font-weight: 400;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    margin-left: 0.25rem;
+}
+
+.version-actions {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.7rem;
+    font-size: 0.78rem;
+}
+
+/* Collapsible assignment text */
+.author-input-block {
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+}
+
+.author-input-block summary {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    user-select: none;
+}
+
+.author-input-block summary:hover {
+    color: var(--color-text);
+}
+
+.author-input-text {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--color-text);
+    border-top: 1px solid var(--color-border);
+    margin: 0;
+}

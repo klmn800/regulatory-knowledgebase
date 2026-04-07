@@ -1,0 +1,37 @@
+<div class="author-result-container">
+    <!-- Version bar -->
+    <div class="author-version-bar">
+        <span class="version-label">Draft <span class="version-id">{{ view.version_label }}</span></span>
+        <div class="version-actions">
+            {% if view.session_id %}
+            <button class="btn btn-sm btn-outline" onclick="authorResume('{{ view.session_id }}')">Resume</button>
+            {% endif %}
+            <button class="btn btn-sm btn-outline" onclick="authorRerun('draft')">Run Again</button>
+        </div>
+    </div>
+
+    {% if view.input_text %}
+    <details class="author-input-block">
+        <summary>Assignment text used</summary>
+        <pre class="author-input-text">{{ view.input_text }}</pre>
+    </details>
+    {% endif %}
+
+    <div class="answer-card">
+        {% if view.draft %}
+        <div class="answer-body">
+            {{ view.draft | markdown | safe }}
+        </div>
+        {% else %}
+        <p class="text-muted">Draft not yet written. Claude Code may still be running in the terminal.</p>
+        {% endif %}
+
+        {% if view.session_id %}
+        <div class="answer-meta">
+            <span>Session: <code>{{ view.session_id[:8] }}...</code></span>
+        </div>
+        {% endif %}
+    </div>
+
+    <p class="author-next-hint">Click <strong>Format</strong> to generate the .docx.</p>
+</div>

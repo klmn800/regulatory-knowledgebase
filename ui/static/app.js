@@ -134,8 +134,109 @@ function authorRun(action) {
         .then(function(html) {
             authorHideProgress();
             resultsArea.innerHTML = html;
-            /* Refresh assignments list */
+            htmx.process(resultsArea);
             htmx.ajax('GET', '/author/assignments', '#assignments-list');
+        })
+        .catch(function(err) {
+            authorHideProgress();
+            resultsArea.innerHTML = '<p>Error: ' + err.message + '</p>';
+        })
+        .finally(function() {
+            buttons.forEach(function(b) { b.disabled = false; });
+        });
+}
+
+/* Re-run a phase (called from view templates after confirm) */
+function authorRerun(action) {
+    if (!confirm('Run ' + action + ' again? This will create a new version.')) return;
+
+    var nameEl = document.getElementById('author-name');
+    var assignEl = document.getElementById('author-assignment');
+    var name = nameEl ? nameEl.value.trim() : '';
+    var assignment = assignEl ? assignEl.value.trim() : '';
+
+    if (!name) {
+        alert('Enter an assignment name.');
+        return;
+    }
+
+    if (action === 'research' && !assignment) {
+        alert('Enter an assignment description for research.');
+        if (assignEl) assignEl.focus();
+        return;
+    }
+
+    var resultsArea = document.getElementById('author-results');
+    var formData = new FormData();
+    formData.append('name', name);
+    formData.append('assignment', assignment);
+    formData.append('rerun', '1');
+
+    var url = '/author/' + action;
+
+    if (action === 'research') {
+        authorShowProgress(RESEARCH_STEPS);
+    } else if (action === 'draft') {
+        authorShowProgress([
+            "Composing authoring prompt...",
+            "Launching Claude Code terminal...",
+            "Opening new window..."
+        ]);
+    } else if (action === 'format') {
+        authorShowProgress([
+            "Converting markdown to .docx...",
+            "Applying OLG template styles..."
+        ]);
+    }
+
+    var buttons = document.querySelectorAll('.author-actions .btn');
+    buttons.forEach(function(b) { b.disabled = true; });
+
+    fetch(url, { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            authorHideProgress();
+            resultsArea.innerHTML = html;
+            htmx.process(resultsArea);
+            htmx.ajax('GET', '/author/assignments', '#assignments-list');
+        })
+        .catch(function(err) {
+            authorHideProgress();
+            resultsArea.innerHTML = '<p>Error: ' + err.message + '</p>';
+        })
+        .finally(function() {
+            buttons.forEach(function(b) { b.disabled = false; });
+        });
+}
+
+/* Resume a specific Claude Code session (called from draft view template) */
+function authorResume(sessionId) {
+    var nameEl = document.getElementById('author-name');
+    var name = nameEl ? nameEl.value.trim() : '';
+    if (!name) {
+        alert('Enter an assignment name.');
+        return;
+    }
+
+    var resultsArea = document.getElementById('author-results');
+    var formData = new FormData();
+    formData.append('name', name);
+    formData.append('session_id', sessionId);
+
+    authorShowProgress([
+        "Looking up session ID...",
+        "Opening Claude Code terminal..."
+    ]);
+
+    var buttons = document.querySelectorAll('.author-actions .btn');
+    buttons.forEach(function(b) { b.disabled = true; });
+
+    fetch('/author/resume', { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            authorHideProgress();
+            resultsArea.innerHTML = html;
+            htmx.process(resultsArea);
         })
         .catch(function(err) {
             authorHideProgress();
@@ -154,5 +255,21 @@ function loadAssignment(name) {
             var assignEl = document.getElementById('author-assignment');
             if (nameEl) nameEl.value = data.name;
             if (assignEl) assignEl.value = data.assignment || '';
+
+            /* Auto-show the most advanced phase output */
+            var phase = null;
+            if (data.has_docx) phase = 'format';
+            else if (data.has_draft) phase = 'draft';
+            else if (data.has_research) phase = 'research';
+
+            if (phase) {
+                var resultsArea = document.getElementById('author-results');
+                fetch('/author/view/' + encodeURIComponent(name) + '/' + phase)
+                    .then(function(resp) { return resp.text(); })
+                    .then(function(html) {
+                        resultsArea.innerHTML = html;
+                        htmx.process(resultsArea);
+                    });
+            }
         });
 }
