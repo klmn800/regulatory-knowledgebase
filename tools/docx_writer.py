@@ -187,22 +187,67 @@ def _parse_markdown(text: str) -> list[dict]:
 # INLINE FORMATTING
 # ============================================================
 
+def _add_hyperlink(paragraph, url: str, text: str, color=None):
+    """Add a clickable hyperlink to a paragraph.
+
+    Creates a w:hyperlink element with an external relationship, styled
+    with blue underline (standard hyperlink appearance).
+    """
+    part = paragraph.part
+    r_id = part.relate_to(
+        url,
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+        is_external=True,
+    )
+
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), r_id)
+
+    run_elem = OxmlElement("w:r")
+    rPr = OxmlElement("w:rPr")
+
+    c = OxmlElement("w:color")
+    c.set(qn("w:val"), "0563C1")
+    rPr.append(c)
+
+    u = OxmlElement("w:u")
+    u.set(qn("w:val"), "single")
+    rPr.append(u)
+
+    run_elem.append(rPr)
+
+    t = OxmlElement("w:t")
+    t.text = text
+    t.set(qn("xml:space"), "preserve")
+    run_elem.append(t)
+
+    hyperlink.append(run_elem)
+    paragraph._p.append(hyperlink)
+
+
 def _apply_inline_formatting(paragraph, text: str, default_color=None):
     """Apply bold, italic, and other inline markdown to a paragraph.
 
-    Handles **bold**, *italic*, ***bold italic***, and `code`.
+    Handles [text](url) links, **bold**, *italic*, ***bold italic***,
+    and `code`.
     """
     pattern = re.compile(
-        r"(\*\*\*.*?\*\*\*)"   # ***bold italic***
-        r"|(\*\*.*?\*\*)"      # **bold**
-        r"|(\*.*?\*)"          # *italic*
-        r"|(`[^`]+`)"          # `code`
+        r"(\[[^\[\]]+\]\([^)]+\))"  # [text](url)
+        r"|(\*\*\*.*?\*\*\*)"      # ***bold italic***
+        r"|(\*\*.*?\*\*)"          # **bold**
+        r"|(\*.*?\*)"              # *italic*
+        r"|(`[^`]+`)"              # `code`
     )
 
     parts = pattern.split(text)
 
     for part in parts:
         if part is None or part == "":
+            continue
+
+        link_match = re.match(r"^\[([^\[\]]+)\]\(([^)]+)\)$", part)
+        if link_match:
+            _add_hyperlink(paragraph, link_match.group(2), link_match.group(1))
             continue
 
         if part.startswith("***") and part.endswith("***"):
