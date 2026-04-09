@@ -1,0 +1,23 @@
+<div class="version-list-header">
+    <h4>Draft Versions</h4>
+    <button class="btn btn-accent btn-sm" onclick="authorShowDraftPrompt()">New Draft</button>
+</div>
+
+{% if versions %}
+<div class="version-entries">
+    {% for v in versions | reverse %}
+    <div class="version-entry{% if loop.first %} latest{% endif %}" onclick="authorViewDraft({{ v.num }})">
+        <div class="version-entry-header">
+            <span class="version-num">v{{ '%03d' % v.num }}</span>
+            <span class="version-ts">{{ v.ts }}</span>
+            {% if v.has_draft %}<span class="phase-badge phase-done" style="font-size:0.6rem;">draft</span>{% else %}<span class="phase-badge" style="font-size:0.6rem;">pending</span>{% endif %}
+        </div>
+        {% if v.based_on %}
+        <div class="version-preview">Based on: {{ v.based_on | join(', ') }}</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No draft versions yet. Click "New Draft" to start.</p>
+{% endif %}

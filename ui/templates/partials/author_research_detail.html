@@ -1,36 +1,41 @@
 <div class="author-result-container">
-    <!-- Version bar -->
+    <!-- Version navigation bar -->
     <div class="author-version-bar">
         <div class="version-nav">
             <span class="version-phase">Research</span>
-            {% if view.total_versions > 1 %}
+            {% if view.total > 1 %}
             <button class="btn-nav{% if not view.has_prev %} disabled{% endif %}"
-                    {% if view.has_prev %}onclick="authorViewVersion('research', {{ view.prev_version }})"{% endif %}
+                    {% if view.has_prev %}onclick="authorViewResearch({{ view.prev_num }})"{% endif %}
                     title="Previous version">&lsaquo;</button>
-            <span class="version-id">v{{ view.version_index }} of {{ view.total_versions }}</span>
+            <span class="version-id">v{{ '%03d' % view.version_num }} ({{ view.index }} of {{ view.total }})</span>
             <button class="btn-nav{% if not view.has_next %} disabled{% endif %}"
-                    {% if view.has_next %}onclick="authorViewVersion('research', {{ view.next_version }})"{% endif %}
+                    {% if view.has_next %}onclick="authorViewResearch({{ view.next_num }})"{% endif %}
                     title="Next version">&rsaquo;</button>
-            {% elif not view.is_unversioned %}
-            <span class="version-id">v1</span>
             {% else %}
-            <span class="version-id">unversioned</span>
+            <span class="version-id">v{{ '%03d' % view.version_num }}</span>
             {% endif %}
         </div>
-        <button class="btn btn-sm btn-outline" onclick="authorRerun('research')">Run Again</button>
+        <div class="version-actions">
+            <button class="btn btn-sm btn-outline" onclick="authorRunResearchAgain({{ view.version_num }})">Run Again with This Prompt</button>
+        </div>
     </div>
 
-    {% if view.input_text %}
+    {% if view.prompt %}
     <details class="author-input-block">
-        <summary>Assignment text used</summary>
-        <pre class="author-input-text">{{ view.input_text }}</pre>
+        <summary>Prompt used</summary>
+        <pre class="author-input-text">{{ view.prompt[:2000] }}{% if view.prompt | length > 2000 %}...{% endif %}</pre>
     </details>
     {% endif %}
 
     <div class="answer-card">
+        {% if view.report %}
         <div class="answer-body">
             {{ view.report | markdown | safe }}
         </div>
+        {% else %}
+        <p class="text-muted">Report not yet available.</p>
+        {% endif %}
+
         {% if view.duration or view.cost or view.searches %}
         <div class="answer-meta">
             {% if view.duration %}<span>{{ view.duration }}s</span>{% endif %}
@@ -40,6 +45,4 @@
         </div>
         {% endif %}
     </div>
-
-    <p class="author-next-hint">Click <strong>Draft</strong> to launch the Claude Code authoring session.</p>
 </div>

@@ -1,34 +1,37 @@
 <div class="author-result-container">
-    <!-- Version bar -->
+    <!-- Version navigation bar -->
     <div class="author-version-bar">
         <div class="version-nav">
             <span class="version-phase">Draft</span>
-            {% if view.total_versions > 1 %}
+            {% if view.total > 1 %}
             <button class="btn-nav{% if not view.has_prev %} disabled{% endif %}"
-                    {% if view.has_prev %}onclick="authorViewVersion('draft', {{ view.prev_version }})"{% endif %}
+                    {% if view.has_prev %}onclick="authorViewDraft({{ view.prev_num }})"{% endif %}
                     title="Previous version">&lsaquo;</button>
-            <span class="version-id">v{{ view.version_index }} of {{ view.total_versions }}</span>
+            <span class="version-id">v{{ '%03d' % view.version_num }} ({{ view.index }} of {{ view.total }})</span>
             <button class="btn-nav{% if not view.has_next %} disabled{% endif %}"
-                    {% if view.has_next %}onclick="authorViewVersion('draft', {{ view.next_version }})"{% endif %}
+                    {% if view.has_next %}onclick="authorViewDraft({{ view.next_num }})"{% endif %}
                     title="Next version">&rsaquo;</button>
-            {% elif not view.is_unversioned %}
-            <span class="version-id">v1</span>
             {% else %}
-            <span class="version-id">unversioned</span>
+            <span class="version-id">v{{ '%03d' % view.version_num }}</span>
             {% endif %}
         </div>
         <div class="version-actions">
             {% if view.session_id %}
-            <button class="btn btn-sm btn-outline" onclick="authorResume('{{ view.session_id }}')">Resume</button>
+            <button class="btn btn-sm btn-outline" onclick="authorResumeDraft({{ view.version_num }})">Resume</button>
             {% endif %}
-            <button class="btn btn-sm btn-outline" onclick="authorRerun('draft')">Run Again</button>
         </div>
     </div>
 
-    {% if view.input_text %}
+    {% if view.based_on %}
+    <div class="draft-based-on">
+        Based on: {{ view.based_on | join(', ') }}
+    </div>
+    {% endif %}
+
+    {% if view.prompt %}
     <details class="author-input-block">
-        <summary>Assignment text used</summary>
-        <pre class="author-input-text">{{ view.input_text }}</pre>
+        <summary>Draft instructions used</summary>
+        <pre class="author-input-text">{{ view.prompt[:2000] }}{% if view.prompt | length > 2000 %}...{% endif %}</pre>
     </details>
     {% endif %}
 
@@ -39,6 +42,9 @@
         </div>
         {% else %}
         <p class="text-muted">Draft not yet written. Claude Code may still be running in the terminal.</p>
+        <p class="text-muted" style="margin-top: 0.5rem;">
+            <a href="#" onclick="authorViewDraft({{ view.version_num }}); return false;">Refresh</a> to check again.
+        </p>
         {% endif %}
 
         {% if view.session_id %}
@@ -47,6 +53,4 @@
         </div>
         {% endif %}
     </div>
-
-    <p class="author-next-hint">Click <strong>Format</strong> to generate the .docx.</p>
 </div>

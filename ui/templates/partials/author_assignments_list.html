@@ -1,0 +1,16 @@
+{% if assignments %}
+<div class="assignment-list">
+    {% for a in assignments %}
+    <div class="assignment-item" onclick="loadAssignment('{{ a.name }}')">
+        <div class="assignment-name">{{ a.name }}</div>
+        <div class="assignment-badges">
+            {% if a.research_count %}<span class="phase-badge phase-done" title="{{ a.research_count }} research version{{ 's' if a.research_count != 1 }}">R</span>{% else %}<span class="phase-badge" title="No research">R</span>{% endif %}
+            {% if a.draft_count %}<span class="phase-badge phase-done" title="{{ a.draft_count }} draft version{{ 's' if a.draft_count != 1 }}">D</span>{% else %}<span class="phase-badge" title="No drafts">D</span>{% endif %}
+            {% if a.format_count %}<span class="phase-badge phase-done" title="{{ a.format_count }} format version{{ 's' if a.format_count != 1 }}">F</span>{% else %}<span class="phase-badge" title="No formats">F</span>{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No assignments yet. Create one above.</p>
+{% endif %}

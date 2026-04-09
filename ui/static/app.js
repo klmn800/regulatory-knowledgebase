@@ -45,23 +45,14 @@ var RESEARCH_STEPS = [
 ];
 
 var _authorInterval = null;
+var _currentAuthorName = '';
 
 function authorShowProgress(steps) {
-    var resultsArea = document.getElementById('author-results');
     var spinner = document.getElementById('author-spinner');
+    if (!spinner) return;
 
-    /* Recreate the spinner if a view template replaced it */
-    if (!spinner && resultsArea) {
-        resultsArea.innerHTML =
-            '<div id="author-spinner" class="author-loading" style="display:none;">' +
-            '<div class="spinner"></div>' +
-            '<p class="author-progress-text">Warming up...</p>' +
-            '</div>';
-        spinner = document.getElementById('author-spinner');
-    }
-
-    var textEl = spinner ? spinner.querySelector('.author-progress-text') : null;
-    if (!spinner || !textEl) return;
+    var textEl = spinner.querySelector('.author-progress-text');
+    if (!textEl) return;
 
     spinner.style.display = 'block';
     textEl.textContent = steps[0];
@@ -89,7 +80,19 @@ function authorHideProgress() {
     }
 }
 
-function authorRun(action) {
+/* Tab switching */
+function authorSwitchTab(phase) {
+    var tabs = document.querySelectorAll('.phase-tab');
+    tabs.forEach(function(t) { t.classList.remove('active'); });
+    document.getElementById('tab-' + phase).classList.add('active');
+
+    var panels = document.querySelectorAll('.phase-panel');
+    panels.forEach(function(p) { p.style.display = 'none'; });
+    document.getElementById('panel-' + phase).style.display = 'block';
+}
+
+/* Save assignment text */
+function authorSaveAssignment() {
     var nameEl = document.getElementById('author-name');
     var assignEl = document.getElementById('author-assignment');
     var name = nameEl ? nameEl.value.trim() : '';
@@ -101,177 +104,20 @@ function authorRun(action) {
         return;
     }
 
-    var resultsArea = document.getElementById('author-results');
     var formData = new FormData();
     formData.append('name', name);
     formData.append('assignment', assignment);
 
-    var url = '/author/' + action;
-
-    if (action === 'research') {
-        if (!assignment) {
-            alert('Enter an assignment description for research.');
-            if (assignEl) assignEl.focus();
-            return;
-        }
-        authorShowProgress(RESEARCH_STEPS);
-    } else if (action === 'draft') {
-        authorShowProgress([
-            "Composing authoring prompt...",
-            "Launching Claude Code terminal...",
-            "Opening new window..."
-        ]);
-    } else if (action === 'format') {
-        authorShowProgress([
-            "Converting markdown to .docx...",
-            "Applying OLG template styles..."
-        ]);
-    } else if (action === 'resume') {
-        authorShowProgress([
-            "Looking up session ID...",
-            "Opening Claude Code terminal..."
-        ]);
-    }
-
-    /* Disable buttons during request */
-    var buttons = document.querySelectorAll('.author-actions .btn');
-    buttons.forEach(function(b) { b.disabled = true; });
-
-    fetch(url, { method: 'POST', body: formData })
-        .then(function(resp) { return resp.text(); })
-        .then(function(html) {
-            authorHideProgress();
-            resultsArea.innerHTML = html;
-            htmx.process(resultsArea);
+    fetch('/author/save-assignment', { method: 'POST', body: formData })
+        .then(function(resp) { return resp.json(); })
+        .then(function() {
+            _currentAuthorName = name;
             htmx.ajax('GET', '/author/assignments', '#assignments-list');
-        })
-        .catch(function(err) {
-            authorHideProgress();
-            resultsArea.innerHTML = '<p>Error: ' + err.message + '</p>';
-        })
-        .finally(function() {
-            buttons.forEach(function(b) { b.disabled = false; });
+            authorLoadVersionLists(name);
         });
 }
 
-/* Re-run a phase (called from view templates after confirm) */
-function authorRerun(action) {
-    if (!confirm('Run ' + action + ' again? This will create a new version.')) return;
-
-    var nameEl = document.getElementById('author-name');
-    var assignEl = document.getElementById('author-assignment');
-    var name = nameEl ? nameEl.value.trim() : '';
-    var assignment = assignEl ? assignEl.value.trim() : '';
-
-    if (!name) {
-        alert('Enter an assignment name.');
-        return;
-    }
-
-    if (action === 'research' && !assignment) {
-        alert('Enter an assignment description for research.');
-        if (assignEl) assignEl.focus();
-        return;
-    }
-
-    var resultsArea = document.getElementById('author-results');
-    var formData = new FormData();
-    formData.append('name', name);
-    formData.append('assignment', assignment);
-    formData.append('rerun', '1');
-
-    var url = '/author/' + action;
-
-    if (action === 'research') {
-        authorShowProgress(RESEARCH_STEPS);
-    } else if (action === 'draft') {
-        authorShowProgress([
-            "Composing authoring prompt...",
-            "Launching Claude Code terminal...",
-            "Opening new window..."
-        ]);
-    } else if (action === 'format') {
-        authorShowProgress([
-            "Converting markdown to .docx...",
-            "Applying OLG template styles..."
-        ]);
-    }
-
-    var buttons = document.querySelectorAll('.author-actions .btn');
-    buttons.forEach(function(b) { b.disabled = true; });
-
-    fetch(url, { method: 'POST', body: formData })
-        .then(function(resp) { return resp.text(); })
-        .then(function(html) {
-            authorHideProgress();
-            resultsArea.innerHTML = html;
-            htmx.process(resultsArea);
-            htmx.ajax('GET', '/author/assignments', '#assignments-list');
-        })
-        .catch(function(err) {
-            authorHideProgress();
-            resultsArea.innerHTML = '<p>Error: ' + err.message + '</p>';
-        })
-        .finally(function() {
-            buttons.forEach(function(b) { b.disabled = false; });
-        });
-}
-
-/* Resume a specific Claude Code session (called from draft view template) */
-function authorResume(sessionId) {
-    var nameEl = document.getElementById('author-name');
-    var name = nameEl ? nameEl.value.trim() : '';
-    if (!name) {
-        alert('Enter an assignment name.');
-        return;
-    }
-
-    var resultsArea = document.getElementById('author-results');
-    var formData = new FormData();
-    formData.append('name', name);
-    formData.append('session_id', sessionId);
-
-    authorShowProgress([
-        "Looking up session ID...",
-        "Opening Claude Code terminal..."
-    ]);
-
-    var buttons = document.querySelectorAll('.author-actions .btn');
-    buttons.forEach(function(b) { b.disabled = true; });
-
-    fetch('/author/resume', { method: 'POST', body: formData })
-        .then(function(resp) { return resp.text(); })
-        .then(function(html) {
-            authorHideProgress();
-            resultsArea.innerHTML = html;
-            htmx.process(resultsArea);
-        })
-        .catch(function(err) {
-            authorHideProgress();
-            resultsArea.innerHTML = '<p>Error: ' + err.message + '</p>';
-        })
-        .finally(function() {
-            buttons.forEach(function(b) { b.disabled = false; });
-        });
-}
-
-/* Navigate to a specific version of a phase output */
-function authorViewVersion(phase, versionNum) {
-    var nameEl = document.getElementById('author-name');
-    var name = nameEl ? nameEl.value.trim() : '';
-    if (!name) return;
-
-    var resultsArea = document.getElementById('author-results');
-    var url = '/author/view/' + encodeURIComponent(name) + '/' + phase + '?v=' + versionNum;
-
-    fetch(url)
-        .then(function(resp) { return resp.text(); })
-        .then(function(html) {
-            resultsArea.innerHTML = html;
-            htmx.process(resultsArea);
-        });
-}
-
+/* Load an assignment from the sidebar */
 function loadAssignment(name) {
     fetch('/author/load/' + encodeURIComponent(name))
         .then(function(resp) { return resp.json(); })
@@ -280,22 +126,340 @@ function loadAssignment(name) {
             var assignEl = document.getElementById('author-assignment');
             if (nameEl) nameEl.value = data.name;
             if (assignEl) assignEl.value = data.assignment || '';
+            _currentAuthorName = name;
 
-            /* Auto-show the most advanced phase output */
-            var phase = null;
-            if (data.has_docx) phase = 'format';
-            else if (data.has_draft) phase = 'draft';
-            else if (data.has_research) phase = 'research';
+            authorLoadVersionLists(name);
 
-            if (phase) {
-                var resultsArea = document.getElementById('author-results');
-                fetch('/author/view/' + encodeURIComponent(name) + '/' + phase)
-                    .then(function(resp) { return resp.text(); })
-                    .then(function(html) {
-                        resultsArea.innerHTML = html;
-                        htmx.process(resultsArea);
+            /* Auto-switch to the most advanced tab with versions */
+            if (data.format_count > 0) authorSwitchTab('formats');
+            else if (data.draft_count > 0) authorSwitchTab('drafts');
+            else authorSwitchTab('research');
+        });
+}
+
+/* Load all version lists for an assignment */
+function authorLoadVersionLists(name) {
+    fetch('/author/' + encodeURIComponent(name) + '/research')
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            document.getElementById('research-versions').innerHTML = html;
+            htmx.process(document.getElementById('research-versions'));
+        });
+
+    fetch('/author/' + encodeURIComponent(name) + '/drafts')
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            document.getElementById('drafts-versions').innerHTML = html;
+            htmx.process(document.getElementById('drafts-versions'));
+            authorPopulateDraftSelect(name);
+        });
+
+    fetch('/author/' + encodeURIComponent(name) + '/formats')
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            document.getElementById('formats-versions').innerHTML = html;
+            htmx.process(document.getElementById('formats-versions'));
+            authorPopulateDraftSelect(name);
+        });
+
+    /* Clear detail areas */
+    document.getElementById('research-detail').innerHTML = '';
+    document.getElementById('drafts-detail').innerHTML = '';
+    document.getElementById('formats-detail').innerHTML = '';
+}
+
+/* Populate the draft selector in the Format panel */
+function authorPopulateDraftSelect(name) {
+    var select = document.getElementById('format-draft-select');
+    if (!select) return;
+
+    fetch('/author/' + encodeURIComponent(name) + '/drafts')
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            /* Parse version entries from the HTML to extract draft nums */
+            var container = document.createElement('div');
+            container.innerHTML = html;
+            var entries = container.querySelectorAll('.version-entry');
+
+            select.innerHTML = '<option value="">-- choose draft --</option>';
+            entries.forEach(function(entry) {
+                var numEl = entry.querySelector('.version-num');
+                var tsEl = entry.querySelector('.version-ts');
+                var draftBadge = entry.querySelector('.phase-done');
+                if (numEl) {
+                    var numText = numEl.textContent.trim();
+                    var num = parseInt(numText.replace('v', ''), 10);
+                    var ts = tsEl ? tsEl.textContent.trim() : '';
+                    var hasDraft = !!draftBadge;
+                    var label = numText + ' (' + ts + ')' + (hasDraft ? '' : ' [no draft yet]');
+                    var opt = document.createElement('option');
+                    opt.value = num;
+                    opt.textContent = label;
+                    if (!hasDraft) opt.disabled = true;
+                    select.appendChild(opt);
+                }
+            });
+        });
+}
+
+/* ---- Research ---- */
+
+function authorViewResearch(num) {
+    var name = _currentAuthorName || (document.getElementById('author-name') ? document.getElementById('author-name').value.trim() : '');
+    if (!name) return;
+
+    fetch('/author/' + encodeURIComponent(name) + '/research/' + num)
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            document.getElementById('research-detail').innerHTML = html;
+            htmx.process(document.getElementById('research-detail'));
+        });
+}
+
+function authorShowResearchPrompt() {
+    var name = _currentAuthorName || (document.getElementById('author-name') ? document.getElementById('author-name').value.trim() : '');
+    if (!name) {
+        alert('Enter an assignment name first.');
+        return;
+    }
+
+    fetch('/author/' + encodeURIComponent(name) + '/research/prompt')
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            document.getElementById('research-detail').innerHTML = html;
+            htmx.process(document.getElementById('research-detail'));
+        });
+}
+
+function authorRunResearch() {
+    var name = _currentAuthorName || (document.getElementById('author-name') ? document.getElementById('author-name').value.trim() : '');
+    if (!name) { alert('Enter an assignment name.'); return; }
+
+    var assignEl = document.getElementById('author-assignment');
+    var assignment = assignEl ? assignEl.value.trim() : '';
+    if (!assignment) { alert('Enter an assignment description.'); return; }
+
+    var promptEl = document.getElementById('author-prompt-textarea');
+    var prompt = promptEl ? promptEl.value : '';
+
+    authorShowProgress(RESEARCH_STEPS);
+
+    var formData = new FormData();
+    formData.append('prompt', prompt);
+    formData.append('assignment', assignment);
+
+    fetch('/author/' + encodeURIComponent(name) + '/research/run', { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            authorHideProgress();
+            document.getElementById('research-detail').innerHTML = html;
+            htmx.process(document.getElementById('research-detail'));
+            authorLoadVersionLists(name);
+        })
+        .catch(function(err) {
+            authorHideProgress();
+            document.getElementById('research-detail').innerHTML = '<p>Error: ' + err.message + '</p>';
+        });
+}
+
+function authorRunResearchAgain(versionNum) {
+    var name = _currentAuthorName || (document.getElementById('author-name') ? document.getElementById('author-name').value.trim() : '');
+    if (!name) return;
+
+    /* Load this version's prompt into editor */
+    fetch('/author/' + encodeURIComponent(name) + '/research/' + versionNum)
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            /* Extract prompt from the detail view and show prompt editor */
+            var container = document.createElement('div');
+            container.innerHTML = html;
+            var promptPre = container.querySelector('.author-input-text');
+            var promptText = promptPre ? promptPre.textContent : '';
+
+            fetch('/author/' + encodeURIComponent(name) + '/research/prompt')
+                .then(function(resp) { return resp.text(); })
+                .then(function(editorHtml) {
+                    document.getElementById('research-detail').innerHTML = editorHtml;
+                    htmx.process(document.getElementById('research-detail'));
+                    /* Pre-fill with the previous version's prompt */
+                    var textarea = document.getElementById('author-prompt-textarea');
+                    if (textarea && promptText) textarea.value = promptText;
+                });
+        });
+}
+
+function authorCancelPrompt(phase) {
+    document.getElementById(phase + '-detail').innerHTML = '';
+}
+
+/* ---- Drafts ---- */
+
+function authorViewDraft(num) {
+    var name = _currentAuthorName || (document.getElementById('author-name') ? document.getElementById('author-name').value.trim() : '');
+    if (!name) return;
+
+    fetch('/author/' + encodeURIComponent(name) + '/drafts/' + num)
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            document.getElementById('drafts-detail').innerHTML = html;
+            htmx.process(document.getElementById('drafts-detail'));
+        });
+}
+
+function authorShowDraftPrompt() {
+    var name = _currentAuthorName || (document.getElementById('author-name') ? document.getElementById('author-name').value.trim() : '');
+    if (!name) {
+        alert('Enter an assignment name first.');
+        return;
+    }
+
+    fetch('/author/' + encodeURIComponent(name) + '/drafts/prompt')
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            document.getElementById('drafts-detail').innerHTML = html;
+            htmx.process(document.getElementById('drafts-detail'));
+
+            /* Populate research checkboxes */
+            fetch('/author/' + encodeURIComponent(name) + '/research')
+                .then(function(resp) { return resp.text(); })
+                .then(function(listHtml) {
+                    var container = document.createElement('div');
+                    container.innerHTML = listHtml;
+                    var entries = container.querySelectorAll('.version-entry');
+
+                    var checkboxArea = document.getElementById('research-checkboxes');
+                    if (!checkboxArea) return;
+
+                    if (entries.length === 0) {
+                        checkboxArea.innerHTML = '<p class="text-muted">No research versions available.</p>';
+                        return;
+                    }
+
+                    var html = '';
+                    entries.forEach(function(entry) {
+                        var numEl = entry.querySelector('.version-num');
+                        var tsEl = entry.querySelector('.version-ts');
+                        if (numEl) {
+                            var numText = numEl.textContent.trim();
+                            var num = parseInt(numText.replace('v', ''), 10);
+                            var ts = tsEl ? tsEl.textContent.trim() : '';
+                            html += '<label class="checkbox-label" style="display:block; margin-bottom:0.3rem;">' +
+                                '<input type="checkbox" class="research-version-cb" value="' + num + '" checked> ' +
+                                numText + ' (' + ts + ')' +
+                                '</label>';
+                        }
                     });
-            }
+                    checkboxArea.innerHTML = html;
+                });
+        });
+}
+
+function authorRunDraft() {
+    var name = _currentAuthorName || (document.getElementById('author-name') ? document.getElementById('author-name').value.trim() : '');
+    if (!name) { alert('Enter an assignment name.'); return; }
+
+    var assignEl = document.getElementById('author-assignment');
+    var assignment = assignEl ? assignEl.value.trim() : '';
+
+    var promptEl = document.getElementById('author-prompt-textarea');
+    var prompt = promptEl ? promptEl.value : '';
+
+    /* Collect selected research versions */
+    var checkboxes = document.querySelectorAll('.research-version-cb:checked');
+    var researchVersions = [];
+    checkboxes.forEach(function(cb) { researchVersions.push(cb.value); });
+
+    authorShowProgress([
+        "Composing authoring prompt...",
+        "Launching Claude Code terminal...",
+        "Opening new window..."
+    ]);
+
+    var formData = new FormData();
+    formData.append('prompt', prompt);
+    formData.append('assignment', assignment);
+    formData.append('research_versions', researchVersions.join(','));
+
+    fetch('/author/' + encodeURIComponent(name) + '/drafts/run', { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            authorHideProgress();
+            document.getElementById('drafts-detail').innerHTML = html;
+            htmx.process(document.getElementById('drafts-detail'));
+            authorLoadVersionLists(name);
+        })
+        .catch(function(err) {
+            authorHideProgress();
+            document.getElementById('drafts-detail').innerHTML = '<p>Error: ' + err.message + '</p>';
+        });
+}
+
+function authorResumeDraft(num) {
+    var name = _currentAuthorName || (document.getElementById('author-name') ? document.getElementById('author-name').value.trim() : '');
+    if (!name) return;
+
+    authorShowProgress([
+        "Looking up session ID...",
+        "Opening Claude Code terminal..."
+    ]);
+
+    fetch('/author/' + encodeURIComponent(name) + '/drafts/' + num + '/resume', { method: 'POST' })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            authorHideProgress();
+            document.getElementById('drafts-detail').innerHTML = html;
+            htmx.process(document.getElementById('drafts-detail'));
+        })
+        .catch(function(err) {
+            authorHideProgress();
+            document.getElementById('drafts-detail').innerHTML = '<p>Error: ' + err.message + '</p>';
+        });
+}
+
+/* ---- Formats ---- */
+
+function authorViewFormat(num) {
+    var name = _currentAuthorName || (document.getElementById('author-name') ? document.getElementById('author-name').value.trim() : '');
+    if (!name) return;
+
+    fetch('/author/' + encodeURIComponent(name) + '/formats/' + num)
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            document.getElementById('formats-detail').innerHTML = html;
+            htmx.process(document.getElementById('formats-detail'));
+        });
+}
+
+function authorRunFormat() {
+    var name = _currentAuthorName || (document.getElementById('author-name') ? document.getElementById('author-name').value.trim() : '');
+    if (!name) { alert('Enter an assignment name.'); return; }
+
+    var select = document.getElementById('format-draft-select');
+    var draftVersion = select ? select.value : '';
+    if (!draftVersion) {
+        alert('Select a draft version to format.');
+        return;
+    }
+
+    authorShowProgress([
+        "Converting markdown to .docx...",
+        "Applying OLG template styles..."
+    ]);
+
+    var formData = new FormData();
+    formData.append('draft_version', draftVersion);
+
+    fetch('/author/' + encodeURIComponent(name) + '/formats/run', { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            authorHideProgress();
+            document.getElementById('formats-detail').innerHTML = html;
+            htmx.process(document.getElementById('formats-detail'));
+            authorLoadVersionLists(name);
+        })
+        .catch(function(err) {
+            authorHideProgress();
+            document.getElementById('formats-detail').innerHTML = '<p>Error: ' + err.message + '</p>';
         });
 }
 

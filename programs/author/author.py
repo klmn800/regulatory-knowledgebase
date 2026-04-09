@@ -1,16 +1,18 @@
 """
 OLG Policy Authoring Agent — research, draft, and format OLG pages.
 
-Three-phase pipeline:
+Three independent tools:
   1. Research: Multi-source RAG synthesis with structured evidence output
-  2. Author:  Claude Code CLI drafts OLG-voice content (session resumable)
+  2. Draft:   Claude Code CLI drafts OLG-voice content (session resumable)
   3. Format:  Draft markdown → styled .docx via OLG template
 
+Each function takes explicit paths — no implicit "latest" or top-level copies.
+
 Usage:
-    python agents/author.py "Consolidate all VC-1 user entered field scripts" --name vc1_scripts
-    python agents/author.py "Find VC-1 scripts" --name vc1_scripts --research-only
-    python agents/author.py --name vc1_scripts --draft-only
-    python agents/author.py --name vc1_scripts --resume
+    python programs/author/author.py "Consolidate VC-1 scripts" --name vc1_scripts
+    python programs/author/author.py "Find VC-1 scripts" --name vc1_scripts --research-only
+    python programs/author/author.py --name vc1_scripts --draft-only
+    python programs/author/author.py --name vc1_scripts --resume
 """
 
 import argparse
@@ -29,7 +31,6 @@ CONFIG_FILE = PROJECT_ROOT / "config.ini"
 
 sys.path.insert(0, str(PROJECT_ROOT))
 from tools.synthesis import run_synthesis, SynthesisResult
-from tools.claude_code_runner import run_claude_task
 
 
 # ============================================================
@@ -49,6 +50,16 @@ def load_text(filepath: Path) -> str | None:
     return None
 
 
+def get_default_research_prompt() -> str:
+    """Return the default research prompt text."""
+    return load_text(SHARED_PROMPTS_DIR / "author_research.md") or ""
+
+
+def get_default_draft_prompt() -> str:
+    """Return the default draft prompt text (just the instructions part)."""
+    return load_text(PROMPTS_DIR / "author_draft.md") or ""
+
+
 # ============================================================
 # OUTPUT DIRECTORY
 # ============================================================
@@ -66,12 +77,18 @@ def get_output_dir(name: str) -> Path:
 
 def run_research(
     assignment: str,
-    name: str,
+    prompt_text: str,
+    version_dir: Path,
     config: configparser.ConfigParser,
 ) -> SynthesisResult:
-    """Run the research phase — deep RAG synthesis with structured output."""
-    output_dir = get_output_dir(name)
+    """Run the research phase — deep RAG synthesis with structured output.
 
+    Args:
+        assignment: The assignment text.
+        prompt_text: The research prompt instructions to use.
+        version_dir: Where to write all outputs (report.md, evidence.json, meta.json, prompt.md).
+        config: App configuration.
+    """
     model = config.get("author", "research_model",
                         fallback="claude-sonnet-4-5-20250929")
     max_searches = config.getint("author", "research_max_searches", fallback=12)
@@ -88,6 +105,7 @@ def run_research(
     print(f"  Sources: {', '.join(sources)}")
     print(f"  Model: {model}")
     print(f"  Search budget: {max_searches}")
+    print(f"  Output: {version_dir}")
     print()
 
     result = run_synthesis(
@@ -103,22 +121,23 @@ def run_research(
         },
     )
 
-    # Save research report (narrative)
-    report_file = output_dir / "research_report.md"
-    report_file.write_text(
+    # Save prompt used
+    (version_dir / "prompt.md").write_text(prompt_text, encoding="utf-8")
+
+    # Save research report
+    report_text = (
         f"# Research Report\n\n"
         f"**Assignment:** {assignment}\n\n"
         f"**Date:** {time.strftime('%Y-%m-%d %H:%M')}\n\n"
         f"**Sources:** {', '.join(sources)}\n\n"
         f"**Searches performed:** {len(result.search_queries)}\n\n"
         f"---\n\n"
-        f"{result.answer}",
-        encoding="utf-8",
+        f"{result.answer}"
     )
-    print(f"\n  Research report saved: {report_file}")
+    (version_dir / "report.md").write_text(report_text, encoding="utf-8")
+    print(f"\n  Research report saved: {version_dir / 'report.md'}")
 
-    # Save structured evidence (JSON)
-    evidence_file = output_dir / "research_evidence.json"
+    # Save structured evidence
     evidence_data = {
         "assignment": assignment,
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -132,7 +151,6 @@ def run_research(
         "duration_seconds": result.duration_seconds,
         "evidence": {},
     }
-
     for source_key, results_list in result.evidence.items():
         evidence_data["evidence"][source_key] = [
             {
@@ -144,18 +162,24 @@ def run_research(
             }
             for r in results_list
         ]
-
-    evidence_file.write_text(
+    (version_dir / "evidence.json").write_text(
         json.dumps(evidence_data, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"  Evidence saved: {evidence_file}")
 
-    # Save assignment text
-    assignment_file = output_dir / "assignment.txt"
-    assignment_file.write_text(assignment, encoding="utf-8")
+    # Save metadata
+    meta = {
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "duration": round(result.duration_seconds, 1),
+        "cost": round(result.cost, 4),
+        "searches": len(result.search_queries),
+        "model": result.model,
+    }
+    (version_dir / "meta.json").write_text(
+        json.dumps(meta, indent=2), encoding="utf-8"
+    )
 
-    print(f"\n  Cost: ${result.cost:.4f}")
+    print(f"  Cost: ${result.cost:.4f}")
     print(f"  Duration: {result.duration_seconds:.1f}s")
     print(f"  Searches: {len(result.search_queries)}")
 
@@ -163,48 +187,49 @@ def run_research(
 
 
 # ============================================================
-# PHASE 2: AUTHOR (Claude Code CLI)
+# PHASE 2: DRAFT (Claude Code CLI)
 # ============================================================
 
-def compose_authoring_prompt(
+def compose_draft_prompt(
+    instructions: str,
+    research_paths: list[Path],
     assignment: str,
-    name: str,
     config: configparser.ConfigParser,
-    draft_file: Path | None = None,
+    draft_file: Path,
 ) -> str:
-    """Compose the full prompt for the Claude Code authoring session.
+    """Assemble the full draft prompt from parts.
 
     Args:
-        draft_file: Where Claude should write the draft. Defaults to
-            output/author/{name}/draft.md (top-level). The UI passes
-            a version directory path so the draft is written directly
-            to the versioned location.
+        instructions: The editable draft instructions (from textarea or default).
+        research_paths: List of research version directories to include.
+        assignment: The assignment text.
+        config: App configuration.
+        draft_file: Where Claude should write the draft.
+
+    Returns:
+        The complete assembled prompt string.
     """
-    output_dir = get_output_dir(name)
-    if draft_file is None:
-        draft_file = output_dir / "draft.md"
-
-    # Load prompt components (no domain preamble — style guide + draft prompt
-    # + research report provide all needed context for the authoring agent)
-    author_prompt = load_text(PROMPTS_DIR / "author_draft.md") or ""
-
-    # Load style guide if available
+    # Load style guide
     style_guide_path = config.get("author", "style_guide",
-                                   fallback="agents/references/olg_style_guide.md")
+                                   fallback="programs/author/references/olg_style_guide.md")
     style_guide = load_text(PROJECT_ROOT / style_guide_path)
 
-    # Load research report
-    research_report = load_text(output_dir / "research_report.md")
-    if not research_report:
-        print("  WARNING: No research report found. Running draft without research.")
-        research_report = "(No research was conducted. Use the search tools to find relevant content.)"
+    # Load research reports from selected versions
+    research_texts = []
+    for rpath in research_paths:
+        report_file = rpath / "report.md"
+        if report_file.exists():
+            research_texts.append(report_file.read_text(encoding="utf-8"))
 
-    # Compose the full prompt
-    # Order: role/process → assignment → research → style guide → output
-    # Style guide placed late so it's fresh in context when the agent drafts.
+    if not research_texts:
+        combined_research = "(No research was selected. Use the search tools to find relevant content.)"
+    else:
+        combined_research = "\n\n---\n\n".join(research_texts)
+
+    # Assemble: instructions → assignment → research → style guide → output path
     parts = []
 
-    parts.append(author_prompt)
+    parts.append(instructions)
     parts.append("\n\n---\n\n")
 
     parts.append("## Assignment\n\n")
@@ -212,7 +237,7 @@ def compose_authoring_prompt(
     parts.append("\n\n---\n\n")
 
     parts.append("## Research Findings\n\n")
-    parts.append(research_report)
+    parts.append(combined_research)
     parts.append("\n\n---\n\n")
 
     if style_guide:
@@ -236,153 +261,155 @@ def compose_authoring_prompt(
     return "".join(parts)
 
 
-def run_author(
-    assignment: str,
-    name: str,
+def launch_draft(
+    full_prompt: str,
+    draft_dir: Path,
+    instructions: str,
     config: configparser.ConfigParser,
-) -> dict:
-    """Run the authoring phase — Claude Code CLI drafts the OLG page."""
-    output_dir = get_output_dir(name)
-    draft_file = output_dir / "draft.md"
-    timeout = config.getint("author", "claude_code_timeout", fallback=600)
+    name: str,
+    session_id: str,
+    based_on: list[str],
+) -> None:
+    """Save draft metadata and launch Claude Code in a terminal window.
 
-    print(f"\n{'='*60}")
-    print("PHASE 2: AUTHOR (Claude Code CLI)")
-    print(f"{'='*60}")
+    Args:
+        full_prompt: The complete assembled prompt.
+        draft_dir: The version directory for this draft.
+        instructions: The editable instructions portion (saved as prompt.md).
+        config: App configuration.
+        name: Assignment name (for window title).
+        session_id: Pre-generated session UUID.
+        based_on: List of research version labels (e.g. ["research/001", "research/002"]).
+    """
+    import subprocess
 
-    prompt = compose_authoring_prompt(assignment, name, config)
+    draft_file = draft_dir / "draft.md"
 
-    print(f"  Prompt length: {len(prompt):,} chars")
-    print(f"  Draft output: {draft_file}")
-    print(f"  Timeout: {timeout}s")
-    print()
+    # Save prompt and full prompt
+    (draft_dir / "prompt.md").write_text(instructions, encoding="utf-8")
+    (draft_dir / "full_prompt.md").write_text(full_prompt, encoding="utf-8")
 
-    result = run_claude_task(
-        prompt=prompt,
-        result_file=draft_file,
-        timeout=timeout,
-        cwd=PROJECT_ROOT,
-        log_dir=output_dir / "sessions",
-        task_id=name,
-        parse_json=False,
+    # Save session ID
+    (draft_dir / "session_id.txt").write_text(session_id, encoding="utf-8")
+
+    # Save metadata
+    meta = {
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "based_on": based_on,
+        "session_id": session_id,
+    }
+    (draft_dir / "meta.json").write_text(
+        json.dumps(meta, indent=2), encoding="utf-8"
     )
 
-    # Save session ID for resume
-    if result.get("session_id"):
-        session_file = output_dir / "session_id.txt"
-        session_file.write_text(result["session_id"], encoding="utf-8")
-        print(f"\n  Session ID: {result['session_id']}")
-        print(f"  Resume with: claude --resume {result['session_id']}")
-    else:
-        print("\n  WARNING: No session ID captured (windowed mode or error)")
+    # Write prompt to a temp file for Claude to read
+    prompt_file = DATA_DIR / ".draft_prompt.md"
+    prompt_file.write_text(full_prompt, encoding="utf-8")
+    prompt_path = str(prompt_file.resolve())
 
-    if result["success"]:
-        # The draft was written as a file (not JSON), so read it directly
-        if draft_file.exists():
-            draft_text = draft_file.read_text(encoding="utf-8")
-            print(f"  Draft saved: {draft_file} ({len(draft_text):,} chars)")
-        else:
-            print(f"  WARNING: Draft file not found at {draft_file}")
-    else:
-        print(f"  ERROR: {result.get('error', 'Unknown error')}")
+    initial_msg = (
+        f"Your full assignment is in {prompt_path} — it has the research findings, "
+        f"style guide, and output instructions. Please read it and take it from there."
+    )
 
-    print(f"  Duration: {result['elapsed']:.1f}s")
+    bat_file = DATA_DIR / ".run_draft.bat"
+    bat_file.write_text(
+        f'@echo off\n'
+        f'cd /d {PROJECT_ROOT}\n'
+        f'title Claude Code - {name}\n'
+        f'echo.\n'
+        f'echo  Authoring: {name}\n'
+        f'echo  Draft output: {draft_file}\n'
+        f'echo  Session ID: {session_id}\n'
+        f'echo.\n'
+        f'claude --session-id {session_id} "{initial_msg}"\n'
+        f'echo.\n'
+        f'echo  === Draft session complete ===\n'
+        f'echo.\n'
+        f'pause\n',
+        encoding="utf-8",
+    )
 
-    return result
+    subprocess.Popen(
+        ["cmd", "/c", str(bat_file)],
+        cwd=str(PROJECT_ROOT),
+        creationflags=subprocess.CREATE_NEW_CONSOLE,
+    )
+
+
+def launch_resume(
+    session_id: str,
+    name: str,
+) -> None:
+    """Launch a Claude Code resume terminal for an existing session."""
+    import subprocess
+
+    bat_file = DATA_DIR / ".run_resume.bat"
+    bat_file.write_text(
+        f'@echo off\n'
+        f'cd /d {PROJECT_ROOT}\n'
+        f'title Claude Code Resume - {name}\n'
+        f'echo.\n'
+        f'echo  Resuming session: {session_id}\n'
+        f'echo.\n'
+        f'claude --resume {session_id}\n'
+        f'echo.\n'
+        f'pause\n',
+        encoding="utf-8",
+    )
+
+    subprocess.Popen(
+        ["cmd", "/c", str(bat_file)],
+        cwd=str(PROJECT_ROOT),
+        creationflags=subprocess.CREATE_NEW_CONSOLE,
+    )
 
 
 # ============================================================
 # PHASE 3: FORMAT (.docx)
 # ============================================================
 
-def run_format(name: str, config: configparser.ConfigParser) -> Path | None:
-    """Run the formatting phase — convert draft markdown to styled .docx."""
-    output_dir = get_output_dir(name)
-    draft_file = output_dir / "draft.md"
-    docx_file = output_dir / "output.docx"
+def run_format(
+    draft_path: Path,
+    output_path: Path,
+    config: configparser.ConfigParser,
+) -> Path | None:
+    """Convert a draft markdown file to styled .docx.
 
+    Args:
+        draft_path: Path to the draft.md to format.
+        output_path: Path where the .docx should be written.
+        config: App configuration.
+
+    Returns:
+        Path to the generated .docx, or None on failure.
+    """
     print(f"\n{'='*60}")
     print("PHASE 3: FORMAT (.docx)")
     print(f"{'='*60}")
 
-    # Check latest versioned draft first — it's the authoritative copy.
-    # The top-level draft.md is a convenience copy that may be stale if
-    # the user closed the terminal before the bat file copied it up.
-    drafts_dir = output_dir / "drafts"
-    if drafts_dir.exists():
-        version_dirs = sorted(
-            (d for d in drafts_dir.iterdir() if d.is_dir()),
-            key=lambda d: d.name,
-        )
-        if version_dirs:
-            versioned = version_dirs[-1] / "draft.md"
-            if versioned.exists():
-                import shutil
-                shutil.copy2(versioned, draft_file)
-                print(f"  Using draft from {versioned.parent.name}")
-
-    if not draft_file.exists():
-        print(f"  ERROR: No draft found at {draft_file}")
-        print("  Run the authoring phase first, or provide a draft file.")
+    if not draft_path.exists():
+        print(f"  ERROR: No draft found at {draft_path}")
         return None
 
     try:
         from tools.docx_writer import generate_docx
     except ImportError:
-        print("  SKIPPED: docx_writer not yet implemented.")
-        print("  The draft is available as markdown at:")
-        print(f"    {draft_file}")
+        print("  SKIPPED: docx_writer not available.")
         return None
 
     template_path = config.get("author", "template_docx",
-                                fallback="agents/references/olg_template.docx")
+                                fallback="programs/author/references/2026 OLG Template.docx")
     template_file = PROJECT_ROOT / template_path
 
     if not template_file.exists():
         print(f"  SKIPPED: OLG template not found at {template_file}")
-        print("  Provide the template .docx to enable formatting.")
         return None
 
-    draft_text = draft_file.read_text(encoding="utf-8")
-    generate_docx(draft_text, docx_file, template_file)
-    print(f"  .docx saved: {docx_file}")
-    return docx_file
-
-
-# ============================================================
-# RESUME
-# ============================================================
-
-def run_resume(name: str):
-    """Resume a previous Claude Code authoring session."""
-    output_dir = get_output_dir(name)
-    session_file = output_dir / "session_id.txt"
-
-    if not session_file.exists():
-        print(f"ERROR: No session ID found at {session_file}")
-        print(f"  Has the authoring phase been run for '{name}'?")
-        sys.exit(1)
-
-    session_id = session_file.read_text(encoding="utf-8").strip()
-    print(f"\nResuming Claude Code session: {session_id}")
-    print(f"Assignment directory: {output_dir}")
-    print()
-    print(f"Run this command to resume interactively:")
-    print(f"  claude --resume {session_id}")
-    print()
-
-    # Offer to launch it
-    try:
-        response = input("Launch now? [y/N] ").strip().lower()
-    except (EOFError, KeyboardInterrupt):
-        return
-
-    if response == "y":
-        import subprocess
-        subprocess.run(
-            ["claude", "--resume", session_id],
-            cwd=str(PROJECT_ROOT),
-        )
+    draft_text = draft_path.read_text(encoding="utf-8")
+    generate_docx(draft_text, output_path, template_file)
+    print(f"  .docx saved: {output_path}")
+    return output_path
 
 
 # ============================================================
@@ -403,15 +430,15 @@ def main():
     )
     parser.add_argument(
         "--research-only", action="store_true",
-        help="Run only the research phase (Phase 1)"
+        help="Run only the research phase"
     )
     parser.add_argument(
         "--draft-only", action="store_true",
-        help="Run only the authoring phase (Phase 2), using existing research"
+        help="Run only the authoring phase, using existing research"
     )
     parser.add_argument(
         "--no-docx", action="store_true",
-        help="Skip .docx generation (Phase 3)"
+        help="Skip .docx generation"
     )
     parser.add_argument(
         "--resume", action="store_true",
@@ -425,7 +452,21 @@ def main():
 
     # Handle resume mode
     if args.resume:
-        run_resume(args.name)
+        output_dir = get_output_dir(args.name)
+        # Find latest draft with a session ID
+        from ui.versioning import list_versions, _parse_version_num
+        drafts = list_versions(output_dir, "drafts")
+        session_id = None
+        for d in reversed(drafts):
+            sid_file = d / "session_id.txt"
+            if sid_file.exists():
+                session_id = sid_file.read_text(encoding="utf-8").strip()
+                break
+        if not session_id:
+            print(f"ERROR: No session ID found for '{args.name}'")
+            sys.exit(1)
+        print(f"\nResuming Claude Code session: {session_id}")
+        launch_resume(session_id, args.name)
         return
 
     # Load assignment text
@@ -433,66 +474,80 @@ def main():
     if args.assignment_file:
         assignment = Path(args.assignment_file).read_text(encoding="utf-8").strip()
     elif not assignment and not args.draft_only:
-        # Check for saved assignment
         saved = get_output_dir(args.name) / "assignment.txt"
         if saved.exists():
             assignment = saved.read_text(encoding="utf-8").strip()
             print(f"Using saved assignment from {saved}")
         else:
-            print("ERROR: No assignment provided. Pass text, --assignment-file, or --draft-only.")
+            print("ERROR: No assignment provided.")
             sys.exit(1)
 
     config = load_config()
+    output_dir = get_output_dir(args.name)
 
     print(f"\n{'='*60}")
     print(f"OLG AUTHORING PIPELINE: {args.name}")
     print(f"{'='*60}")
 
     start = time.time()
-    research_result = None
 
     # Phase 1: Research
     if not args.draft_only:
-        research_result = run_research(assignment, args.name, config)
+        from ui.versioning import next_version_dir
+        research_dir = next_version_dir(output_dir, "research")
+        prompt_text = get_default_research_prompt()
+        run_research(assignment, prompt_text, research_dir, config)
 
-    # Phase 2: Author
+    # Phase 2: Draft
     if not args.research_only:
-        # Load assignment from saved file if in draft-only mode
+        import uuid
+        from ui.versioning import next_version_dir, list_versions
+
         if args.draft_only and not assignment:
-            saved = get_output_dir(args.name) / "assignment.txt"
+            saved = output_dir / "assignment.txt"
             if saved.exists():
                 assignment = saved.read_text(encoding="utf-8").strip()
             else:
-                print("ERROR: No assignment found. Run the full pipeline first.")
+                print("ERROR: No assignment found.")
                 sys.exit(1)
 
-        author_result = run_author(assignment, args.name, config)
+        # Use all research versions
+        research_versions = list_versions(output_dir, "research")
+        draft_dir = next_version_dir(output_dir, "drafts")
+        draft_file = draft_dir / "draft.md"
+        session_id = str(uuid.uuid4())
+        instructions = get_default_draft_prompt()
 
-        # Phase 3: Format
-        if not args.no_docx and author_result.get("success"):
-            run_format(args.name, config)
+        full_prompt = compose_draft_prompt(
+            instructions=instructions,
+            research_paths=research_versions,
+            assignment=assignment,
+            config=config,
+            draft_file=draft_file,
+        )
 
-    # Summary
+        based_on = [f"research/{d.name.split('_')[0]}" for d in research_versions]
+
+        launch_draft(
+            full_prompt=full_prompt,
+            draft_dir=draft_dir,
+            instructions=instructions,
+            config=config,
+            name=args.name,
+            session_id=session_id,
+            based_on=based_on,
+        )
+
+        print(f"\n  Claude Code terminal launched.")
+        print(f"  Draft will be written to: {draft_file}")
+        print(f"  Session ID: {session_id}")
+
+        if not args.no_docx:
+            print("\n  Run format after the draft is complete:")
+            print(f"    python programs/author/author.py --name {args.name} --format-draft {draft_dir}")
+
     elapsed = time.time() - start
-    output_dir = get_output_dir(args.name)
-    print(f"\n{'='*60}")
-    print("COMPLETE")
-    print(f"{'='*60}")
-    print(f"  Output directory: {output_dir}")
-    print(f"  Total duration: {elapsed:.1f}s")
-
-    # List deliverables
-    deliverables = [
-        ("Research report", output_dir / "research_report.md"),
-        ("Research evidence", output_dir / "research_evidence.json"),
-        ("Draft", output_dir / "draft.md"),
-        ("Formatted doc", output_dir / "output.docx"),
-        ("Session ID", output_dir / "session_id.txt"),
-    ]
-    print("\n  Deliverables:")
-    for label, path in deliverables:
-        status = "READY" if path.exists() else "---"
-        print(f"    [{status:>5}] {label}: {path.name}")
+    print(f"\n  Total duration: {elapsed:.1f}s")
 
 
 if __name__ == "__main__":

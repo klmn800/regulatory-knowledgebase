@@ -1,0 +1,21 @@
+<div class="prompt-editor">
+    <div class="form-group">
+        <label>{{ "Research" if phase == "research" else "Draft" }} Prompt <span class="text-muted">(editable)</span></label>
+        <textarea id="author-prompt-textarea" rows="12" class="prompt-textarea">{{ prompt }}</textarea>
+    </div>
+
+    {% if phase == "research" %}
+    <button class="btn btn-primary" onclick="authorRunResearch()">Run Research</button>
+    <button class="btn btn-outline" onclick="authorCancelPrompt('research')">Cancel</button>
+
+    {% elif phase == "drafts" %}
+    <div class="form-group" style="margin-top: 0.75rem;">
+        <label>Select research versions to include:</label>
+        <div id="research-checkboxes">
+            <p class="text-muted">Loading research versions...</p>
+        </div>
+    </div>
+    <button class="btn btn-accent" onclick="authorRunDraft()">Launch Draft</button>
+    <button class="btn btn-outline" onclick="authorCancelPrompt('drafts')">Cancel</button>
+    {% endif %}
+</div>

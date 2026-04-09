@@ -1,0 +1,27 @@
+<div class="version-list-header">
+    <h4>Research Versions</h4>
+    <button class="btn btn-primary btn-sm" onclick="authorShowResearchPrompt()">New Research</button>
+</div>
+
+{% if versions %}
+<div class="version-entries">
+    {% for v in versions | reverse %}
+    <div class="version-entry{% if loop.first %} latest{% endif %}" onclick="authorViewResearch({{ v.num }})">
+        <div class="version-entry-header">
+            <span class="version-num">v{{ '%03d' % v.num }}</span>
+            <span class="version-ts">{{ v.ts }}</span>
+        </div>
+        {% if v.prompt_preview %}
+        <div class="version-preview">{{ v.prompt_preview[:100] }}{% if v.prompt_preview | length > 100 %}...{% endif %}</div>
+        {% endif %}
+        <div class="version-entry-meta">
+            {% if v.meta.get('duration') %}<span>{{ v.meta.duration }}s</span>{% endif %}
+            {% if v.meta.get('searches') %}<span>{{ v.meta.searches }} searches</span>{% endif %}
+            {% if v.meta.get('cost') %}<span>${{ v.meta.cost }}</span>{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No research versions yet. Click "New Research" to start.</p>
+{% endif %}

@@ -20,19 +20,19 @@
 
             <div class="form-group">
                 <label for="author-assignment">Assignment</label>
-                <textarea id="author-assignment" name="assignment" rows="8"
+                <textarea id="author-assignment" name="assignment" rows="5"
                           placeholder="Describe what OLG content to create..."></textarea>
             </div>
 
-            <div class="author-actions">
-                <button class="btn btn-primary" onclick="authorRun('research')"
-                        title="Run research phase only (API synthesis)">Research</button>
-                <button class="btn btn-accent" onclick="authorRun('draft')"
-                        title="Launch Claude Code drafter in a terminal window">Draft</button>
-                <button class="btn btn-secondary" onclick="authorRun('format')"
-                        title="Convert draft.md to styled .docx">Format</button>
-                <button class="btn btn-outline" onclick="authorRun('resume')"
-                        title="Resume a previous Claude Code session">Resume</button>
+            <div class="author-actions" style="margin-bottom: 0.75rem;">
+                <button class="btn btn-outline btn-sm" onclick="authorSaveAssignment()">Save Assignment</button>
+            </div>
+
+            <!-- Phase tabs -->
+            <div class="author-phase-tabs">
+                <button class="phase-tab active" onclick="authorSwitchTab('research')" id="tab-research">Research</button>
+                <button class="phase-tab" onclick="authorSwitchTab('drafts')" id="tab-drafts">Draft</button>
+                <button class="phase-tab" onclick="authorSwitchTab('formats')" id="tab-formats">Format</button>
             </div>
         </div>
 
@@ -49,12 +49,39 @@
 
     </div>
 
-    <!-- Results Area -->
-    <div id="author-results">
-        <div id="author-spinner" class="author-loading" style="display:none;">
-            <div class="spinner"></div>
-            <p class="author-progress-text">Warming up...</p>
+    <!-- Phase panels -->
+    <div id="author-panel" class="author-panel">
+
+        <!-- RESEARCH panel -->
+        <div id="panel-research" class="phase-panel">
+            <div id="research-versions" class="version-list-area">
+                <p class="text-muted">Select an assignment to see research versions.</p>
+            </div>
+            <div id="research-detail" class="phase-detail-area"></div>
         </div>
+
+        <!-- DRAFTS panel -->
+        <div id="panel-drafts" class="phase-panel" style="display:none;">
+            <div id="drafts-versions" class="version-list-area">
+                <p class="text-muted">Select an assignment to see draft versions.</p>
+            </div>
+            <div id="drafts-detail" class="phase-detail-area"></div>
+        </div>
+
+        <!-- FORMATS panel -->
+        <div id="panel-formats" class="phase-panel" style="display:none;">
+            <div id="formats-versions" class="version-list-area">
+                <p class="text-muted">Select an assignment to see format versions.</p>
+            </div>
+            <div id="formats-detail" class="phase-detail-area"></div>
+        </div>
+
+    </div>
+
+    <!-- Spinner -->
+    <div id="author-spinner" class="author-loading" style="display:none;">
+        <div class="spinner"></div>
+        <p class="author-progress-text">Working...</p>
     </div>
 
 </div>

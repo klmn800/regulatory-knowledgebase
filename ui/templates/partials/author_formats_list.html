@@ -1,0 +1,33 @@
+<div class="version-list-header">
+    <h4>Format Versions</h4>
+</div>
+
+<!-- Draft selector for formatting -->
+<div class="format-controls" id="format-controls">
+    <div class="form-group" style="margin-bottom: 0.5rem;">
+        <label>Select a draft to format:</label>
+        <select id="format-draft-select" class="format-select">
+            <option value="">-- choose draft --</option>
+        </select>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="authorRunFormat()">Format to .docx</button>
+</div>
+
+{% if versions %}
+<div class="version-entries" style="margin-top: 0.75rem;">
+    {% for v in versions | reverse %}
+    <div class="version-entry{% if loop.first %} latest{% endif %}" onclick="authorViewFormat({{ v.num }})">
+        <div class="version-entry-header">
+            <span class="version-num">v{{ '%03d' % v.num }}</span>
+            <span class="version-ts">{{ v.ts }}</span>
+            {% if v.has_docx %}<span class="phase-badge phase-done" style="font-size:0.6rem;">docx</span>{% endif %}
+        </div>
+        {% if v.based_on %}
+        <div class="version-preview">From: {{ v.based_on }}</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted" style="margin-top: 0.5rem;">No format versions yet.</p>
+{% endif %}
