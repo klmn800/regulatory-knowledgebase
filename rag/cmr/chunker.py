@@ -45,6 +45,89 @@ MIN_CHUNK_SIZE = 200
 MAX_CHUNK_SIZE = 1500
 TARGET_CHUNK_SIZE = 1000
 
+# Sections excluded from section-level indexing (kept in chapter-level only).
+# 364.990 is a pure numerical proration table — 39 chunks of benefit amounts
+# with no regulatory content. It floods search results for generic SNAP queries.
+# Sections excluded from section-level indexing (kept in chapter-level only).
+# 364.990: Pure numerical proration table, floods search results
+# 704.410/420/440: Website pointer stubs with zero regulatory content
+SECTION_EXCLUDES = {"364.990", "704.410", "704.420", "704.440"}
+
+
+# ============================================================
+# HIERARCHY PROFILES
+# ============================================================
+
+# CMR legal text hierarchy markers — validated against all 592 sections.
+# Level 1 expanded to {1,2} letters for (AA)-(MM) in 701.600/704.250.
+# Level 2 restricted to {1,2} digits to exclude phone area codes like (866).
+CMR_HIERARCHY = [
+    (1, re.compile(r"^\([A-Z]{1,2}\)\s+(.+)")),   # (A) Topic or (AA) Definition
+    (2, re.compile(r"^\(\d{1,2}\)\s+(.+)")),       # (1) Sub-topic
+    (3, re.compile(r"^\([a-z]\)\s+(.+)")),          # (a) detail
+    (4, re.compile(r"^\d+\.\s+(.+)")),              # 1. item
+]
+
+
+def classify_line(line: str, hierarchy_profile: list) -> tuple:
+    """Return (level, label_text) or (None, None) for a line."""
+    for level, pattern in hierarchy_profile:
+        if pattern.match(line):
+            return level, line
+    return None, None
+
+
+def _normalize_line_breaks(text: str, hierarchy_profile: list = None) -> str:
+    """
+    Clean up PDF line-wrap artifacts in chunk text.
+
+    - Joins mid-sentence line wraps into spaces
+    - Preserves line breaks before hierarchy markers for readability
+    - Strips continuation page artifacts like "327.220 : continued"
+    """
+    if hierarchy_profile is None:
+        hierarchy_profile = CMR_HIERARCHY
+
+    # Strip continuation artifacts (e.g., "327.220 : continued")
+    text = re.sub(r"\n\d{3}\.\d{3}\s*:\s*continued\b", "", text, flags=re.IGNORECASE)
+
+    lines = text.split("\n")
+    if len(lines) <= 1:
+        return text
+
+    parts = [lines[0]]
+    for line in lines[1:]:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Keep line break before hierarchy markers
+        is_marker = any(p.match(stripped) for _, p in hierarchy_profile)
+        if is_marker:
+            parts.append("\n" + stripped)
+        else:
+            parts.append(" " + stripped)
+
+    return "".join(parts)
+
+
+def _truncate_hierarchy_label(label: str, max_len: int = 80) -> str:
+    """
+    Extract a concise topic label from a hierarchy marker line.
+
+    "(D) Vehicles." → "(D) Vehicles."
+    "(E) Income Producing Property. Income producing property is..."
+        → "(E) Income Producing Property."
+    "(H) The Department's agent shall make a very long determination..."
+        → "(H) The Department's agent shall make a very long dete..."
+    """
+    if len(label) <= max_len:
+        return label
+    # Try to truncate at the first sentence boundary after the marker
+    period_pos = label.find(".", 4)  # Skip past (X) marker
+    if 0 < period_pos < max_len:
+        return label[:period_pos + 1]
+    return label[:max_len - 3] + "..."
+
 
 # ============================================================
 # TABLE RENDERING
@@ -99,11 +182,14 @@ def append_tables(text: str, tables: list[dict]) -> str:
 
 def build_context_prefix(chapter: int, chapter_title: str,
                          section_number: str | None = None,
-                         section_title: str | None = None) -> str:
+                         section_title: str | None = None,
+                         hierarchy_path: str | None = None) -> str:
     """
     Build a hierarchical context string prepended to chunk text.
 
-    Example: "106 CMR 362 > SNAP Nonfinancial Eligibility > 362.330 Good Cause Criteria"
+    Examples:
+      "106 CMR 362 > SNAP Nonfinancial Eligibility > 362.330 Good Cause Criteria"
+      "106 CMR 703 > NONFINANCIAL > 703.192 EAEDC Medical Standards > (D) Cardiovascular System"
     """
     title_short = chapter_title
     if ":" in title_short:
@@ -117,6 +203,9 @@ def build_context_prefix(chapter: int, chapter_title: str,
         parts.append(f"{section_number} {section_title}")
     elif section_number:
         parts.append(section_number)
+
+    if hierarchy_path:
+        parts.append(hierarchy_path)
 
     return " > ".join(parts)
 
@@ -209,58 +298,126 @@ def _combine_text(title_a: str | None, text_a: str,
 # SMART SPLIT LOGIC
 # ============================================================
 
-def split_large_section(section: dict) -> list[dict]:
+def split_with_hierarchy(section: dict,
+                         hierarchy_profile: list = None) -> list[dict]:
     """
-    Split a section that exceeds MAX_CHUNK_SIZE into smaller chunks.
+    Split a section using hierarchy-aware boundaries.
 
-    Splitting strategy:
-    1. Split at paragraph boundaries (double newline)
-    2. If still too large, split at sentence boundaries
-    3. Hard split as last resort
+    Prefers to break at top-level hierarchy markers (e.g., (A), (B))
+    when the accumulator has reached MIN_CHUNK_SIZE. Falls back to
+    size-only splitting for sections with no hierarchy markers.
+
+    Each output chunk carries:
+      hierarchy_label  — top-level marker text (e.g., "(D) Vehicles") or None
+      chunk_n          — 1-indexed position within the section
+      chunk_total      — total chunks for this section
     """
+    if hierarchy_profile is None:
+        hierarchy_profile = CMR_HIERARCHY
+
     text = section["text"]
 
     if len(text) <= MAX_CHUNK_SIZE:
-        return [section]
+        return [{
+            **section,
+            "hierarchy_label": None,
+            "chunk_n": 1,
+            "chunk_total": 1,
+        }]
 
-    title = section.get("section_title")
+    lines = [l for l in text.split("\n") if l.strip()]
 
-    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-    if len(paragraphs) <= 1:
-        paragraphs = [p.strip() for p in text.split("\n") if p.strip()]
+    # Classify each line
+    classified = []
+    for line in lines:
+        level, label = classify_line(line, hierarchy_profile)
+        classified.append((line, level, label))
 
-    chunks = _group_segments(paragraphs, separator="\n\n")
+    # Pre-scan: find the top (lowest number) hierarchy level present
+    levels_present = [level for _, level, _ in classified if level is not None]
+    if not levels_present:
+        return _split_by_size_only(section, lines)
 
-    final_chunks = []
-    for chunk_text in chunks:
-        if len(chunk_text) <= MAX_CHUNK_SIZE:
-            final_chunks.append(chunk_text)
-        else:
-            sentences = re.split(r"(?<=[.?!])\s+(?=[A-Z])", chunk_text)
-            if len(sentences) > 1:
-                final_chunks.extend(_group_segments(sentences, separator=" "))
-            else:
-                for start in range(0, len(chunk_text), TARGET_CHUNK_SIZE):
-                    final_chunks.append(chunk_text[start:start + TARGET_CHUNK_SIZE])
+    top_level = min(levels_present)
 
+    # Accumulate with hierarchy-aware breaks
+    current_lines = []
+    current_size = 0
+    current_label = None
+    hierarchy_state = {}
+    raw_chunks = []
+
+    for line, level, label in classified:
+        line_size = len(line) + 1  # +1 for \n join
+
+        # Update hierarchy tracking
+        if level is not None:
+            hierarchy_state[level] = label
+            for l in range(level + 1, 6):
+                hierarchy_state.pop(l, None)
+
+        # Decide whether to start a new chunk
+        must_break = (current_size + line_size > MAX_CHUNK_SIZE) and current_lines
+        # Prefer break at top-level markers always, and at one level deeper
+        # when the chunk is already large (avoids mid-sentence must_break)
+        prefer_break = False
+        if level is not None and current_lines and current_size >= MIN_CHUNK_SIZE:
+            if level <= top_level:
+                prefer_break = True
+            elif level <= top_level + 1 and current_size >= TARGET_CHUNK_SIZE:
+                prefer_break = True
+
+        if must_break or prefer_break:
+            raw_chunks.append((list(current_lines), current_label))
+            current_lines = []
+            current_size = 0
+            current_label = hierarchy_state.get(top_level)
+
+        # First top-level marker in this chunk becomes its label
+        if current_label is None and level is not None and level <= top_level:
+            current_label = label
+
+        current_lines.append(line)
+        current_size += line_size
+
+    if current_lines:
+        raw_chunks.append((list(current_lines), current_label))
+
+    # Build output dicts
+    total = len(raw_chunks)
     result = []
-    for i, chunk_text in enumerate(final_chunks):
-        if i == 0:
-            chunk_title = title
-        else:
-            chunk_title = f"{title} (continued)" if title else None
-
+    for n, (chunk_lines, label) in enumerate(raw_chunks, 1):
         result.append({
             **section,
-            "section_title": chunk_title,
-            "text": chunk_text,
+            "text": "\n".join(chunk_lines),
+            "section_title": section["section_title"],  # Always original
+            "hierarchy_label": label,
+            "chunk_n": n,
+            "chunk_total": total,
         })
 
     return result
 
 
+def _split_by_size_only(section: dict, lines: list[str]) -> list[dict]:
+    """Fallback split for sections with no hierarchy markers."""
+    raw_chunks = _group_segments(lines, separator="\n")
+    total = len(raw_chunks)
+    result = []
+    for n, chunk_text in enumerate(raw_chunks, 1):
+        result.append({
+            **section,
+            "text": chunk_text,
+            "section_title": section["section_title"],
+            "hierarchy_label": None,
+            "chunk_n": n,
+            "chunk_total": total,
+        })
+    return result
+
+
 def _group_segments(segments: list[str], separator: str = "\n\n") -> list[str]:
-    """Greedily group text segments into chunks around TARGET_CHUNK_SIZE."""
+    """Greedily group text segments into chunks up to MAX_CHUNK_SIZE."""
     chunks = []
     current_parts = []
     current_size = 0
@@ -280,6 +437,31 @@ def _group_segments(segments: list[str], separator: str = "\n\n") -> list[str]:
         chunks.append(separator.join(current_parts))
 
     return chunks
+
+
+def merge_small_chunks(chunks: list[dict]) -> list[dict]:
+    """
+    Fold sub-MIN_CHUNK_SIZE fragments into their neighbors after splitting.
+    Merged chunk keeps the hierarchy_label of its first constituent.
+    Recalculates chunk_n and chunk_total after merge.
+    """
+    if len(chunks) <= 1:
+        return chunks
+
+    result = []
+    for chunk in chunks:
+        if len(chunk["text"]) >= MIN_CHUNK_SIZE or not result:
+            result.append(dict(chunk))
+        else:
+            prev = result[-1]
+            prev["text"] = prev["text"] + "\n" + chunk["text"]
+
+    total = len(result)
+    for n, chunk in enumerate(result, 1):
+        chunk["chunk_n"] = n
+        chunk["chunk_total"] = total
+
+    return result
 
 
 # ============================================================
@@ -329,53 +511,75 @@ def create_chapter_document(chapter_num: int, chapter_title: str,
 def create_section_chunks(chapter_num: int, chapter_title: str,
                           program: str, sections: list[dict]) -> list[dict]:
     """
-    Create section-level chunks applying merge/split logic and context prefixes.
+    Create section-level chunks applying merge/split/hierarchy logic.
+
+    Flow: sections → merge_small_sections → split_with_hierarchy →
+          merge_small_chunks → annotate with context prefix → output
     """
     chapter_id = make_chapter_id(chapter_num)
 
+    # Filter out excluded sections (kept in chapter-level docs only)
+    sections = [s for s in sections if s["section_number"] not in SECTION_EXCLUDES]
+
+    # Append table text to section bodies
     sections_with_tables = []
     for section in sections:
         text = append_tables(section["text"], section.get("tables", []))
         sections_with_tables.append({**section, "text": text})
 
+    # Merge tiny sections
     merged = merge_small_sections(sections_with_tables)
 
-    split_sections = []
-    for section in merged:
-        split_sections.extend(split_large_section(section))
-
+    # Split with hierarchy awareness, then fold tiny fragments
     chunks = []
-    for i, section in enumerate(split_sections):
+    for section in merged:
+        split_chunks = split_with_hierarchy(section)
+        split_chunks = merge_small_chunks(split_chunks)
+
         sec_num = section["section_number"]
         sec_title = section.get("section_title")
-        text = section["text"].strip()
 
-        if not text:
-            continue
+        for chunk_idx, chunk in enumerate(split_chunks):
+            text = _normalize_line_breaks(chunk["text"].strip())
+            if not text:
+                continue
 
-        prefix = build_context_prefix(chapter_num, chapter_title,
-                                      sec_num, sec_title)
-        chunk_text = f"{prefix}\n\n{text}"
+            raw_label = chunk.get("hierarchy_label")
+            hierarchy_label = (
+                _truncate_hierarchy_label(raw_label) if raw_label else None
+            )
+            chunk_n = chunk["chunk_n"]
+            chunk_total = chunk["chunk_total"]
 
-        chunk = {
-            "chunk_id": make_section_id(sec_num, i),
-            "doc_type": "section",
-            "text": chunk_text,
-            "metadata": {
-                "source": "106 CMR",
-                "chapter": chapter_num,
-                "chapter_title": chapter_title,
-                "program": program,
-                "section_number": sec_num,
-                "section_title": sec_title or "",
-                "has_tables": str(bool(section.get("tables"))),
-                "cross_references": ",".join(section.get("cross_references", [])),
-                "chunk_index": i,
-                "parent_chapter_id": chapter_id,
-                "pdf_file": section.get("pdf_file", ""),
-            },
-        }
-        chunks.append(chunk)
+            # Build context prefix — include hierarchy label for chunks 2+
+            prefix = build_context_prefix(
+                chapter_num, chapter_title, sec_num, sec_title,
+                hierarchy_path=hierarchy_label if chunk_n > 1 else None,
+            )
+            chunk_text = f"{prefix}\n\n{text}"
+
+            chunks.append({
+                "chunk_id": make_section_id(sec_num, chunk_idx),
+                "doc_type": "section",
+                "text": chunk_text,
+                "metadata": {
+                    "source": "106 CMR",
+                    "chapter": chapter_num,
+                    "chapter_title": chapter_title,
+                    "program": program,
+                    "section_number": sec_num,
+                    "section_title": sec_title or "",
+                    "hierarchy_path": hierarchy_label or "",
+                    "chunk_n": chunk_n,
+                    "chunk_total": chunk_total,
+                    "has_tables": str(bool(section.get("tables"))),
+                    "cross_references": ",".join(
+                        section.get("cross_references", [])
+                    ),
+                    "parent_chapter_id": chapter_id,
+                    "pdf_file": section.get("pdf_file", ""),
+                },
+            })
 
     return chunks
 
@@ -492,6 +696,26 @@ def print_statistics(chapter_chunks: list[dict],
           f"{still_small} ({still_small/len(sec_sizes)*100:.1f}%)")
     print(f"Chunks still > {MAX_CHUNK_SIZE} chars after split: "
           f"{still_large} ({still_large/len(sec_sizes)*100:.1f}%)")
+    print()
+
+    # Hierarchy-aware metrics
+    with_hierarchy = sum(
+        1 for c in section_chunks if c["metadata"].get("hierarchy_path")
+    )
+    with_continued = sum(
+        1 for c in section_chunks if "(continued)" in c["metadata"].get("section_title", "")
+    )
+    multi_chunk_sections = sum(
+        1 for c in section_chunks if c["metadata"].get("chunk_total", 1) > 1
+    )
+    single_chunk = sum(
+        1 for c in section_chunks if c["metadata"].get("chunk_total", 1) == 1
+    )
+    print(f"Chunks with hierarchy_path:  {with_hierarchy} "
+          f"({with_hierarchy/len(section_chunks)*100:.1f}%)")
+    print(f"Chunks with '(continued)':   {with_continued}")
+    print(f"Single-chunk sections:       {single_chunk}")
+    print(f"Multi-chunk section parts:   {multi_chunk_sections}")
 
 
 def preview_chunks(chapter_chunks: list[dict], section_chunks: list[dict],

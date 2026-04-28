@@ -80,10 +80,60 @@ Miss:   3/20 (15%)    — vehicles/assets, TAFDC work, fair hearing
 2. **Household (Q20)**: Original expected was `362.1` but `361.200` is actually the correct section. Corrected above.
 3. **366.110 false positive**: "Household Reporting Responsibilities" appears as #1 for asset limits and other unrelated queries. Broad text acts as a catch-all.
 
-## Target After Cleanup
+## Post-Cleanup (2026-04-27)
+
+```
+Top-1: 14/20 (70%)    +3 from baseline
+Top-3: 18/20 (90%)    +2 from baseline
+Top-5: 19/20 (95%)    +3 from baseline
+Miss:   1/20 (5%)     -2 from baseline — only TAFDC work (EA low priority)
+```
+
+### Detailed Post-Cleanup Results
+
+| # | Topic | Score | Got | Expected | Status | Change |
+|---|-------|-------|-----|----------|--------|--------|
+| 1 | asset limits | 0.486 | 363.110 | 363.1 | **TOP1** | TOP3 → TOP1 |
+| 2 | deductions | 0.561 | 364.400 | 364.4 | **TOP1** | — |
+| 3 | noncitizen | 0.579 | 703.430 | 703.4 | **TOP1** | — |
+| 4 | timeliness | 0.476 | 366.920 | 361 | TOP3 (at #2) | — |
+| 5 | excluded income | 0.502 | 364.500 | 363.23 | TOP3 (at #3) | — |
+| 6 | restoration | 0.490 | 366.510 | 366.5 | **TOP1** | — |
+| 7 | ABAWD | 0.461 | 362.320 | 362.32 | **TOP1** | — |
+| 8 | disability | 0.436 | 703.190 | 703.19 | **TOP1** | — |
+| 9 | noncountable assets | 0.360 | 363.140 | 363.14 | **TOP1** | MISS → TOP1 |
+| 10 | income calc | 0.559 | 365.970 | 363.22 | TOP3 (at #3) | — |
+| 11 | reporting | 0.592 | 366.210 | 366 | **TOP1** | — |
+| 12 | cat elig | 0.427 | 365.180 | 365.18 | **TOP1** | — |
+| 13 | benefit calc | 0.464 | 364.600 | 364 | **TOP1** | — (was 364.990 junk, now real section) |
+| 14 | income limits | 0.466 | 363.110 | 363 | **TOP1** | TOP3 → TOP1 |
+| 15 | TAFDC work | 0.543 | 701.200 | 703.7 | **MISS** | still miss (EA low priority) |
+| 16 | verification | 0.492 | 362.500 | 361 | TOP3 (at #3) | — |
+| 17 | fair hearing | 0.357 | 343.010 | 343 | **TOP1** | MISS → TOP1 |
+| 18 | recertification | 0.591 | 366.300 | 366 | **TOP1** | — |
+| 19 | EAEDC grant | 0.479 | 704.285 | 704.43 | TOP5 (at #4) | TOP1 → TOP5 (regression) |
+| 20 | household | 0.420 | 361.200 | 361.2 | **TOP1** | — |
+
+### What Changed
+
+1. **364.990 excluded** from section-level indexing — cleared false positives for asset/benefit queries
+2. **Program labels fixed** — 327=SSP, 343=Hearings, 367=Program Integrity, 701-708=EA
+3. **Hearings $or filter** — fair hearing queries now find chapter 343
+4. **Hierarchy-aware chunking** — cleaner chunk boundaries, no mid-sentence splits
+5. **Line-break normalization** — PDF wrap artifacts removed from embedded text
+6. **Continuation artifacts stripped** — "XXX.XXX : continued" no longer in chunk text
+
+### Remaining Issues
+
+- **TAFDC work (Q15)**: Broad EA chapter intro (701.200) outranks specific work program section (703.7xx). EA is low priority; accepted.
+- **EAEDC grant (Q19)**: Minor regression from TOP1 to TOP5. 704.285 (payment standards) now ranks above 704.430 (grant calc). Chunking changes may have shifted the vector slightly.
+
+## Original Target
 
 ```
 Top-1: 17+/20 (85%+)
 Top-3: 19+/20 (95%+)
 Miss:   0/20
 ```
+
+Did not hit Top-1 target but significantly improved all metrics. The remaining gaps are in EA chapters (low priority) and inherently difficult cross-chapter queries.

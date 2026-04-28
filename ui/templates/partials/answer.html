@@ -9,6 +9,7 @@
             <span>${{ '%.4f'|format(result.cost) }}</span>
             <span>{{ result.search_queries|length }} search{{ 'es' if result.search_queries|length != 1 }}</span>
             <button class="copy-btn" onclick="copyAnswer()" title="Copy answer to clipboard">Copy</button>
+            <a href="/search/export/{{ search_id }}" class="copy-btn download-btn" title="Download as Word document">Download</a>
         </div>
     </div>
 
@@ -35,7 +36,7 @@
                         {% elif source_key == "fns" %}
                             <span class="result-context">FNS {{ meta.get("section_number", "") }}: {{ meta.get("section_title", "") }}</span>
                         {% elif source_key == "cmr" %}
-                            <span class="result-context">CMR {{ meta.get("section_number", "") }}: {{ meta.get("section_title", "") }}</span>
+                            <span class="result-context">CMR {{ meta.get("section_number", "") }}: {{ meta.get("section_title", "") }}{% if meta.get("chunk_total", 0) > 1 %} (part {{ meta.get("chunk_n", "") }} of {{ meta.get("chunk_total", "") }}){% endif %}</span>
                         {% endif %}
                     </div>
                     <div class="result-meta">
@@ -56,6 +57,9 @@
                             {% endif %}
                             {% if meta.get("program") %}
                                 <span class="meta-item"><strong>Program:</strong> {{ meta.program }}</span>
+                            {% endif %}
+                            {% if meta.get("hierarchy_path") %}
+                                <span class="meta-item"><strong>Subsection:</strong> {{ meta.hierarchy_path }}</span>
                             {% endif %}
                         {% endif %}
                     </div>

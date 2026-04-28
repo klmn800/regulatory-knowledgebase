@@ -46,8 +46,8 @@ PAGE_HEADER_PATTERN = re.compile(
 )
 
 CHAPTER_PROGRAMS = {
-    327: "Cross-Program",
-    343: "Cross-Program",
+    327: "SSP",
+    343: "Hearings",
     360: "SNAP",
     361: "SNAP",
     362: "SNAP",
@@ -55,15 +55,15 @@ CHAPTER_PROGRAMS = {
     364: "SNAP",
     365: "SNAP",
     366: "SNAP",
-    367: "SNAP",
-    701: "TAFDC/EAEDC",
-    702: "TAFDC/EAEDC",
-    703: "TAFDC/EAEDC",
-    704: "TAFDC/EAEDC",
-    705: "TAFDC/EAEDC",
-    706: "TAFDC/EAEDC",
-    707: "TAFDC/EAEDC",
-    708: "TAFDC/EAEDC",
+    367: "Program Integrity",
+    701: "EA",
+    702: "EA",
+    703: "EA",
+    704: "EA",
+    705: "EA",
+    706: "EA",
+    707: "EA",
+    708: "EA",
 }
 
 
@@ -180,8 +180,13 @@ def extract_sections(full_text: str, chapter_prefix: str,
     body_start = find_toc_boundary(full_text, chapter_prefix)
     body_text = full_text[body_start:]
 
+    # Two-part heading pattern:
+    # 1. With colon: "703.192: EAEDC Medical Standards" (standard format)
+    # 2. Without colon but title starts uppercase: "364.360 Child Support..."
+    # Rejects cross-references that wrap to column 0 with lowercase start:
+    #   "703.192 or the SSI Listing..." — these are NOT headings
     heading_pattern = re.compile(
-        rf"^({chapter_prefix}\.\d{{3}}):?\s+(.+?)$", re.MULTILINE
+        rf"^({chapter_prefix}\.\d{{3}})(?::|\s(?=[A-Z]))\s*(.+?)$", re.MULTILINE
     )
 
     matches = list(heading_pattern.finditer(body_text))

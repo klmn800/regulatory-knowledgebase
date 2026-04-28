@@ -161,10 +161,17 @@ def format_results_for_prompt(results: list[dict], source: str) -> str:
             program = meta.get("program", "")
             sec_num = meta.get("section_number", "")
             sec_title = meta.get("section_title", "")
+            hierarchy_path = meta.get("hierarchy_path", "")
+            chunk_n = meta.get("chunk_n")
+            chunk_total = meta.get("chunk_total")
             header = f"[{label} Match {i+1}] Score: {score:.2f}"
             header += f" | 106 CMR {chapter} ({program})"
             if sec_num:
                 header += f" | Section: {sec_num} {sec_title}"
+            if hierarchy_path:
+                header += f"\n  Subsection: {hierarchy_path}"
+            if chunk_total is not None and chunk_total > 1:
+                header += f" (part {chunk_n} of {chunk_total})"
 
         else:
             header = f"[{label} Match {i+1}] Score: {score:.2f}"

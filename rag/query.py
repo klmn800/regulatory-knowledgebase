@@ -173,7 +173,11 @@ def _build_where_filter(
     conditions = []
 
     if program:
-        conditions.append({"program": program})
+        # Include Hearings chapter (343 Fair Hearing Rules) which applies
+        # to all programs and should never be excluded by program filter
+        conditions.append(
+            {"$or": [{"program": program}, {"program": "Hearings"}]}
+        )
     elif exclude_programs:
         conditions.append({"program": {"$nin": exclude_programs}})
 
@@ -720,6 +724,13 @@ def _format_cmr_result(lines: list[str], result: dict, meta: dict,
             lines.append(f"     Section: {sec_num} {sec_title}")
         if chapter_title:
             lines.append(f"     Chapter: {chapter_title[:60]}")
+        hierarchy_path = meta.get("hierarchy_path", "")
+        if hierarchy_path:
+            lines.append(f"     Path:    {hierarchy_path}")
+        chunk_n = meta.get("chunk_n")
+        chunk_total = meta.get("chunk_total")
+        if chunk_total is not None and chunk_total > 1:
+            lines.append(f"     Part:    {chunk_n} of {chunk_total}")
     else:
         section_count = meta.get("section_count", "")
         if section_count:
