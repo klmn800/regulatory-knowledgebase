@@ -12,6 +12,11 @@ index/fns/section_chunks.json
 index/cmr/parsed_sections/
 index/cmr/chapter_chunks.json
 index/cmr/section_chunks.json
+index/cfr/parsed_sections/
+index/cfr/part_chunks.json
+index/cfr/section_chunks.json
+index/cfr/section_chunks_fullpath.json
+index/cfr/section_chunks_context.json
 index/chroma_db/
 
 # Comparator outputs (session logs are large, lock files are temp)
@@ -24,8 +29,9 @@ output/comparator/*.html
 # Author outputs (generated per assignment)
 output/author/
 
-# Search history (user-specific, regeneratable)
+# Search history and exports (user-specific, regeneratable)
 output/search_history.db
+output/search_exports/
 
 # QC analysis (lock files)
 output/qc_analysis/.~lock.*
