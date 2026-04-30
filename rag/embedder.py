@@ -114,8 +114,19 @@ def _resolve_source_paths(source: str) -> dict:
             "broad_description": "106 CMR - chapter-level documents",
             "granular_description": "106 CMR - section-level chunks",
         }
+    elif source == "cfr":
+        return {
+            "broad_chunks_file": PROJECT_ROOT / "index" / "cfr" / "part_chunks.json",
+            "granular_chunks_file": PROJECT_ROOT / "index" / "cfr" / "section_chunks_context.json",
+            "broad_collection_key": "cfr_part_collection",
+            "granular_collection_key": "cfr_section_collection",
+            "broad_label": "parts",
+            "granular_label": "sections",
+            "broad_description": "7 CFR SNAP regulations - part-level documents",
+            "granular_description": "7 CFR SNAP regulations - section-level chunks",
+        }
     else:
-        print(f"Error: Unknown source '{source}'. Use 'olg', 'fns', or 'cmr'.")
+        print(f"Error: Unknown source '{source}'. Use 'olg', 'fns', 'cmr', or 'cfr'.")
         sys.exit(1)
 
 
@@ -269,6 +280,8 @@ def embed_chunks(
                     meta[key] = ""
                 elif isinstance(val, bool):
                     meta[key] = str(val)
+                elif isinstance(val, (dict, list)):
+                    meta[key] = json.dumps(val, ensure_ascii=False)
             meta["doc_type"] = c["doc_type"]
             metadatas.append(meta)
 
@@ -526,7 +539,7 @@ Examples:
         """,
     )
     parser.add_argument(
-        "--source", choices=["olg", "fns", "cmr"], default="olg",
+        "--source", choices=["olg", "fns", "cmr", "cfr"], default="olg",
         help="Which source to embed (default: olg)",
     )
     parser.add_argument(
@@ -538,8 +551,8 @@ Examples:
         help="Delete existing collections and re-embed from scratch",
     )
     parser.add_argument(
-        "--only", choices=["pages", "sections", "chapters"],
-        help="Embed only one tier (pages/chapters=broad, sections=granular)",
+        "--only", choices=["pages", "sections", "chapters", "parts"],
+        help="Embed only one tier (pages/chapters/parts=broad, sections=granular)",
     )
     args = parser.parse_args()
 

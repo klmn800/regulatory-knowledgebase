@@ -118,8 +118,18 @@ def _resolve_source_config(source: str) -> dict:
             "parent_id_field": "parent_chapter_id",
             "source_label": "106 CMR",
         }
+    elif source == "cfr":
+        return {
+            "broad_collection_key": "cfr_part_collection",
+            "granular_collection_key": "cfr_section_collection",
+            "broad_name": "parts",
+            "granular_name": "sections",
+            "has_program_filter": True,
+            "parent_id_field": "parent_part_id",
+            "source_label": "7 CFR",
+        }
     else:
-        print(f"Error: Unknown source '{source}'. Use 'olg', 'fns', or 'cmr'.")
+        print(f"Error: Unknown source '{source}'. Use 'olg', 'fns', 'cmr', or 'cfr'.")
         sys.exit(1)
 
 
@@ -607,6 +617,8 @@ def format_result_text(
             _format_olg_result(lines, result, meta, score, collection)
         elif source == "cmr":
             _format_cmr_result(lines, result, meta, score, collection)
+        elif source == "cfr":
+            _format_cfr_result(lines, result, meta, score, collection)
         else:
             _format_fns_result(lines, result, meta, score, collection)
 
@@ -631,7 +643,12 @@ def format_result_text(
         parent = result.get("parent_context")
         if parent and parent.get("text"):
             lines.append("")
-            parent_label = "Parent Page" if source == "olg" else "Parent Chapter"
+            if source == "olg":
+                parent_label = "Parent Page"
+            elif source == "cfr":
+                parent_label = "Parent Part"
+            else:
+                parent_label = "Parent Chapter"
             lines.append(f"     --- {parent_label} Context ---")
             parent_text = parent["text"]
             if not show_full and len(parent_text) > max_text_length:
@@ -737,6 +754,42 @@ def _format_cmr_result(lines: list[str], result: dict, meta: dict,
             lines.append(f"     Sections: {section_count}")
         if chapter_title:
             lines.append(f"     Title:    {chapter_title[:60]}")
+
+    lines.append(f"     Chunk:   {result['id']}")
+
+
+def _format_cfr_result(lines: list[str], result: dict, meta: dict,
+                       score: float, collection: str) -> None:
+    """Format a single CFR result's header lines."""
+    part = meta.get("part", "")
+    part_title = meta.get("part_title", "")
+    program = meta.get("program", "")
+    context = f"7 CFR {part} ({program})"
+    lines.append(f"[{result['rank']}]  Score: {score:.2f}  |  {context}")
+
+    if collection == "sections":
+        sec_num = meta.get("section_number", "")
+        sec_title = meta.get("section_title", "")
+        if sec_num:
+            lines.append(f"     Section: § {sec_num} {sec_title}")
+        if part_title:
+            lines.append(f"     Part:    {part_title[:60]}")
+        subpart_title = meta.get("subpart_title", "")
+        if subpart_title:
+            lines.append(f"     Subpart: {subpart_title[:60]}")
+        hierarchy_path = meta.get("hierarchy_full_path") or meta.get("hierarchy_path", "")
+        if hierarchy_path:
+            lines.append(f"     Path:    {hierarchy_path}")
+        chunk_n = meta.get("chunk_n")
+        chunk_total = meta.get("chunk_total")
+        if chunk_total is not None and chunk_total > 1:
+            lines.append(f"     Chunk:   {chunk_n} of {chunk_total}")
+    else:
+        section_count = meta.get("section_count", "")
+        if section_count:
+            lines.append(f"     Sections: {section_count}")
+        if part_title:
+            lines.append(f"     Title:    {part_title[:60]}")
 
     lines.append(f"     Chunk:   {result['id']}")
 
@@ -890,6 +943,31 @@ def _print_info(source: str) -> None:
         print(f"Total: {sum(chapters.values()):,} chunks across "
               f"{len(chapters)} chapters")
 
+    elif source == "cfr":
+        # Two views: by part (with dominant program) and by program label
+        parts = {}
+        programs = {}
+        for meta in all_meta["metadatas"]:
+            pt = meta.get("part", "")
+            pt_title = meta.get("part_title", "")
+            prog = meta.get("program", "")
+            key = (pt, pt_title)
+            parts[key] = parts.get(key, 0) + 1
+            programs[prog] = programs.get(prog, 0) + 1
+
+        print(f"{source_config['source_label']} parts:")
+        print()
+        for (pt, pt_title), count in sorted(parts.items()):
+            print(f"  Part {pt}: {pt_title[:50]:50s} ({count} chunks)")
+        print()
+        print(f"Programs (section-level labels):")
+        print()
+        for prog, count in sorted(programs.items(), key=lambda x: -x[1]):
+            print(f"  {prog:20s} ({count:,} chunks)")
+        print()
+        print(f"Total: {sum(parts.values()):,} chunks across "
+              f"{len(parts)} parts")
+
 
 def run_query(
     query: str,
@@ -963,11 +1041,11 @@ Examples:
         help="Search query (natural language)",
     )
     parser.add_argument(
-        "--source", "-s", choices=["olg", "fns", "cmr"], default="olg",
+        "--source", "-s", choices=["olg", "fns", "cmr", "cfr"], default="olg",
         help="Which source to search (default: olg)",
     )
     parser.add_argument(
-        "--collection", "-c", choices=["sections", "pages", "chapters"],
+        "--collection", "-c", choices=["sections", "pages", "chapters", "parts"],
         default=DEFAULT_COLLECTION,
         help=f"Which collection to search (default: {DEFAULT_COLLECTION})",
     )
