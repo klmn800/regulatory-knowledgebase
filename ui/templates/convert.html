@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="author-page">
+
+    <div class="author-header">
+        <h2>Convert</h2>
+        <p class="author-subtitle">Reformat old-style OLG .docx files to the current template</p>
+    </div>
+
+    <div class="convert-form-section">
+        <div class="form-group">
+            <label for="convert-file">Upload .docx File</label>
+            <input type="file" id="convert-file" accept=".docx"
+                   style="font-size:0.85rem;">
+        </div>
+
+        <div class="form-group">
+            <label>Tracked Changes</label>
+            <div class="convert-radio-group">
+                <label class="radio-label">
+                    <input type="radio" name="change_mode" value="accept" checked>
+                    Accept (keep insertions)
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="change_mode" value="reject">
+                    Reject (keep deletions)
+                </label>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="convertUpload()">Convert to Markdown</button>
+    </div>
+
+    <div id="convert-results">
+        <div id="convert-spinner" class="author-loading" style="display:none;">
+            <div class="spinner"></div>
+            <p class="convert-progress-text">Processing...</p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

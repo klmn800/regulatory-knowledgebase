@@ -1,14 +1,28 @@
 <div class="prompt-editor">
-    <div class="form-group">
-        <label>{{ "Research" if phase == "research" else "Draft" }} Prompt <span class="text-muted">(editable)</span></label>
-        <textarea id="author-prompt-textarea" rows="12" class="prompt-textarea">{{ prompt }}</textarea>
-    </div>
 
     {% if phase == "research" %}
+    <div class="form-group">
+        <label>Sources</label>
+        <div class="source-checkboxes" style="margin-top: 0.25rem;">
+            <label class="checkbox-label"><input type="checkbox" class="research-source-cb" value="olg" checked> OLG</label>
+            <label class="checkbox-label"><input type="checkbox" class="research-source-cb" value="cmr" checked> CMR</label>
+            <label class="checkbox-label"><input type="checkbox" class="research-source-cb" value="fns" checked> FNS</label>
+            <label class="checkbox-label"><input type="checkbox" class="research-source-cb" value="cfr" checked> CFR</label>
+        </div>
+    </div>
+    <div class="form-group">
+        <label>Research Focus <span class="text-muted">(what to look for, keywords, constraints)</span></label>
+        <textarea id="author-prompt-textarea" rows="6" class="prompt-textarea"
+                  placeholder="e.g. Focus on SNAP-specific procedures. Look for VC-1 scripts, user-entered fields, and BEACON data entry. Avoid TAFDC/EAEDC content. Organize findings by field type.">{{ prompt }}</textarea>
+    </div>
     <button class="btn btn-primary" onclick="authorRunResearch()">Run Research</button>
     <button class="btn btn-outline" onclick="authorCancelPrompt('research')">Cancel</button>
 
     {% elif phase == "drafts" %}
+    <div class="form-group">
+        <label>Draft Instructions <span class="text-muted">(editable — system prompt injected automatically)</span></label>
+        <textarea id="author-prompt-textarea" rows="12" class="prompt-textarea">{{ prompt }}</textarea>
+    </div>
     <div class="form-group" style="margin-top: 0.75rem;">
         <label>Select research versions to include:</label>
         <div id="research-checkboxes">

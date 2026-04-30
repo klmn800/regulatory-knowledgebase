@@ -50,6 +50,8 @@ from programs.author.author import (
     run_format as author_run_format,
     DATA_DIR,
 )
+from tools.docx_reader import has_tracked_changes, read_docx, to_markdown
+from tools.docx_writer import generate_docx
 from programs.qc.qc_analyzer import (
     load_config as load_qc_config,
     get_analysis_dir,
@@ -134,7 +136,7 @@ async def ask(
     )
 
     # Save to history
-    await asyncio.to_thread(
+    search_id = await asyncio.to_thread(
         save_search,
         question=question,
         sources=sources,
@@ -150,6 +152,7 @@ async def ask(
             "result": result,
             "question": question,
             "sources": sources,
+            "search_id": search_id,
         },
     )
 
@@ -184,6 +187,106 @@ async def history_detail(request: Request, search_id: int):
         return HTMLResponse("<p>Search not found.</p>", status_code=404)
     return templates.TemplateResponse(
         request, "history_detail.html", {"entry": entry}
+    )
+
+
+# ============================================================
+# SEARCH EXPORT
+# ============================================================
+
+SOURCE_LABELS = {
+    "olg": "Online Guide (OLG)",
+    "fns": "FNS Handbook 310",
+    "cmr": "Code of Massachusetts Regulations",
+    "cfr": "7 CFR (Federal SNAP Regulations)",
+}
+
+
+def _build_export_markdown(entry: dict) -> str:
+    """Build a markdown document from a search history entry."""
+    mode = "Deep" if entry.get("deep") else "Standard"
+    sources_str = ", ".join(s.upper() for s in entry["sources"])
+    lines = [
+        f"# {entry['question']}",
+        "",
+        f"**Date:** {entry['created_at']} | **Mode:** {mode} | **Sources:** {sources_str}",
+        "",
+        "---",
+        "",
+        entry["answer"],
+    ]
+
+    # Sources section
+    evidence = entry.get("evidence", {})
+    if evidence:
+        lines += ["", "---", "", "## Sources", ""]
+        for source_key, results_list in evidence.items():
+            if not results_list:
+                continue
+            label = SOURCE_LABELS.get(source_key, source_key.upper())
+            lines.append(f"### {label}")
+            lines.append("")
+            for r in results_list:
+                meta = r.get("metadata", {})
+                score_pct = round(r.get("score", 0) * 100)
+                text = r.get("text", "")
+
+                if source_key == "olg":
+                    title = meta.get("page_title", "")
+                    section = meta.get("section_heading", "")
+                    cite = f"{title} > {section}" if section else title
+                    url = meta.get("url", "")
+                    if url:
+                        line = f"- [{cite}]({url}) ({score_pct}%)"
+                    else:
+                        line = f"- **{cite}** ({score_pct}%)"
+                elif source_key == "fns":
+                    sec_num = meta.get("section_number", "")
+                    sec_title = meta.get("section_title", "")
+                    cite = f"FNS {sec_num}: {sec_title}" if sec_num else sec_title
+                    line = f"- **{cite}** ({score_pct}%)"
+                elif source_key == "cmr":
+                    sec_num = meta.get("section_number", "")
+                    sec_title = meta.get("section_title", "")
+                    cite = f"CMR {sec_num}: {sec_title}" if sec_num else sec_title
+                    line = f"- **{cite}** ({score_pct}%)"
+                elif source_key == "cfr":
+                    sec_num = meta.get("section_number", "")
+                    sec_title = meta.get("section_title", "")
+                    cite = f"7 CFR § {sec_num} {sec_title}" if sec_num else sec_title
+                    line = f"- **{cite}** ({score_pct}%)"
+                else:
+                    line = f"- ({score_pct}%)"
+
+                lines.append(line)
+                if text:
+                    lines.append(f"  {text}")
+                    lines.append("")
+            lines.append("")
+
+    return "\n".join(lines)
+
+
+@app.get("/search/export/{search_id}")
+async def search_export(search_id: int):
+    """Export a search result as a .docx file."""
+    from tools.docx_writer import generate_docx
+
+    entry = await asyncio.to_thread(get_by_id, search_id)
+    if not entry:
+        return HTMLResponse("<p>Search not found.</p>", status_code=404)
+
+    export_dir = PROJECT_ROOT / "output" / "search_exports"
+    export_dir.mkdir(parents=True, exist_ok=True)
+    output_path = export_dir / f"search_{search_id}.docx"
+
+    md = _build_export_markdown(entry)
+    await asyncio.to_thread(generate_docx, md, output_path, None)
+
+    return FileResponse(
+        output_path,
+        filename=f"policy_search_{search_id}.docx",
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
 
 
@@ -304,11 +407,10 @@ async def author_research_list(request: Request, name: str):
 
 @app.get("/author/{name}/research/prompt", response_class=HTMLResponse)
 async def author_research_prompt(request: Request, name: str):
-    """Get the default research prompt for the textarea."""
-    prompt = get_default_research_prompt()
+    """Get the research prompt editor (task instructions only — system prompt injected automatically)."""
     return templates.TemplateResponse(
         request, "partials/author_prompt_editor.html",
-        {"prompt": prompt, "name": name, "phase": "research"},
+        {"prompt": "", "name": name, "phase": "research"},
     )
 
 
@@ -318,8 +420,9 @@ async def author_research_run(
     name: str,
     prompt: str = Form(""),
     assignment: str = Form(""),
+    sources: str = Form("olg,cmr,fns,cfr"),
 ):
-    """Execute research with provided prompt."""
+    """Execute research with provided task instructions and source selection."""
     name = name.strip()
     output_dir = get_output_dir(name)
 
@@ -332,16 +435,22 @@ async def author_research_run(
     if not assignment:
         return HTMLResponse("<p>No assignment text found. Enter one first.</p>")
 
-    # Use provided prompt or default
-    prompt_text = prompt.strip() or get_default_research_prompt()
+    # Parse sources
+    source_list = [s.strip() for s in sources.split(",") if s.strip()]
+    if not source_list:
+        source_list = ["olg", "cmr", "fns", "cfr"]
+
+    # Task instructions are the user-editable part (focus, keywords, constraints).
+    # The system research prompt (author_research.md) is always injected by run_research.
+    task_instructions = prompt.strip()
 
     # Create version directory
     version_dir = next_version_dir(output_dir, "research")
 
-    # Run research
+    # Run research — task_instructions get saved as prompt.md in the version dir
     result = await asyncio.to_thread(
-        author_run_research, assignment, prompt_text, version_dir,
-        load_author_config(),
+        author_run_research, assignment, task_instructions, version_dir,
+        load_author_config(), sources=source_list,
     )
 
     # Return the detail view of the new version
@@ -963,6 +1072,103 @@ async def qc_download(name: str):
         filename=f"{name}_summary.csv",
         media_type="text/csv",
     )
+
+
+# ============================================================
+# CONVERT
+# ============================================================
+
+CONVERT_DIR = PROJECT_ROOT / "output" / "convert"
+
+
+@app.get("/convert", response_class=HTMLResponse)
+async def convert_page(request: Request):
+    """Render the Convert tab."""
+    return templates.TemplateResponse(request, "convert.html", {})
+
+
+@app.post("/convert/upload", response_class=HTMLResponse)
+async def convert_upload(
+    request: Request,
+    file: UploadFile = File(...),
+    change_mode: str = Form("accept"),
+):
+    """Upload a .docx, convert to markdown, return editable preview."""
+    if not file.filename or not file.filename.lower().endswith(".docx"):
+        return HTMLResponse("<p>Please upload a .docx file.</p>")
+
+    CONVERT_DIR.mkdir(parents=True, exist_ok=True)
+    stem = Path(file.filename).stem
+
+    # Save uploaded file
+    upload_path = CONVERT_DIR / f"{stem}.docx"
+    content = await file.read()
+    upload_path.write_bytes(content)
+
+    # Detect tracked changes (before resolution)
+    tc_info = has_tracked_changes(upload_path)
+
+    # Convert
+    image_dir = CONVERT_DIR / f"{stem}_images"
+    blocks = await asyncio.to_thread(
+        read_docx, upload_path, change_mode, str(image_dir),
+    )
+    md = to_markdown(blocks)
+
+    image_count = sum(1 for b in blocks if b["type"] == "image_placeholder")
+
+    return templates.TemplateResponse(
+        request, "partials/convert_markdown.html",
+        {
+            "filename": file.filename,
+            "stem": stem,
+            "tracked_changes": tc_info,
+            "change_mode": change_mode,
+            "markdown": md,
+            "image_count": image_count,
+        },
+    )
+
+
+@app.post("/convert/format", response_class=HTMLResponse)
+async def convert_format(
+    request: Request,
+    markdown: str = Form(...),
+    stem: str = Form(...),
+):
+    """Format markdown into a styled .docx using the OLG template."""
+    CONVERT_DIR.mkdir(parents=True, exist_ok=True)
+
+    config = load_author_config()
+    template_path = config.get(
+        "author", "template_docx",
+        fallback="programs/author/references/2026 OLG Template.docx",
+    )
+    template_file = PROJECT_ROOT / template_path
+
+    output_path = CONVERT_DIR / f"{stem}_formatted.docx"
+    await asyncio.to_thread(generate_docx, markdown, output_path, template_file)
+
+    return templates.TemplateResponse(
+        request, "partials/convert_result.html",
+        {"stem": stem},
+    )
+
+
+@app.get("/convert/download/{stem}")
+async def convert_download(stem: str):
+    """Download the formatted .docx file."""
+    docx_path = CONVERT_DIR / f"{stem}_formatted.docx"
+    if not docx_path.exists():
+        return HTMLResponse("<p>File not found.</p>", status_code=404)
+
+    response = FileResponse(
+        docx_path,
+        filename=f"{stem}.docx",
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 if __name__ == "__main__":

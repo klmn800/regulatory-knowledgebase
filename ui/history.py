@@ -55,14 +55,14 @@ def save_search(
     result,
 ) -> int:
     """Save a synthesis result to history. Returns the new row ID."""
-    # Serialize evidence: keep only metadata + score, drop full text to save space
+    # Serialize evidence: keep metadata + score + full text
     evidence_summary = {}
     for source_key, results_list in result.evidence.items():
         evidence_summary[source_key] = [
             {
                 "score": r["score"],
                 "metadata": r["metadata"],
-                "text_preview": r["text"][:300],
+                "text": r["text"],
                 "id": r.get("id", ""),
             }
             for r in results_list

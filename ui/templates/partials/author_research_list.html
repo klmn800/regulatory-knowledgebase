@@ -15,6 +15,7 @@
         <div class="version-preview">{{ v.prompt_preview[:100] }}{% if v.prompt_preview | length > 100 %}...{% endif %}</div>
         {% endif %}
         <div class="version-entry-meta">
+            {% if v.meta.get('sources') %}<span>{{ v.meta.sources | join(', ') | upper }}</span>{% endif %}
             {% if v.meta.get('duration') %}<span>{{ v.meta.duration }}s</span>{% endif %}
             {% if v.meta.get('searches') %}<span>{{ v.meta.searches }} searches</span>{% endif %}
             {% if v.meta.get('cost') %}<span>${{ v.meta.cost }}</span>{% endif %}

@@ -77,18 +77,27 @@ def get_output_dir(name: str) -> Path:
 
 def run_research(
     assignment: str,
-    prompt_text: str,
+    task_instructions: str,
     version_dir: Path,
     config: configparser.ConfigParser,
+    sources: list[str] | None = None,
 ) -> SynthesisResult:
     """Run the research phase — deep RAG synthesis with structured output.
 
+    The system research prompt (author_research.md) is always used via prompt_name.
+    task_instructions are optional user-provided focus/constraints that get prepended
+    to the assignment question so the researcher sees them.
+
     Args:
-        assignment: The assignment text.
-        prompt_text: The research prompt instructions to use.
+        assignment: The assignment text (stable project description).
+        task_instructions: User's per-run focus/keywords/constraints (may be empty).
         version_dir: Where to write all outputs (report.md, evidence.json, meta.json, prompt.md).
         config: App configuration.
+        sources: Which databases to search (default: all three).
     """
+    if sources is None:
+        sources = ["olg", "cmr", "fns", "cfr"]
+
     model = config.get("author", "research_model",
                         fallback="claude-sonnet-4-5-20250929")
     max_searches = config.getint("author", "research_max_searches", fallback=12)
@@ -96,20 +105,26 @@ def run_research(
                                         fallback=8)
     max_tokens = config.getint("author", "research_max_tokens", fallback=4096)
 
-    sources = ["olg", "cmr", "fns"]
+    # Build the question: assignment + optional task instructions
+    if task_instructions:
+        question = f"{assignment}\n\n---\n\nResearch focus for this run:\n{task_instructions}"
+    else:
+        question = assignment
 
     print(f"\n{'='*60}")
     print("PHASE 1: RESEARCH")
     print(f"{'='*60}")
     print(f"  Assignment: {assignment[:100]}{'...' if len(assignment) > 100 else ''}")
+    if task_instructions:
+        print(f"  Focus: {task_instructions[:100]}{'...' if len(task_instructions) > 100 else ''}")
     print(f"  Sources: {', '.join(sources)}")
     print(f"  Model: {model}")
-    print(f"  Search budget: {max_searches}")
+    print(f"  Max searches: {max_searches}")
     print(f"  Output: {version_dir}")
     print()
 
     result = run_synthesis(
-        question=assignment,
+        question=question,
         sources=sources,
         deep=True,
         max_searches=max_searches,
@@ -121,8 +136,8 @@ def run_research(
         },
     )
 
-    # Save prompt used
-    (version_dir / "prompt.md").write_text(prompt_text, encoding="utf-8")
+    # Save task instructions used (empty string if none)
+    (version_dir / "prompt.md").write_text(task_instructions, encoding="utf-8")
 
     # Save research report
     report_text = (
@@ -174,6 +189,7 @@ def run_research(
         "cost": round(result.cost, 4),
         "searches": len(result.search_queries),
         "model": result.model,
+        "sources": sources,
     }
     (version_dir / "meta.json").write_text(
         json.dumps(meta, indent=2), encoding="utf-8"
@@ -495,8 +511,7 @@ def main():
     if not args.draft_only:
         from ui.versioning import next_version_dir
         research_dir = next_version_dir(output_dir, "research")
-        prompt_text = get_default_research_prompt()
-        run_research(assignment, prompt_text, research_dir, config)
+        run_research(assignment, "", research_dir, config)
 
     # Phase 2: Draft
     if not args.research_only:

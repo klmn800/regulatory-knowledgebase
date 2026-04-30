@@ -16,6 +16,7 @@
             <span>{{ entry.input_tokens }} + {{ entry.output_tokens }} tokens</span>
             <span>{{ entry.model }}</span>
             <span>{{ entry.created_at }}</span>
+            <a href="/search/export/{{ entry.id }}" class="copy-btn download-btn" title="Download as Word document">Download</a>
         </div>
     </div>
 
@@ -50,7 +51,7 @@
                             <span class="result-context">CMR {{ meta.get("section_number", "") }}: {{ meta.get("section_title", "") }}</span>
                         {% endif %}
                     </div>
-                    <div class="result-text">{{ r.text_preview }}</div>
+                    <div class="result-text">{{ r.text[:400] }}{% if r.text|length > 400 %}...{% endif %}</div>
                 </div>
                 {% endfor %}
             </div>

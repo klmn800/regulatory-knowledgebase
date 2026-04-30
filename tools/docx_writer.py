@@ -324,30 +324,50 @@ def _get_available_styles(doc: Document) -> dict[str, str]:
 # ============================================================
 
 class _ListNumbering:
-    """Manages list numbering for OLG template documents.
+    """Manages list numbering for documents with or without a template.
 
-    The OLG template uses Normal-style paragraphs with XML numbering
-    properties (w:numPr) rather than dedicated list styles. This class
-    creates new numbering instances for each list in the output.
+    Creates new numbering instances for each list so that numbered lists
+    restart from 1 when separated by other content.  Works with both
+    OLG-template documents (which supply their own abstractNum definitions)
+    and plain documents (where abstractNums are created on the fly).
     """
 
     def __init__(self, doc: Document):
         self._doc = doc
         self._next_num_id = 100  # Start high to avoid collisions
+        self._next_abstract_id = 50
         self._bullet_abstract_id = None
         self._decimal_abstract_id = None
         self._current_bullet_num_id = None
         self._current_decimal_num_id = None
-        self._detect_abstract_nums()
+        self._init_numbering()
 
-    def _detect_abstract_nums(self):
-        """Find bullet and decimal abstractNum IDs from the template."""
+    # ----------------------------------------------------------
+    # Setup
+    # ----------------------------------------------------------
+
+    def _get_or_create_numbering_xml(self):
+        """Return the numbering XML element, creating the part if needed."""
         try:
-            numbering_part = self._doc.part.numbering_part
-            numbering_xml = numbering_part._element
+            return self._doc.part.numbering_part._element
         except Exception:
+            pass
+        # Force python-docx to create the numbering part by temporarily
+        # adding a list-styled paragraph, then removing it.
+        try:
+            temp = self._doc.add_paragraph("", style="List Bullet")
+            temp._element.getparent().remove(temp._element)
+            return self._doc.part.numbering_part._element
+        except Exception:
+            return None
+
+    def _init_numbering(self):
+        """Find existing abstractNums or create new ones."""
+        numbering_xml = self._get_or_create_numbering_xml()
+        if numbering_xml is None:
             return
 
+        # Scan for existing abstract numbering definitions
         for abstract in numbering_xml.findall(qn('w:abstractNum')):
             abs_id = abstract.get(qn('w:abstractNumId'))
             lvl0 = abstract.find(qn('w:lvl'))
@@ -358,6 +378,68 @@ class _ListNumbering:
                     self._bullet_abstract_id = abs_id
                 elif fmt == 'decimal' and self._decimal_abstract_id is None:
                     self._decimal_abstract_id = abs_id
+
+        # Create missing abstract definitions
+        if self._decimal_abstract_id is None:
+            self._decimal_abstract_id = self._create_abstract_num(
+                numbering_xml, "decimal", "%1.", None)
+        if self._bullet_abstract_id is None:
+            self._bullet_abstract_id = self._create_abstract_num(
+                numbering_xml, "bullet", "\u2022", "Symbol")
+
+    def _create_abstract_num(self, numbering_xml, fmt: str,
+                             lvl_text: str, font: str | None) -> str:
+        """Create an abstractNum element and return its ID."""
+        abs_id = str(self._next_abstract_id)
+        self._next_abstract_id += 1
+
+        abstract = OxmlElement("w:abstractNum")
+        abstract.set(qn("w:abstractNumId"), abs_id)
+
+        lvl = OxmlElement("w:lvl")
+        lvl.set(qn("w:ilvl"), "0")
+
+        start = OxmlElement("w:start")
+        start.set(qn("w:val"), "1")
+        lvl.append(start)
+
+        num_fmt = OxmlElement("w:numFmt")
+        num_fmt.set(qn("w:val"), fmt)
+        lvl.append(num_fmt)
+
+        lvl_text_elem = OxmlElement("w:lvlText")
+        lvl_text_elem.set(qn("w:val"), lvl_text)
+        lvl.append(lvl_text_elem)
+
+        lvl_jc = OxmlElement("w:lvlJc")
+        lvl_jc.set(qn("w:val"), "left")
+        lvl.append(lvl_jc)
+
+        pPr = OxmlElement("w:pPr")
+        ind = OxmlElement("w:ind")
+        ind.set(qn("w:left"), "720")
+        ind.set(qn("w:hanging"), "360")
+        pPr.append(ind)
+        lvl.append(pPr)
+
+        if font:
+            rPr = OxmlElement("w:rPr")
+            rFonts = OxmlElement("w:rFonts")
+            rFonts.set(qn("w:ascii"), font)
+            rFonts.set(qn("w:hAnsi"), font)
+            rPr.append(rFonts)
+            lvl.append(rPr)
+
+        abstract.append(lvl)
+
+        # Insert before any w:num elements so the XML stays valid
+        first_num = numbering_xml.find(qn("w:num"))
+        if first_num is not None:
+            first_num.addprevious(abstract)
+        else:
+            numbering_xml.append(abstract)
+
+        return abs_id
 
     def _create_num_id(self, abstract_id: str) -> int:
         """Create a new w:num entry referencing an abstractNum."""
@@ -457,7 +539,7 @@ def generate_docx(
 
     style_map = _get_available_styles(doc)
     blocks = _parse_markdown(markdown_text)
-    list_numbering = _ListNumbering(doc) if has_template else None
+    list_numbering = _ListNumbering(doc)
 
     # Strip author's notes section (after --- separator near the end)
     author_notes_start = None

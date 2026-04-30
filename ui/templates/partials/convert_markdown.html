@@ -1,0 +1,34 @@
+<div class="author-result-container">
+    <div class="answer-card">
+        <h3>{{ filename }}</h3>
+
+        {% if tracked_changes %}
+        <div class="convert-tc-banner">
+            <strong>Tracked changes:</strong>
+            {{ tracked_changes.insertions }} insertions,
+            {{ tracked_changes.deletions }} deletions
+            &mdash; showing <strong>{{ "accepted" if change_mode == "accept" else "rejected" }}</strong> text
+            <a href="#" onclick="convertToggleMode('{{ 'reject' if change_mode == 'accept' else 'accept' }}'); return false;"
+               class="convert-toggle-link">
+                (switch to {{ "reject" if change_mode == "accept" else "accept" }})
+            </a>
+        </div>
+        {% endif %}
+
+        {% if image_count > 0 %}
+        <p class="text-muted" style="margin-bottom:0.75rem;">
+            {{ image_count }} image(s) extracted &mdash; placeholders marked in the text below.
+        </p>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="convert-markdown">Markdown Preview <span class="text-muted">(editable)</span></label>
+            <textarea id="convert-markdown" rows="30"
+                      style="font-family:Consolas,monospace; font-size:0.82rem; white-space:pre; overflow-x:auto;">{{ markdown }}</textarea>
+        </div>
+
+        <input type="hidden" id="convert-filename" value="{{ stem }}">
+
+        <button class="btn btn-accent" onclick="convertFormat()">Format .docx</button>
+    </div>
+</div>

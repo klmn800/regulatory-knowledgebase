@@ -16,14 +16,16 @@
             {% endif %}
         </div>
         <div class="version-actions">
-            <button class="btn btn-sm btn-outline" onclick="authorRunResearchAgain({{ view.version_num }})">Run Again with This Prompt</button>
+            <button class="btn btn-sm btn-outline"
+                    onclick="authorRunResearchAgain({{ view.version_num }})"
+                    data-sources="{{ view.meta.get('sources', ['olg','cmr','fns','cfr']) | join(',') }}">Run Again</button>
         </div>
     </div>
 
     {% if view.prompt %}
     <details class="author-input-block">
-        <summary>Prompt used</summary>
-        <pre class="author-input-text">{{ view.prompt[:2000] }}{% if view.prompt | length > 2000 %}...{% endif %}</pre>
+        <summary>Research focus</summary>
+        <pre class="author-input-text">{{ view.prompt }}</pre>
     </details>
     {% endif %}
 
@@ -38,6 +40,7 @@
 
         {% if view.duration or view.cost or view.searches %}
         <div class="answer-meta">
+            {% if view.meta.get('sources') %}<span>{{ view.meta.sources | join(', ') | upper }}</span>{% endif %}
             {% if view.duration %}<span>{{ view.duration }}s</span>{% endif %}
             {% if view.searches %}<span>{{ view.searches }} search{{ 'es' if view.searches != 1 }}</span>{% endif %}
             {% if view.cost %}<span>${{ view.cost }}</span>{% endif %}

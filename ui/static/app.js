@@ -242,11 +242,21 @@ function authorRunResearch() {
     var promptEl = document.getElementById('author-prompt-textarea');
     var prompt = promptEl ? promptEl.value : '';
 
+    /* Collect selected sources */
+    var sourceCbs = document.querySelectorAll('.research-source-cb:checked');
+    var sources = [];
+    sourceCbs.forEach(function(cb) { sources.push(cb.value); });
+    if (sources.length === 0) {
+        alert('Select at least one source to search.');
+        return;
+    }
+
     authorShowProgress(RESEARCH_STEPS);
 
     var formData = new FormData();
     formData.append('prompt', prompt);
     formData.append('assignment', assignment);
+    formData.append('sources', sources.join(','));
 
     fetch('/author/' + encodeURIComponent(name) + '/research/run', { method: 'POST', body: formData })
         .then(function(resp) { return resp.text(); })
@@ -266,25 +276,31 @@ function authorRunResearchAgain(versionNum) {
     var name = _currentAuthorName || (document.getElementById('author-name') ? document.getElementById('author-name').value.trim() : '');
     if (!name) return;
 
-    /* Load this version's prompt into editor */
-    fetch('/author/' + encodeURIComponent(name) + '/research/' + versionNum)
-        .then(function(resp) { return resp.text(); })
-        .then(function(html) {
-            /* Extract prompt from the detail view and show prompt editor */
-            var container = document.createElement('div');
-            container.innerHTML = html;
-            var promptPre = container.querySelector('.author-input-text');
-            var promptText = promptPre ? promptPre.textContent : '';
+    /* Capture focus text and sources from the current detail view before replacing it */
+    var detailArea = document.getElementById('research-detail');
+    var promptPre = detailArea ? detailArea.querySelector('.author-input-text') : null;
+    var promptText = promptPre ? promptPre.textContent : '';
 
-            fetch('/author/' + encodeURIComponent(name) + '/research/prompt')
-                .then(function(resp) { return resp.text(); })
-                .then(function(editorHtml) {
-                    document.getElementById('research-detail').innerHTML = editorHtml;
-                    htmx.process(document.getElementById('research-detail'));
-                    /* Pre-fill with the previous version's prompt */
-                    var textarea = document.getElementById('author-prompt-textarea');
-                    if (textarea && promptText) textarea.value = promptText;
-                });
+    var runAgainBtn = detailArea ? detailArea.querySelector('[data-sources]') : null;
+    var prevSources = runAgainBtn ? runAgainBtn.getAttribute('data-sources') : 'olg,cmr,fns';
+
+    /* Show prompt editor, then pre-fill */
+    fetch('/author/' + encodeURIComponent(name) + '/research/prompt')
+        .then(function(resp) { return resp.text(); })
+        .then(function(editorHtml) {
+            document.getElementById('research-detail').innerHTML = editorHtml;
+            htmx.process(document.getElementById('research-detail'));
+
+            /* Pre-fill focus text */
+            var textarea = document.getElementById('author-prompt-textarea');
+            if (textarea && promptText) textarea.value = promptText;
+
+            /* Pre-check sources from previous version */
+            var prevList = prevSources.split(',');
+            var cbs = document.querySelectorAll('.research-source-cb');
+            cbs.forEach(function(cb) {
+                cb.checked = prevList.indexOf(cb.value) !== -1;
+            });
         });
 }
 
@@ -731,4 +747,105 @@ function sendToAuthor(analysisName, rowIndex, gapSummary) {
         if (nameEl) nameEl.value = assignmentName;
         if (assignEl) assignEl.value = assignment;
     }, 500);
+}
+
+
+/* ============================================================
+   CONVERT TAB
+   ============================================================ */
+
+var _convertProgressInterval = null;
+
+function convertShowProgress(steps) {
+    var spinner = document.getElementById('convert-spinner');
+    if (!spinner) return;
+    spinner.style.display = 'block';
+    var textEl = spinner.querySelector('.convert-progress-text');
+    if (textEl) textEl.textContent = steps[0];
+    var i = 0;
+    _convertProgressInterval = setInterval(function() {
+        i++;
+        if (i < steps.length && textEl) {
+            textEl.style.opacity = 0;
+            setTimeout(function() {
+                textEl.textContent = steps[i];
+                textEl.style.opacity = 1;
+            }, 200);
+        }
+    }, 3000);
+}
+
+function convertHideProgress() {
+    var spinner = document.getElementById('convert-spinner');
+    if (spinner) spinner.style.display = 'none';
+    if (_convertProgressInterval) {
+        clearInterval(_convertProgressInterval);
+        _convertProgressInterval = null;
+    }
+}
+
+function convertUpload() {
+    var fileEl = document.getElementById('convert-file');
+    if (!fileEl || !fileEl.files.length) {
+        alert('Select a .docx file to upload.');
+        return;
+    }
+
+    var modeEl = document.querySelector('input[name="change_mode"]:checked');
+    var changeMode = modeEl ? modeEl.value : 'accept';
+
+    var formData = new FormData();
+    formData.append('file', fileEl.files[0]);
+    formData.append('change_mode', changeMode);
+
+    var resultsArea = document.getElementById('convert-results');
+    convertShowProgress([
+        "Reading document...",
+        "Resolving tracked changes...",
+        "Classifying tables...",
+        "Generating markdown..."
+    ]);
+
+    fetch('/convert/upload', { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            convertHideProgress();
+            resultsArea.innerHTML = html;
+            htmx.process(resultsArea);
+        })
+        .catch(function(err) {
+            convertHideProgress();
+            resultsArea.innerHTML = '<p>Error: ' + err.message + '</p>';
+        });
+}
+
+function convertToggleMode(newMode) {
+    var modeRadios = document.querySelectorAll('input[name="change_mode"]');
+    modeRadios.forEach(function(r) { r.checked = (r.value === newMode); });
+    convertUpload();
+}
+
+function convertFormat() {
+    var mdEl = document.getElementById('convert-markdown');
+    var stemEl = document.getElementById('convert-filename');
+    if (!mdEl || !stemEl) return;
+
+    var formData = new FormData();
+    formData.append('markdown', mdEl.value);
+    formData.append('stem', stemEl.value);
+
+    var resultsArea = document.getElementById('convert-results');
+    convertShowProgress(["Applying OLG template styles...", "Generating .docx..."]);
+
+    fetch('/convert/format', { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            convertHideProgress();
+            resultsArea.innerHTML = html;
+            htmx.process(resultsArea);
+        })
+        .catch(function(err) {
+            convertHideProgress();
+            resultsArea.innerHTML = '<p>Error: ' + err.message + '</p>';
+        });
 }
