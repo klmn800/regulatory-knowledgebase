@@ -3,6 +3,7 @@ config.ini
 
 # Index data (large, regeneratable)
 index/olg/scraped_pages/
+index/olg/scraped_pages_pre_phase1/
 index/olg/page_chunks.json
 index/olg/section_chunks.json
 index/olg/scrape_progress.json
@@ -33,8 +34,13 @@ output/author/
 output/search_history.db
 output/search_exports/
 
-# QC analysis (lock files)
+# QC analysis (lock files + per-batch output dirs)
 output/qc_analysis/.~lock.*
+output/qc_analysis/Test/
+
+# Convert tab output (user-uploaded docs + generated docx)
+output/convert/
+output/converted/
 
 # Raw source files (large, not ours to redistribute)
 raw/
