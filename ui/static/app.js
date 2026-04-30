@@ -518,6 +518,13 @@ var FNS_CHECK_STEPS = [
     "Classifying federal requirements...",
 ];
 
+var CFR_CHECK_STEPS = [
+    "Initializing CFR search client...",
+    "Searching federal SNAP regulations...",
+    "Cross-checking against 7 CFR...",
+    "Classifying federal regulatory coverage...",
+];
+
 var _qcInterval = null;
 
 function qcShowProgress(steps) {
@@ -567,6 +574,7 @@ var QC_PHASE_LABELS = {
     investigate: 'investigation',
     cmr_check: 'CMR cross-check',
     fns_check: 'FNS cross-check',
+    cfr_check: 'CFR cross-check',
 };
 
 function qcRerun(action) {
@@ -587,6 +595,7 @@ function qcRerun(action) {
     else if (action === 'investigate') steps = INVESTIGATE_STEPS;
     else if (action === 'cmr_check') steps = CMR_CHECK_STEPS;
     else if (action === 'fns_check') steps = FNS_CHECK_STEPS;
+    else if (action === 'cfr_check') steps = CFR_CHECK_STEPS;
 
     if (steps) qcShowProgress(steps);
 
@@ -655,6 +664,8 @@ function qcRun(action) {
             qcShowProgress(CMR_CHECK_STEPS);
         } else if (action === 'fns_check') {
             qcShowProgress(FNS_CHECK_STEPS);
+        } else if (action === 'cfr_check') {
+            qcShowProgress(CFR_CHECK_STEPS);
         }
     }
 
@@ -690,7 +701,9 @@ function loadQcAnalysis(name) {
 
             /* Map meta phase names to view endpoint names */
             var viewPhase = null;
-            if (phase === 'fns_checked') {
+            if (phase === 'cfr_checked') {
+                viewPhase = 'cfr_check';
+            } else if (phase === 'fns_checked') {
                 viewPhase = 'fns_check';
             } else if (phase === 'cmr_checked') {
                 viewPhase = 'cmr_check';

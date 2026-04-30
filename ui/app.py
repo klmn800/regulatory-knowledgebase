@@ -60,6 +60,7 @@ from programs.qc.qc_analyzer import (
     run_investigate,
     run_cmr_check,
     run_fns_check,
+    run_cfr_check,
     load_all_findings,
     load_meta,
     save_meta,
@@ -769,7 +770,7 @@ async def qc_load(name: str):
     # Determine most advanced phase
     phases = meta.get("phases", {})
     latest_phase = None
-    for phase in ("fns_checked", "cmr_checked", "investigated", "extracted", "uploaded"):
+    for phase in ("cfr_checked", "fns_checked", "cmr_checked", "investigated", "extracted", "uploaded"):
         if phases.get(phase):
             latest_phase = phase
             break
@@ -816,7 +817,7 @@ async def qc_view(request: Request, name: str, phase: str):
             {"findings": extracted, "name": name, "meta": meta},
         )
 
-    elif phase in ("investigate", "cmr_check", "fns_check"):
+    elif phase in ("investigate", "cmr_check", "fns_check", "cfr_check"):
         # All three post-investigation views use the same results table,
         # which conditionally shows CMR/FNS columns when data is present
         findings = load_all_findings(analysis_dir)
@@ -1040,6 +1041,39 @@ async def qc_fns_check(
 
     config = load_qc_config()
     await asyncio.to_thread(run_fns_check, analysis_dir, None, config)
+
+    all_findings = load_all_findings(analysis_dir)
+    meta = load_meta(analysis_dir)
+    return templates.TemplateResponse(
+        request, "partials/qc_results_table.html",
+        {"findings": all_findings, "name": name, "meta": meta},
+    )
+
+
+@app.post("/qc/cfr_check", response_class=HTMLResponse)
+async def qc_cfr_check(
+    request: Request,
+    name: str = Form(...),
+    rerun: str = Form(""),
+):
+    """Run 7 CFR cross-check on Partial/Gap findings, or show existing results."""
+    name = name.strip()
+    if not name:
+        return HTMLResponse("<p>Analysis name is required.</p>")
+
+    analysis_dir = get_analysis_dir(name)
+
+    if rerun != "1":
+        meta = load_meta(analysis_dir) or {}
+        if meta.get("phases", {}).get("cfr_checked"):
+            all_findings = load_all_findings(analysis_dir)
+            return templates.TemplateResponse(
+                request, "partials/qc_results_table.html",
+                {"findings": all_findings, "name": name, "meta": meta},
+            )
+
+    config = load_qc_config()
+    await asyncio.to_thread(run_cfr_check, analysis_dir, None, config)
 
     all_findings = load_all_findings(analysis_dir)
     meta = load_meta(analysis_dir)

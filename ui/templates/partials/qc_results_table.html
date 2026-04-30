@@ -5,9 +5,13 @@
             {% if meta and meta.phases %}
                 {% if meta.phases.get('cmr_checked') %}<span class="version-phase" style="margin-left:0.5rem;">CMR</span>{% endif %}
                 {% if meta.phases.get('fns_checked') %}<span class="version-phase" style="margin-left:0.5rem;">FNS</span>{% endif %}
+                {% if meta.phases.get('cfr_checked') %}<span class="version-phase" style="margin-left:0.5rem;">CFR</span>{% endif %}
             {% endif %}
         </div>
         <div class="version-actions">
+            {% if meta and meta.phases and meta.phases.get('cfr_checked') %}
+            <button class="btn btn-sm btn-outline" onclick="qcRerun('cfr_check')">Re-run CFR</button>
+            {% endif %}
             {% if meta and meta.phases and meta.phases.get('fns_checked') %}
             <button class="btn btn-sm btn-outline" onclick="qcRerun('fns_check')">Re-run FNS</button>
             {% endif %}
@@ -59,6 +63,9 @@
                         {% endif %}
                         {% if findings | selectattr('_fns_check', 'defined') | list | length > 0 %}
                         <th>FNS</th>
+                        {% endif %}
+                        {% if findings | selectattr('_cfr_check', 'defined') | list | length > 0 %}
+                        <th>CFR</th>
                         {% endif %}
                         <th>Policy Issue</th>
                     </tr>
@@ -115,6 +122,22 @@
                             {% endif %}
                         </td>
                         {% endif %}
+                        {% if findings | selectattr('_cfr_check', 'defined') | list | length > 0 %}
+                        <td>
+                            {% if f._cfr_check %}
+                                {% set cfr_cls = f._cfr_check.classification %}
+                                {% if cfr_cls == 'cfr_covers_topic' %}
+                                <span class="xcheck-badge covers" title="{{ f._cfr_check.note }}">Covers</span>
+                                {% elif cfr_cls == 'cfr_silent' %}
+                                <span class="xcheck-badge silent" title="{{ f._cfr_check.note }}">Silent</span>
+                                {% elif cfr_cls == 'cfr_differs' %}
+                                <span class="xcheck-badge differs" title="{{ f._cfr_check.note }}">Differs</span>
+                                {% else %}
+                                <span class="xcheck-badge silent">{{ cfr_cls }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        {% endif %}
                         <td style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.policy_issues }}</td>
                     </tr>
                     <tr id="qc-detail-{{ f.row_index }}" class="qc-detail-row" style="display:none;">
@@ -150,6 +173,13 @@
                                 <p><strong>{{ f._fns_check.classification }}</strong>
                                 {% if f._fns_check.fns_sections %} ({{ f._fns_check.fns_sections | join(', ') }}){% endif %}</p>
                                 <p>{{ f._fns_check.note }}</p>
+                                {% endif %}
+
+                                {% if f._cfr_check %}
+                                <h4>7 CFR Cross-Check</h4>
+                                <p><strong>{{ f._cfr_check.classification }}</strong>
+                                {% if f._cfr_check.cfr_sections %} ({{ f._cfr_check.cfr_sections | join(', ') }}){% endif %}</p>
+                                <p>{{ f._cfr_check.note }}</p>
                                 {% endif %}
 
                                 <p style="margin-top:0.75rem; font-size:0.75rem; color:var(--color-text-muted);">

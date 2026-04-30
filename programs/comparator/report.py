@@ -695,9 +695,15 @@ document.addEventListener('DOMContentLoaded', function() {
 # ---------------------------------------------------------------------------
 
 def load_csvs(data_dir: Path) -> list[dict]:
-    """Load all chapter CSVs sorted by chapter number."""
-    files = list(data_dir.glob("comparison_claude-code_*_FNS-*.csv"))
-    files.sort(key=lambda f: int(f.stem.split("FNS-")[1]))
+    """Load comparator CSVs. Prefers compiled CSVs (full text) over per-chapter originals."""
+    # Prefer compiled CSVs (have full fns_summary text)
+    compiled = list(data_dir.glob("comparison_compiled_*.csv"))
+    if compiled:
+        compiled.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+        files = [compiled[0]]  # Use most recent compiled CSV
+    else:
+        files = list(data_dir.glob("comparison_claude-code_*_FNS-*.csv"))
+        files.sort(key=lambda f: int(f.stem.split("FNS-")[1]))
     rows = []
     for f in files:
         with open(f, newline="", encoding="utf-8") as fh:
@@ -901,6 +907,9 @@ def generate_html(rows: list[dict]) -> str:
         olg_matches = row.get("olg_matches", "")
         olg_urls = row.get("olg_urls", "")
         cmr_section = row.get("cmr_section", "")
+        cfr_classification = row.get("cfr_classification", "")
+        cfr_section = row.get("cfr_section", "")
+        cfr_note = row.get("cfr_note", "")
 
         act = "true" if is_actionable(row) else "false"
         fnd = "true" if is_finding(row) else "false"
@@ -916,7 +925,9 @@ def generate_html(rows: list[dict]) -> str:
             "ch": ch, "sec": sec, "title": title, "cls": cls, "conf": conf,
             "summary": summary, "l1": l1, "l2": l2, "l3": l3,
             "olg": olg_matches, "urls": olg_urls, "action": action,
-            "priority": priority, "cmr": cmr_section, "sid": session_id,
+            "priority": priority, "cmr": cmr_section,
+            "cfr_cls": cfr_classification, "cfr_sec": cfr_section, "cfr_note": cfr_note,
+            "sid": session_id,
             "tin": tokens_in, "tout": tokens_out, "cost": cost,
         }, ensure_ascii=False)
 
@@ -975,6 +986,18 @@ def generate_html(rows: list[dict]) -> str:
             h.append(f"<p>{esc(l3)}</p>")
             h.append("</div>")
 
+        if cfr_note or cfr_classification:
+            h.append('<div class="detail-section">')
+            h.append("<h4>Layer 3 &mdash; CFR Cross-Check</h4>")
+            if cfr_classification:
+                h.append(f'<p><strong>{esc(cfr_classification)}</strong>')
+                if cfr_section:
+                    h.append(f' &mdash; {esc(cfr_section)}')
+                h.append('</p>')
+            if cfr_note:
+                h.append(f"<p>{esc(cfr_note)}</p>")
+            h.append("</div>")
+
         # My Notes textarea
         h.append('<div class="detail-section note-section">')
         h.append('<h4>My Notes <span class="note-saved">Saved</span></h4>')
@@ -1015,6 +1038,13 @@ def generate_html(rows: list[dict]) -> str:
             h.append('<div class="meta-item">')
             h.append('<span class="meta-label">CMR Section</span>')
             h.append(f'<div class="meta-value">{esc(cmr_section)}</div>')
+            h.append("</div>")
+
+        # CFR section
+        if cfr_section:
+            h.append('<div class="meta-item">')
+            h.append('<span class="meta-label">7 CFR Section</span>')
+            h.append(f'<div class="meta-value">{esc(cfr_section)}</div>')
             h.append("</div>")
 
         # Session ID

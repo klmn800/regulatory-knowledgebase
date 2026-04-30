@@ -1065,7 +1065,7 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
 # ============================================================
 
 def _format_source_results_for_prompt(results: list[dict], source: str) -> str:
-    """Format CMR or FNS search results for inclusion in a cross-check prompt."""
+    """Format CMR / FNS / CFR search results for inclusion in a cross-check prompt."""
     if not results:
         return f"No {source.upper()} matches found."
 
@@ -1076,6 +1076,13 @@ def _format_source_results_for_prompt(results: list[dict], source: str) -> str:
             sec_num = meta.get("section_number", "")
             sec_title = meta.get("section_title", "")
             label = f"{sec_num} {sec_title}".strip()
+        elif source == "cfr":
+            sec_num = meta.get("section_number", "")
+            sec_title = meta.get("section_title", "")
+            hierarchy = meta.get("hierarchy_full_path") or meta.get("hierarchy_path", "")
+            label = f"§ {sec_num} {sec_title}".strip()
+            if hierarchy:
+                label = f"{label} {hierarchy}"
         else:
             sec_num = meta.get("section_number", meta.get("title", ""))
             sec_title = meta.get("section_title", "")
@@ -1289,6 +1296,94 @@ def run_fns_check(analysis_dir: Path, row_indices: list[int] = None,
     if "phases" not in meta:
         meta["phases"] = {}
     meta["phases"]["fns_checked"] = True
+    save_meta(analysis_dir, meta)
+
+    return results
+
+
+def run_cfr_check(analysis_dir: Path, row_indices: list[int] = None,
+                  config: configparser.ConfigParser = None) -> list[dict]:
+    """Run 7 CFR cross-check on investigated findings.
+
+    Mirrors run_cmr_check / run_fns_check. For each Partial/Gap finding,
+    searches 7 CFR for the policy topic and asks Haiku to classify whether
+    the federal regulations address it (cfr_covers_topic / cfr_silent /
+    cfr_differs).
+
+    Args:
+        analysis_dir: Path to the analysis directory.
+        row_indices: Optional list of 1-based row indices. Defaults to
+                     all Partial/Gap findings.
+        config: Optional config; loaded from config.ini if not provided.
+
+    Returns:
+        List of updated finding dicts with _cfr_check added.
+    """
+    if config is None:
+        config = load_config()
+
+    model = config.get("qc_analyzer", "cfr_check_model",
+                       fallback="claude-haiku-4-5-20251001")
+    prompt = load_prompt("qc_cfr_check", with_preamble=True)
+
+    api_key = config.get("api", "anthropic_api_key")
+    claude = anthropic.Anthropic(api_key=api_key)
+    cfr_clients = create_client(source="cfr")
+
+    if row_indices is None:
+        all_findings = load_all_findings(analysis_dir)
+        row_indices = [
+            f["row_index"] for f in all_findings
+            if f.get("coverage") in ("Partial", "Gap")
+        ]
+
+    results = []
+    for row_idx in row_indices:
+        finding = load_finding(analysis_dir, row_idx)
+        if not finding:
+            continue
+
+        query = finding.get("policy_issues", "")
+        if not query:
+            continue
+
+        search_response = search_with_client(
+            query, cfr_clients,
+            collection="sections",
+            program="SNAP",
+            top_n=5,
+            threshold=0.0,
+        )
+
+        formatted = _format_source_results_for_prompt(
+            search_response["results"], "cfr"
+        )
+        user_message = _build_crosscheck_user_message(finding, formatted, "CFR")
+
+        response = claude.messages.create(
+            model=model,
+            max_tokens=500,
+            system=prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+
+        text = response.content[0].text.strip()
+        check_result = extract_json(text, fallback_classification="cfr_silent")
+
+        cfr_check = {
+            "classification": check_result.get("classification", "cfr_silent"),
+            "cfr_sections": check_result.get("cfr_sections", []),
+            "note": check_result.get("note", ""),
+        }
+
+        finding["_cfr_check"] = cfr_check
+        save_finding(analysis_dir, row_idx, finding)
+        results.append(finding)
+
+    meta = load_meta(analysis_dir) or {}
+    if "phases" not in meta:
+        meta["phases"] = {}
+    meta["phases"]["cfr_checked"] = True
     save_meta(analysis_dir, meta)
 
     return results

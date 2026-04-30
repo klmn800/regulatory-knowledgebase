@@ -9,6 +9,7 @@
             {% if a.phases.investigated %}<span class="phase-badge phase-done" title="Investigated">I</span>{% else %}<span class="phase-badge" title="Not investigated">I</span>{% endif %}
             {% if a.phases.cmr_checked %}<span class="phase-badge phase-done" title="CMR checked">C</span>{% else %}<span class="phase-badge" title="CMR not checked">C</span>{% endif %}
             {% if a.phases.fns_checked %}<span class="phase-badge phase-done" title="FNS checked">F</span>{% else %}<span class="phase-badge" title="FNS not checked">F</span>{% endif %}
+            {% if a.phases.cfr_checked %}<span class="phase-badge phase-done" title="CFR checked">7</span>{% else %}<span class="phase-badge" title="CFR not checked">7</span>{% endif %}
         </div>
     </div>
     {% endfor %}

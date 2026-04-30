@@ -492,6 +492,22 @@ def query_cmr(fns_section: dict, cmr_clients: dict,
     return response["results"]
 
 
+def query_cfr(fns_section: dict, cfr_clients: dict,
+              max_results: int = 5) -> list[dict]:
+    """Query 7 CFR for sections relevant to an FNS requirement."""
+    title = fns_section.get("section_title", "")
+    text = fns_section.get("text", "")
+    query = f"{title} {text[:200]}"
+
+    response = search_with_client(
+        query, cfr_clients,
+        collection="sections",
+        program="SNAP",
+        top_n=max_results,
+    )
+    return response["results"]
+
+
 # ============================================================
 # RESULT FORMATTING FOR PROMPTS
 # ============================================================
@@ -556,6 +572,32 @@ def format_cmr_results_for_prompt(results: list[dict]) -> str:
         text = result["text"][:1000]
 
         header = f"[CMR Match {i+1}] Score: {score:.2f} | {sec_num} {sec_title}"
+        parts.append(f"{header}\n{text}")
+        if len(result["text"]) > 1000:
+            parts.append("... (truncated)")
+        parts.append("")
+
+    return "\n".join(parts)
+
+
+def format_cfr_results_for_prompt(results: list[dict]) -> str:
+    """Format 7 CFR search results for inclusion in a prompt."""
+    if not results:
+        return "No 7 CFR matches found."
+
+    parts = []
+    for i, result in enumerate(results):
+        meta = result["metadata"]
+        sec_num = meta.get("section_number", "")
+        sec_title = meta.get("section_title", "")
+        part = meta.get("part", "")
+        hierarchy = meta.get("hierarchy_full_path") or meta.get("hierarchy_path", "")
+        score = result["score"]
+        text = result["text"][:1000]
+
+        header = f"[CFR Match {i+1}] Score: {score:.2f} | 7 CFR § {sec_num} {sec_title}"
+        if hierarchy:
+            header += f" {hierarchy}"
         parts.append(f"{header}\n{text}")
         if len(result["text"]) > 1000:
             parts.append("... (truncated)")
@@ -952,6 +994,39 @@ def run_layer3(fns_section: dict, layer2_result: dict,
     return extract_json(text, fallback_classification="state_silent")
 
 
+def run_layer3_cfr(fns_section: dict, layer2_result: dict,
+                   cfr_results: list[dict], client: anthropic.Anthropic,
+                   model: str, system_prompt: str,
+                   fns_by_number: dict = None,
+                   tracker: TokenTracker = None) -> dict:
+    """Run Layer 3 CFR cross-check for a confirmed gap.
+
+    Mirrors run_layer3 but cross-checks against federal SNAP regulations
+    (7 CFR Parts 271-275, 280, 292) instead of state regulations.
+    """
+    user_message = (
+        f"## FNS Requirement\n\n"
+        f"{format_fns_for_prompt(fns_section, fns_by_number)}\n\n"
+        f"## Gap Finding (Layer 2)\n\n"
+        f"Classification: {layer2_result['classification']}\n"
+        f"Note: {layer2_result['note']}\n\n"
+        f"## 7 CFR Matches\n\n"
+        f"{format_cfr_results_for_prompt(cfr_results)}"
+    )
+
+    response = client.messages.create(
+        model=model,
+        max_tokens=800,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_message}],
+    )
+    if tracker:
+        tracker.record(response)
+
+    text = response.content[0].text.strip()
+    return extract_json(text, fallback_classification="cfr_silent")
+
+
 # ============================================================
 # CHECKPOINT / RESUME
 # ============================================================
@@ -993,6 +1068,9 @@ CSV_COLUMNS = [
     "layer2_note",
     "layer3_note",
     "cmr_section",
+    "cfr_classification",
+    "cfr_section",
+    "cfr_note",
     "action_needed",
     "priority",
     "session_id",
@@ -1016,6 +1094,7 @@ def build_csv_row(fns_section: dict, layer1: dict,
                   olg_results: list[dict],
                   layer2: dict | None = None,
                   layer3: dict | None = None,
+                  layer3_cfr: dict | None = None,
                   fns_by_number: dict = None,
                   tracker: TokenTracker = None) -> dict:
     """Build a CSV row dict from layer results."""
@@ -1056,7 +1135,7 @@ def build_csv_row(fns_section: dict, layer1: dict,
         "fns_chapter": fns_section["chapter"],
         "fns_section": fns_section["section_number"],
         "fns_title": _build_display_title(fns_section, fns_by_number),
-        "fns_summary": fns_section["text"][:200].replace("\n", " "),
+        "fns_summary": fns_section["text"].replace("\n", " "),
         "classification": final_classification,
         "confidence": final_confidence,
         "olg_matches": "; ".join(olg_titles),
@@ -1065,6 +1144,9 @@ def build_csv_row(fns_section: dict, layer1: dict,
         "layer2_note": layer2.get("note", "") if layer2 else "",
         "layer3_note": layer3.get("note", "") if layer3 else "",
         "cmr_section": "; ".join(layer3.get("cmr_sections", [])) if layer3 else "",
+        "cfr_classification": layer3_cfr.get("classification", "") if layer3_cfr else "",
+        "cfr_section": "; ".join(layer3_cfr.get("cfr_sections", [])) if layer3_cfr else "",
+        "cfr_note": layer3_cfr.get("note", "") if layer3_cfr else "",
         "action_needed": action,
         "priority": priority,
         "session_id": layer2.get("_session_id", "") if layer2 else "",
@@ -1136,6 +1218,7 @@ def compile_results(chapters: list[int] = None) -> None:
 
         # Read L3 results if persisted
         layer3 = result.get("_layer3")
+        layer3_cfr = result.get("_layer3_cfr")
 
         action = "none"
         priority = "LOW"
@@ -1158,7 +1241,7 @@ def compile_results(chapters: list[int] = None) -> None:
             "fns_chapter": fns_section["chapter"],
             "fns_section": sec_num,
             "fns_title": _build_display_title(fns_section, fns_by_number),
-            "fns_summary": fns_section["text"][:200].replace("\n", " "),
+            "fns_summary": fns_section["text"].replace("\n", " "),
             "classification": cls,
             "confidence": result.get("confidence", ""),
             "olg_matches": "; ".join(olg_pages),
@@ -1167,6 +1250,9 @@ def compile_results(chapters: list[int] = None) -> None:
             "layer2_note": result.get("note", ""),
             "layer3_note": layer3.get("note", "") if layer3 else "",
             "cmr_section": "; ".join(layer3.get("cmr_sections", [])) if layer3 else "",
+            "cfr_classification": layer3_cfr.get("classification", "") if layer3_cfr else "",
+            "cfr_section": "; ".join(layer3_cfr.get("cfr_sections", [])) if layer3_cfr else "",
+            "cfr_note": layer3_cfr.get("note", "") if layer3_cfr else "",
             "action_needed": action,
             "priority": priority,
             "session_id": result.get("_session_id", ""),
@@ -1218,6 +1304,7 @@ def run_comparison(
                                            fallback=0.20)
     olg_max_results = config.getint("comparator", "olg_max_results", fallback=10)
     cmr_max_results = config.getint("comparator", "cmr_max_results", fallback=5)
+    cfr_max_results = config.getint("comparator", "cfr_max_results", fallback=5)
     escalate_conf = config.get("comparator", "escalate_confidence",
                                fallback="MEDIUM,LOW")
     escalate_levels = set(s.strip() for s in escalate_conf.split(","))
@@ -1225,6 +1312,7 @@ def run_comparison(
     layer1_prompt = load_prompt("layer1_triage", with_preamble=True)
     layer2_prompt = load_prompt("layer2_investigation", with_preamble=True)
     layer3_prompt = load_prompt("layer3_validation", with_preamble=True)
+    layer3_cfr_prompt = load_prompt("layer3_cfr_validation", with_preamble=True)
 
     print(f"SNAP Policy Comparator — FNS vs OLG")
     print(f"=" * 50)
@@ -1291,6 +1379,7 @@ def run_comparison(
     print("Initializing RAG clients...")
     olg_clients = create_client(source="olg")
     cmr_clients = create_client(source="cmr") if not layer1_only else None
+    cfr_clients = create_client(source="cfr") if not layer1_only else None
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -1298,6 +1387,7 @@ def run_comparison(
     layer1_counts = {"match": 0, "partial_match": 0, "no_match": 0, "not_applicable": 0}
     layer2_count = 0
     layer3_count = 0
+    layer3_cfr_count = 0
     tracker = TokenTracker()
 
     total = len(fns_sections)
@@ -1356,7 +1446,7 @@ def run_comparison(
     if layer1_only or not l2_queue:
         # Build rows from L1 results only
         for fns_section, layer1, olg_results, _ in l1_results:
-            row = build_csv_row(fns_section, layer1, olg_results, None, None,
+            row = build_csv_row(fns_section, layer1, olg_results, None, None, None,
                                 fns_by_number, tracker)
             all_rows.append(row)
     else:
@@ -1423,14 +1513,15 @@ def run_comparison(
                     l2 = l2_results.get(i) if needs else None
                     if not needs or l2 is not None:
                         interim_rows.append(build_csv_row(
-                            fs, l1, olg, l2, None, fns_by_number, tracker))
+                            fs, l1, olg, l2, None, None, fns_by_number, tracker))
                 interim_path = OUTPUT_DIR / "comparison_interim.csv"
                 write_csv(interim_rows, interim_path)
 
-        # ── Phase 3: L3 CMR cross-check (sequential) ──────────
+        # ── Phase 3: L3 CMR + CFR cross-check (sequential) ─────
         print(f"\nPhase 2 complete. Checking for L3 escalations...\n")
 
-        l3_results = {}  # entry_idx → layer3 dict
+        l3_results = {}      # entry_idx → CMR layer3 dict
+        l3_cfr_results = {}  # entry_idx → CFR layer3 dict
 
         for entry_idx in l2_queue:
             layer2 = l2_results.get(entry_idx)
@@ -1442,12 +1533,17 @@ def run_comparison(
                 "confirmed_gap", "different_standard",
                 "policy_present_procedures_missing",
             )
-            if needs_layer3 and cmr_clients:
-                fns_section = l1_results[entry_idx][0]
-                sec_id = fns_section["section_number"]
+            if not needs_layer3:
+                continue
+
+            fns_section = l1_results[entry_idx][0]
+            sec_id = fns_section["section_number"]
+            tracker.reset_section()
+
+            layer3 = None
+            if cmr_clients:
                 layer3_count += 1
                 print(f"  L3: {sec_id} — Checking CMR...")
-                tracker.reset_section()
                 cmr_results = query_cmr(fns_section, cmr_clients, cmr_max_results)
                 layer3 = run_layer3(fns_section, layer2, cmr_results,
                                     claude, layer3_model, layer3_prompt,
@@ -1455,29 +1551,49 @@ def run_comparison(
                 l3_results[entry_idx] = layer3
                 action = layer3.get("action_recommended", "?")
                 priority = layer3.get("priority", "?")
-                print(f"  L3: {sec_id} — {layer3['classification']} — "
+                print(f"  L3: {sec_id} — CMR: {layer3['classification']} — "
                       f"{action} ({priority})")
 
-                # Persist L3 results into the result JSON
-                result_file = RESULTS_DIR / f"{sec_id}.json"
-                if result_file.exists():
-                    try:
-                        data = json.loads(result_file.read_text(encoding="utf-8"))
+            layer3_cfr = None
+            if cfr_clients:
+                layer3_cfr_count += 1
+                print(f"  L3: {sec_id} — Checking CFR...")
+                cfr_results = query_cfr(fns_section, cfr_clients, cfr_max_results)
+                layer3_cfr = run_layer3_cfr(
+                    fns_section, layer2, cfr_results,
+                    claude, layer3_model, layer3_cfr_prompt,
+                    fns_by_number, tracker,
+                )
+                l3_cfr_results[entry_idx] = layer3_cfr
+                cfr_secs = layer3_cfr.get("cfr_sections", [])
+                cfr_secs_str = ", ".join(cfr_secs) if cfr_secs else "—"
+                print(f"  L3: {sec_id} — CFR: {layer3_cfr['classification']} "
+                      f"({cfr_secs_str})")
+
+            # Persist L3 results into the result JSON
+            result_file = RESULTS_DIR / f"{sec_id}.json"
+            if result_file.exists():
+                try:
+                    data = json.loads(result_file.read_text(encoding="utf-8"))
+                    if layer3 is not None:
                         data["_layer3"] = layer3
-                        result_file.write_text(
-                            json.dumps(data, indent=4), encoding="utf-8"
-                        )
-                    except (json.JSONDecodeError, OSError):
-                        pass
+                    if layer3_cfr is not None:
+                        data["_layer3_cfr"] = layer3_cfr
+                    result_file.write_text(
+                        json.dumps(data, indent=4), encoding="utf-8"
+                    )
+                except (json.JSONDecodeError, OSError):
+                    pass
 
         # ── Phase 4: Build rows (in order) ─────────────────────
         for entry_idx, (fns_section, layer1, olg_results, needs_l2) in enumerate(l1_results):
             layer2 = l2_results.get(entry_idx) if needs_l2 else None
             layer3 = l3_results.get(entry_idx)
+            layer3_cfr = l3_cfr_results.get(entry_idx)
             if layer2:
                 layer2_count += 1
             row = build_csv_row(fns_section, layer1, olg_results, layer2, layer3,
-                                fns_by_number, tracker)
+                                layer3_cfr, fns_by_number, tracker)
             all_rows.append(row)
 
             sec_id = fns_section["section_number"]
@@ -1504,7 +1620,8 @@ def run_comparison(
     for cls, count in sorted(layer1_counts.items()):
         print(f"    {cls:25s} {count}")
     print(f"  Escalated to Layer 2: {layer2_count}")
-    print(f"  Escalated to Layer 3: {layer3_count}")
+    print(f"  L3 CMR cross-checks: {layer3_count}")
+    print(f"  L3 CFR cross-checks: {layer3_cfr_count}")
     print()
     print(f"  API tokens: {tracker.total_summary()}")
     if engine == "claude-code":
