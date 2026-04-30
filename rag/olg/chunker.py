@@ -156,13 +156,15 @@ def inline_tables(sections: list[dict], tables: list[dict]) -> list[dict]:
 # ============================================================
 
 def build_context_prefix(breadcrumb: list[str], page_title: str,
-                         section_heading: str | None = None) -> str:
+                         section_heading: str | None = None,
+                         parent_heading: str | None = None) -> str:
     """
     Build a hierarchical context string that gets prepended to chunk
     text before embedding.
 
     Example output:
         "SNAP > Application Processing > Expedited Benefits > Step One"
+        "COVID-19 > [Page Title] > Pandemic UC Types > PUA"  (parent + section)
 
     This helps the embedding model understand where this content sits
     in the policy hierarchy, improving retrieval accuracy.
@@ -172,6 +174,10 @@ def build_context_prefix(breadcrumb: list[str], page_title: str,
     # Add page title if it's not already the last breadcrumb element
     if page_title and (not parts or parts[-1] != page_title):
         parts.append(page_title)
+
+    # Insert parent heading (H2) above the section heading (H3) when present
+    if parent_heading and parent_heading != section_heading:
+        parts.append(parent_heading)
 
     # Add section heading if present
     if section_heading:
@@ -211,28 +217,63 @@ def make_section_id(url: str, chunk_index: int) -> str:
 
 
 # ============================================================
+# PARENT HEADING TRACKING
+# ============================================================
+
+def add_parent_headings(sections: list[dict]) -> list[dict]:
+    """
+    Walk the section list and stamp each H3 with its parent H2's heading.
+
+    The parser emits sections in document order with `level` in {0, 2, 3}.
+    Adjacency in the list = adjacency in the source HTML, so the most
+    recent level-2 we've seen is the parent of any subsequent level-3.
+
+    H4/H5/H6 are absent in OLG (verified 2026-04-29), so this two-level
+    tracking is sufficient. Level-0 (intro before first heading) and
+    level-2 sections get parent_heading=None.
+    """
+    current_h2 = None
+    result = []
+    for section in sections:
+        level = section.get("level", 0)
+        if level == 2:
+            current_h2 = section.get("heading")
+            parent = None
+        elif level == 3:
+            parent = current_h2
+        else:
+            parent = None
+        result.append({**section, "parent_heading": parent})
+    return result
+
+
+# ============================================================
 # SMART MERGE LOGIC
 # ============================================================
 
 def merge_small_sections(sections: list[dict]) -> list[dict]:
     """
-    Merge tiny sections (< MIN_CHUNK_SIZE) with their neighbors.
+    Merge tiny sections (< MIN_CHUNK_SIZE) with their neighbors, with
+    cross-level merge protection.
 
-    Rules:
-    - An empty or tiny section gets merged INTO the next section
-      at the same or lower level (same heading hierarchy).
-    - If the tiny section is the last one, merge it into the
-      previous section.
-    - "Related Topics" sections are kept as-is (they're useful
-      link reference lists even when short).
-    - The merged section inherits the heading of whichever part
-      had a heading. If both have headings, keep the first one
-      and note the second in the text.
+    Rule (post-cleanup 2026-04-29): merging is only allowed when one
+    side is heading-less — i.e. the level-0 intro section before the
+    first H2/H3. This prevents the "subsection-merge contamination"
+    bug where a tiny H2 intro absorbed its first H3 child, putting the
+    H3 heading into the body as a bare line and inheriting the wrong
+    heading.
 
-    This is a single-pass forward merge. After merging, some chunks
-    that were just above the threshold might still be small, but
-    that's fine — we're preventing truly degenerate 10-char chunks,
-    not enforcing strict minimums.
+    Concrete bug avoided (`COVID_ProcPandUCInc`): H2 "Pandemic UC Types"
+    had only ~150 chars of intro, so it used to merge forward into H3
+    "PUA" — the merged chunk carried the H2 heading but the body was
+    PUA's content, with the H3 heading as a bare paragraph.
+
+    Per Ben's L92/95 instruction: small chunks are fine. There's no onus
+    to fill chunks. A tiny H3 stays a tiny H3.
+
+    Section `links` and `parent_heading` travel through merges intact.
+    "Related Topics" sections no longer reach this function — they're
+    lifted to a top-level field by the parser.
     """
     if len(sections) <= 1:
         return sections
@@ -243,13 +284,6 @@ def merge_small_sections(sections: list[dict]) -> list[dict]:
     while i < len(sections):
         section = sections[i]
         text = section["text"]
-        heading = section.get("heading") or ""
-
-        # Keep "Related Topics" sections as-is — they're useful even when short
-        if heading.lower().startswith("related topic"):
-            result.append(section)
-            i += 1
-            continue
 
         # If this section is large enough, keep it
         if len(text) >= MIN_CHUNK_SIZE:
@@ -257,58 +291,85 @@ def merge_small_sections(sections: list[dict]) -> list[dict]:
             i += 1
             continue
 
-        # This section is too small — try to merge forward
+        heading = section.get("heading")
+
+        # This section is too small — try to merge forward, but only when
+        # one side has no heading (i.e. it's the level-0 intro). Two
+        # heading-bearing sections never merge.
         if i + 1 < len(sections):
             next_section = sections[i + 1]
-            merged_text = _combine_text(
-                heading, text,
-                next_section.get("heading"), next_section["text"]
-            )
-            merged = {
-                "heading": section["heading"] or next_section["heading"],
-                "level": min(section["level"], next_section["level"]) if section["level"] > 0 else next_section["level"],
-                "text": merged_text,
-            }
-            # Replace next section with the merged version
-            sections[i + 1] = merged
-            i += 1
-            continue
+            next_heading = next_section.get("heading")
 
-        # Last section and too small — merge backward into previous
+            if not heading or not next_heading:
+                merged_text = _combine_text(
+                    heading, text,
+                    next_heading, next_section["text"]
+                )
+                merged = {
+                    "heading": heading or next_heading,
+                    "level": min(section["level"], next_section["level"]) if section["level"] > 0 else next_section["level"],
+                    "text": merged_text,
+                    "links": _merge_links(section.get("links", []), next_section.get("links", [])),
+                    "parent_heading": next_section.get("parent_heading") if next_heading else section.get("parent_heading"),
+                }
+                sections[i + 1] = merged
+                i += 1
+                continue
+
+        # Last section and too small — merge backward into previous,
+        # again only if one side is heading-less.
         if result:
             prev = result[-1]
-            merged_text = _combine_text(
-                prev.get("heading"), prev["text"],
-                heading, text
-            )
-            result[-1] = {**prev, "text": merged_text}
-            i += 1
-            continue
+            prev_heading = prev.get("heading")
+            if not prev_heading or not heading:
+                merged_text = _combine_text(
+                    prev_heading, prev["text"],
+                    heading, text
+                )
+                result[-1] = {
+                    **prev,
+                    "heading": prev_heading or heading,
+                    "text": merged_text,
+                    "links": _merge_links(prev.get("links", []), section.get("links", [])),
+                }
+                i += 1
+                continue
 
-        # Only section and it's tiny — keep it anyway
+        # Can't merge across heading boundaries — small section stays small.
         result.append(section)
         i += 1
 
     return result
 
 
+def _merge_links(a: list[dict], b: list[dict]) -> list[dict]:
+    """Concatenate two link lists, deduping by href."""
+    seen = set()
+    merged = []
+    for link in list(a) + list(b):
+        href = link.get("href")
+        if href and href not in seen:
+            seen.add(href)
+            merged.append(link)
+    return merged
+
+
 def _combine_text(heading_a: str | None, text_a: str,
                   heading_b: str | None, text_b: str) -> str:
     """
-    Combine two section texts. If the second section had a heading,
-    insert it as a bold-style marker so the context isn't lost.
+    Combine two section texts when one side is heading-less (level-0 intro).
+
+    With the cross-level merge protection in `merge_small_sections()`, exactly
+    one of `heading_a` / `heading_b` is set; the merged section's heading
+    field captures it, and the context prefix renders it. We do NOT insert
+    the heading inline as a body separator — that produced the §1A pattern
+    where the heading appeared as a bare text line in the chunk body.
     """
     parts = []
-
     if text_a.strip():
         parts.append(text_a.strip())
-
-    if heading_b:
-        parts.append(f"{heading_b}")
-
     if text_b.strip():
         parts.append(text_b.strip())
-
     return "\n\n".join(parts)
 
 
@@ -316,65 +377,233 @@ def _combine_text(heading_a: str | None, text_a: str,
 # SMART SPLIT LOGIC
 # ============================================================
 
+# Line classifier patterns — applied in order. Each line is exactly one kind.
+_LINE_PATTERNS = [
+    ("table_sep", re.compile(r"^\|\s*-+.*\|\s*$")),       # | --- | --- |
+    ("table_row", re.compile(r"^\|.*\|\s*$")),             # | cell | cell |
+    ("numbered",  re.compile(r"^\d+\.\s+\S")),             # 1. text
+    ("paren_num", re.compile(r"^\(\d+\)\s+\S")),           # (1) text
+    ("alpha",     re.compile(r"^[A-Z]\.\s+\S")),           # A. text
+    ("bullet",    re.compile(r"^[-*]\s+\S")),              # - text   * text
+]
+
+_LIST_KINDS = {"numbered", "paren_num", "alpha", "bullet"}
+_TABLE_KINDS = {"table_row", "table_sep"}
+
+# Logged as a side effect so we can audit which sections still hit the
+# oversized-line passthrough after the splitter rewrite.
+_oversized_line_warnings: list[str] = []
+
+
+def classify_line(line: str) -> str:
+    """Return one of: blank, table_sep, table_row, numbered, paren_num,
+    alpha, bullet, prose."""
+    stripped = line.strip()
+    if not stripped:
+        return "blank"
+    for kind, pat in _LINE_PATTERNS:
+        if pat.match(stripped):
+            return kind
+    return "prose"
+
+
+def _is_header_only(lines: list[str]) -> bool:
+    """
+    True if `lines` contains only table header content (one table_row +
+    optionally a table_sep), with no data rows or other content.
+    """
+    non_blank = [l for l in lines if l.strip()]
+    if not non_blank or len(non_blank) > 2:
+        return False
+    kinds = [classify_line(l) for l in non_blank]
+    if kinds == ["table_row"]:
+        return True
+    if kinds == ["table_row", "table_sep"]:
+        return True
+    return False
+
+
 def split_large_section(section: dict) -> list[dict]:
     """
-    Split a section that exceeds MAX_CHUNK_SIZE into smaller chunks.
+    Split a section that exceeds MAX_CHUNK_SIZE using a line-classifier
+    walker. Break-point preference (highest to lowest):
 
-    Splitting strategy (in order of preference):
-    1. Split at paragraph boundaries (double newline)
-    2. If paragraphs are still too large, split at sentence boundaries
-    3. Each sub-chunk inherits the heading with "(continued)" suffix
+      1. Start of a new table block (flush prose/list content before the
+         table starts so the table's header opens a fresh chunk)
+      2. Table row boundary (between rows; never inside a row)
+      3. List item boundary (numbered, paren_num, alpha, or bullet line)
+      4. Paragraph boundary (blank line)
+      5. Sentence boundary inside a single prose paragraph
+      6. Oversized single line (e.g. a giant table row) — emitted as one
+         chunk that exceeds MAX_CHUNK_SIZE, with a warning logged. Voyage-3
+         has ample token room; preserving the row's logical integrity beats
+         slicing it.
 
-    This handles both well-structured content (many <p> tags) and
-    pages where the HTML used inline elements, producing one giant
-    block of text.
+    Header continuity for tables:
+      - When a table is split across chunks, the table's header row +
+        separator are auto-prepended to every continuation chunk so the
+        chunk stands alone.
+      - A chunk that would consist only of a table header (no data rows)
+        is never emitted; the header is held and carried forward.
+
+    Each split chunk gets:
+      - heading: always the original section heading (no "(continued)" —
+        position is conveyed by chunk_n / chunk_total)
+      - level, parent_heading, links: inherited from the parent
+      - chunk_n / chunk_total: 1-indexed position within this section's
+        split sequence
     """
     text = section["text"]
 
     if len(text) <= MAX_CHUNK_SIZE:
-        return [section]
+        return [{
+            **section,
+            "chunk_n": 1,
+            "chunk_total": 1,
+        }]
 
-    heading = section.get("heading")
-    level = section["level"]
+    lines = text.split("\n")
+    classified = [(line, classify_line(line)) for line in lines]
 
-    # First try: split into paragraphs (double newline)
-    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    chunks: list[list[str]] = []
+    current: list[str] = []
+    current_size = 0
+    in_table_run = False
+    active_header: list[str] = []  # most recent [header_row, sep] for the table
 
-    # If that didn't produce enough splits, try single newlines
-    if len(paragraphs) <= 1:
-        paragraphs = [p.strip() for p in text.split("\n") if p.strip()]
+    def flush():
+        """
+        Emit `current` as a chunk and reset. If `current` is just a table
+        header (no data), hold it instead — the header carries forward
+        into the next chunk.
+        """
+        nonlocal current, current_size
+        if not current:
+            return
+        # Trim trailing blanks
+        while current and not current[-1].strip():
+            current.pop()
+        if not current:
+            current_size = 0
+            return
+        # Don't emit header-only chunks — hold and let the next data row join
+        if _is_header_only(current):
+            return
+        chunks.append(list(current))
+        current = []
+        current_size = 0
+        # If we just flushed mid-table, prepend the active header so the
+        # continuation chunk includes it.
+        if in_table_run and active_header:
+            for h in active_header:
+                current.append(h)
+                current_size += len(h) + 1
 
-    # Group paragraphs into chunks around TARGET_CHUNK_SIZE
-    chunks = _group_segments(paragraphs, separator="\n\n")
+    for line, kind in classified:
+        line_size = len(line) + 1
 
-    # Second pass: any chunk still too large gets sentence-split
-    final_chunks = []
-    for chunk_text in chunks:
+        # Detect "start of new table" BEFORE updating in_table_run state.
+        # This is the case where the current line is a table_row but the
+        # previous accumulated line was non-table — the table is starting
+        # fresh and we want to flush the prose preamble before its header.
+        starting_new_table = (
+            kind == "table_row"
+            and not in_table_run
+            and bool(current)
+        )
+
+        # Update table-run state and capture active header
+        if kind == "table_row":
+            in_table_run = True
+        elif kind == "table_sep":
+            in_table_run = True
+            # The line above us in `current` is the table's header row
+            if current and classify_line(current[-1]) == "table_row":
+                active_header = [current[-1], line]
+        elif kind == "blank":
+            in_table_run = False
+            active_header = []
+        # prose/list lines don't change in_table_run state until next blank
+
+        # Skip leading blanks at the start of an empty chunk
+        if not current and kind == "blank":
+            continue
+
+        new_size = current_size + line_size
+        must_flush = new_size > MAX_CHUNK_SIZE and bool(current)
+        prefer_flush = False
+
+        if starting_new_table and current_size >= MIN_CHUNK_SIZE:
+            # Flush prose/list content before the table's header so the
+            # header opens a new chunk rather than dangling at the end.
+            prefer_flush = True
+
+        if current and current_size >= TARGET_CHUNK_SIZE:
+            if kind == "blank":
+                prefer_flush = True
+            elif kind in _LIST_KINDS and not in_table_run:
+                prefer_flush = True
+
+        if must_flush or prefer_flush:
+            flush()
+
+        current.append(line)
+        current_size += line_size
+
+    flush()
+
+    # Convert each line list into a chunk text string
+    chunk_texts: list[str] = []
+    for chunk_lines in chunks:
+        chunk_text = "\n".join(chunk_lines).strip()
+        if chunk_text and not _is_header_only(chunk_lines):
+            chunk_texts.append(chunk_text)
+
+    # Second pass: oversize prose chunks get sentence-split. Oversize table
+    # chunks are passed through with a warning.
+    final_chunks: list[str] = []
+    for chunk_text in chunk_texts:
         if len(chunk_text) <= MAX_CHUNK_SIZE:
             final_chunks.append(chunk_text)
-        else:
-            # Split on sentence boundaries (period/question/exclamation
-            # followed by a space and a capital letter, or end of string)
-            sentences = re.split(r"(?<=[.?!])\s+(?=[A-Z])", chunk_text)
-            if len(sentences) > 1:
-                final_chunks.extend(_group_segments(sentences, separator=" "))
-            else:
-                # Truly unsplittable — hard split at TARGET_CHUNK_SIZE
-                for start in range(0, len(chunk_text), TARGET_CHUNK_SIZE):
-                    final_chunks.append(chunk_text[start:start + TARGET_CHUNK_SIZE])
+            continue
 
-    # Build section dicts for each chunk
+        chunk_lines = chunk_text.split("\n")
+        kinds = {classify_line(l) for l in chunk_lines if l.strip()}
+        if kinds & _TABLE_KINDS:
+            _oversized_line_warnings.append(
+                f"oversize table chunk ({len(chunk_text)} chars) in section "
+                f"heading={section.get('heading')!r}"
+            )
+            final_chunks.append(chunk_text)
+            continue
+
+        sentences = re.split(r"(?<=[.?!])\s+(?=[A-Z])", chunk_text)
+        if len(sentences) > 1:
+            final_chunks.extend(_group_segments(sentences, separator=" "))
+        else:
+            _oversized_line_warnings.append(
+                f"oversize prose chunk ({len(chunk_text)} chars), no "
+                f"sentence boundaries, in heading={section.get('heading')!r}"
+            )
+            final_chunks.append(chunk_text)
+
+    # Build per-chunk dicts. Heading stays original on all chunks; position
+    # is conveyed by chunk_n / chunk_total in metadata.
+    heading = section.get("heading")
+    level = section["level"]
+    parent_links = section.get("links", [])
+    parent_heading = section.get("parent_heading")
+    total = len(final_chunks)
     result = []
     for i, chunk_text in enumerate(final_chunks):
-        if i == 0:
-            chunk_heading = heading
-        else:
-            chunk_heading = f"{heading} (continued)" if heading else None
-
         result.append({
-            "heading": chunk_heading,
+            "heading": heading,
             "level": level,
             "text": chunk_text,
+            "links": parent_links,
+            "parent_heading": parent_heading,
+            "chunk_n": i + 1,
+            "chunk_total": total,
         })
 
     return result
@@ -392,8 +621,6 @@ def _group_segments(segments: list[str], separator: str = "\n\n") -> list[str]:
     for segment in segments:
         seg_size = len(segment)
 
-        # If adding this segment would exceed MAX and we have content,
-        # flush current chunk first
         if current_size + seg_size > MAX_CHUNK_SIZE and current_parts:
             chunks.append(separator.join(current_parts))
             current_parts = []
@@ -402,7 +629,6 @@ def _group_segments(segments: list[str], separator: str = "\n\n") -> list[str]:
         current_parts.append(segment)
         current_size += seg_size
 
-    # Flush remaining
     if current_parts:
         chunks.append(separator.join(current_parts))
 
@@ -452,6 +678,7 @@ def create_page_document(page_data: dict, sections_with_tables: list[dict]) -> d
             "last_updated": page_data.get("last_updated"),
             "section_count": len(sections_with_tables),
             "has_tables": bool(page_data.get("tables")),
+            "related_pages": page_data.get("related_pages", []),
         },
     }
 
@@ -477,10 +704,13 @@ def create_section_chunks(page_data: dict, sections_with_tables: list[dict]) -> 
     program = page_data.get("program", "")
     page_id = make_page_id(url)
 
-    # Step 1: Merge small sections
-    merged = merge_small_sections(sections_with_tables)
+    # Step 0: Stamp each H3 with its parent H2 heading (no parser change needed)
+    sections_with_parents = add_parent_headings(sections_with_tables)
 
-    # Step 2: Split large sections
+    # Step 1: Merge small sections (cross-level merge protection applies)
+    merged = merge_small_sections(sections_with_parents)
+
+    # Step 2: Split large sections with hierarchy-aware walker
     split_sections = []
     for section in merged:
         split_sections.extend(split_large_section(section))
@@ -489,14 +719,23 @@ def create_section_chunks(page_data: dict, sections_with_tables: list[dict]) -> 
     chunks = []
     for i, section in enumerate(split_sections):
         heading = section.get("heading")
+        parent_heading = section.get("parent_heading")
         text = section["text"].strip()
 
         if not text:
             continue
 
         # Build context prefix and prepend to text
-        prefix = build_context_prefix(breadcrumb, title, heading)
+        prefix = build_context_prefix(breadcrumb, title, heading, parent_heading)
         chunk_text = f"{prefix}\n\n{text}"
+
+        # Filter the section's links down to those whose anchor text actually
+        # appears in this chunk's text.
+        section_links = section.get("links", [])
+        outbound_links = [
+            link for link in section_links
+            if link.get("text") and link["text"] in chunk_text
+        ]
 
         chunk = {
             "chunk_id": make_section_id(url, i),
@@ -508,10 +747,14 @@ def create_section_chunks(page_data: dict, sections_with_tables: list[dict]) -> 
                 "breadcrumb": " > ".join(breadcrumb),
                 "page_title": title,
                 "section_heading": heading,
+                "parent_heading": parent_heading,
                 "section_level": section["level"],
                 "last_updated": page_data.get("last_updated"),
                 "chunk_index": i,
+                "chunk_n": section.get("chunk_n", 1),
+                "chunk_total": section.get("chunk_total", 1),
                 "parent_page_id": page_id,
+                "outbound_links": outbound_links,
             },
         }
         chunks.append(chunk)

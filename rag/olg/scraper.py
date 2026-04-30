@@ -309,6 +309,7 @@ def scrape_page(page: dict) -> dict:
         "sections": parsed["sections"],
         "tables": parsed["tables"],
         "internal_links": parsed["internal_links"],
+        "related_pages": parsed.get("related_pages", []),
         "scraped_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -373,6 +374,7 @@ def run_scraper(
     batch_size: int = 0,
     retry_failed: bool = False,
     program_filter: str | None = None,
+    force: bool = False,
 ) -> None:
     """
     Main scraping loop.
@@ -382,6 +384,10 @@ def run_scraper(
         retry_failed: If True, re-scrape pages that previously failed
                       (but not 404s, since those are permanent).
         program_filter: If set, only scrape pages from this program.
+        force: If True, re-scrape every page in the manifest, ignoring
+               existing progress. 404s are still skipped (they don't come
+               back from --force). Use this to refresh content after
+               parser changes.
     """
     # Load manifest and progress
     pages = load_manifest()
@@ -402,12 +408,17 @@ def run_scraper(
         if program_filter and page["program"].lower() != program_filter.lower():
             continue
 
-        # Skip already-successful pages
-        if url in progress and progress[url]["status"] == "success":
+        # 404s are always skipped — they don't become valid pages on retry
+        if url in progress and progress[url]["status"] == "404":
             continue
 
-        # Skip 404s (they're permanent, re-scraping won't help)
-        if url in progress and progress[url]["status"] == "404":
+        # In force mode, scrape every non-404 page regardless of prior status
+        if force:
+            to_scrape.append(page)
+            continue
+
+        # Skip already-successful pages
+        if url in progress and progress[url]["status"] == "success":
             continue
 
         # Skip failed pages unless --retry-failed
@@ -527,6 +538,11 @@ Examples:
         "--program", type=str, default=None,
         help="Only scrape pages from this program (e.g., SNAP, TAFDC, EAEDC)",
     )
+    arg_parser.add_argument(
+        "--force", action="store_true",
+        help="Re-scrape every non-404 page in the manifest, ignoring prior "
+             "progress. Use after parser changes to refresh extracted content.",
+    )
 
     args = arg_parser.parse_args()
 
@@ -534,6 +550,7 @@ Examples:
         batch_size=args.batch,
         retry_failed=args.retry_failed,
         program_filter=args.program,
+        force=args.force,
     )
 
 

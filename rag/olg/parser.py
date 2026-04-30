@@ -83,7 +83,7 @@ def parse_page(html: str, page_url: str = "") -> dict:
 
     title = _extract_title(topic_div)
     last_updated = _extract_last_updated(topic_div)
-    sections = _extract_sections(topic_div)
+    sections, related_pages = _extract_sections(topic_div, page_url)
     tables = _extract_tables(topic_div)
     internal_links = _extract_internal_links(topic_div, page_url)
 
@@ -93,6 +93,7 @@ def parse_page(html: str, page_url: str = "") -> dict:
         "sections": sections,
         "tables": tables,
         "internal_links": internal_links,
+        "related_pages": related_pages,
     }
 
 
@@ -148,10 +149,52 @@ def _extract_last_updated(topic_div: Tag) -> str | None:
 
 
 # ============================================================
+# UI ARTIFACT STRIPPING
+# ============================================================
+
+# JS toggle button labels and similar UI cruft captured by the scraper.
+# These tokens appear inline in the extracted text but carry no meaning —
+# they're labels for expand/collapse buttons whose targets were already
+# captured (the mechanism defaults to "expanded" in the source).
+_UI_ARTIFACT_PATTERNS = [
+    r"View/Hide\s+View/Hide",   # Doubled (typical pairing of show + hide labels)
+    r"View/Hide",
+    r"view/hide\s+view/hide",
+    r"view/hide",
+    r"\bShow\s+All\b",
+    r"\bHide\s+All\b",
+    r"\bExpand\s+All\b",
+    r"\bCollapse\s+All\b",
+    r"\bPrint\s+Topic\b",
+    r"\bPrint\s+this\s+page\b",
+    r"\bLoading\.\.\.",
+]
+
+_UI_ARTIFACT_RE = re.compile("|".join(_UI_ARTIFACT_PATTERNS), re.IGNORECASE)
+
+
+def _strip_ui_artifacts(text: str) -> str:
+    """
+    Remove JS toggle button labels and other UI cruft from extracted text.
+    Cleans up any double-spaces or excess blank lines left behind.
+    """
+    if not text:
+        return text
+    cleaned = _UI_ARTIFACT_RE.sub("", text)
+    # Collapse runs of whitespace left by the substitutions
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    # Remove orphan punctuation/whitespace at line starts/ends caused by deletions
+    cleaned = re.sub(r"[ \t]+\n", "\n", cleaned)
+    cleaned = re.sub(r"\n[ \t]+", "\n", cleaned)
+    return cleaned.strip()
+
+
+# ============================================================
 # SECTION EXTRACTION
 # ============================================================
 
-def _extract_sections(topic_div: Tag) -> list[dict]:
+def _extract_sections(topic_div: Tag, page_url: str) -> tuple[list[dict], list[dict]]:
     """
     Split page content into sections at H2/H3 boundaries.
 
@@ -163,11 +206,21 @@ def _extract_sections(topic_div: Tag) -> list[dict]:
     content up until the next heading (or end of page).
 
     The "Last Update" H3 at the bottom is excluded from sections.
+
+    "Related Topics" sections are lifted out: their links are returned
+    in the second tuple element, and the section is omitted from the
+    sections list.
+
+    Returns:
+        (sections, related_pages) where related_pages is a list of
+        {"text": ..., "href": ...} dicts.
     """
     sections = []
+    related_pages: list[dict] = []
     current_heading = None
     current_level = 0
-    current_parts = []
+    current_parts: list[str] = []
+    current_links: list[dict] = []
 
     for element in topic_div.children:
         if isinstance(element, NavigableString):
@@ -196,12 +249,17 @@ def _extract_sections(topic_div: Tag) -> list[dict]:
                 continue
 
             # Save the current section before starting a new one
-            _flush_section(sections, current_heading, current_level, current_parts)
+            _flush_section(
+                sections, related_pages,
+                current_heading, current_level,
+                current_parts, current_links,
+            )
 
             # Start a new section
             current_heading = heading_text
             current_level = int(tag_name[1])  # 2 or 3
             current_parts = []
+            current_links = []
 
         elif tag_name == "h1":
             # Skip the title — we extract that separately
@@ -221,30 +279,51 @@ def _extract_sections(topic_div: Tag) -> list[dict]:
             text = _element_to_text(element)
             if text:
                 current_parts.append(text)
+            # Capture any internal links inside this element so they can
+            # travel with the chunk that contains this text.
+            current_links.extend(_extract_links_from_element(element, page_url))
 
     # Don't forget the last section
-    _flush_section(sections, current_heading, current_level, current_parts)
+    _flush_section(
+        sections, related_pages,
+        current_heading, current_level,
+        current_parts, current_links,
+    )
 
-    return sections
+    return sections, related_pages
 
 
 def _flush_section(
     sections: list[dict],
+    related_pages: list[dict],
     heading: str | None,
     level: int,
     parts: list[str],
+    links: list[dict],
 ) -> None:
     """
-    Finalize a section and append it to the sections list, but only
-    if there's actual content (heading or text).
+    Finalize a section. Strips UI artifacts. Diverts "Related Topics"
+    sections into the related_pages collector instead of appending to
+    sections.
     """
     text = "\n\n".join(part for part in parts if part.strip())
+    text = _strip_ui_artifacts(text)
+
+    # Lift Related Topics out — store the links, drop the section
+    if heading and re.match(r"^\s*related\s+topics?\b", heading, re.IGNORECASE):
+        seen_hrefs = {p["href"] for p in related_pages}
+        for link in links:
+            if link["href"] not in seen_hrefs:
+                related_pages.append(link)
+                seen_hrefs.add(link["href"])
+        return
 
     if heading or text.strip():
         sections.append({
             "heading": heading,
             "level": level,
             "text": text.strip(),
+            "links": links,
         })
 
 
@@ -558,6 +637,39 @@ def _parse_rows_with_spans(rows: list[Tag]) -> list[list[str]]:
 # ============================================================
 # INTERNAL LINK EXTRACTION
 # ============================================================
+
+_LINK_BASE_DOMAIN = "eohhs.ehs.state.ma.us"
+
+
+def _extract_links_from_element(element: Tag, page_url: str) -> list[dict]:
+    """
+    Extract internal links from within a single element. Same domain rules
+    as _extract_internal_links, but scoped to one element so links can be
+    attributed to the section they appear in.
+    """
+    links = []
+    seen = set()
+
+    for a_tag in element.find_all("a", href=True):
+        href = a_tag["href"]
+        if href.startswith(("#", "javascript:", "mailto:")):
+            continue
+        if page_url:
+            resolved = urljoin(page_url, href)
+        else:
+            resolved = href
+        resolved = resolved.split("#")[0]
+        if _LINK_BASE_DOMAIN not in resolved:
+            continue
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        link_text = a_tag.get_text(strip=True)
+        if link_text:
+            links.append({"text": link_text, "href": resolved})
+
+    return links
+
 
 def _extract_internal_links(topic_div: Tag, page_url: str) -> list[dict]:
     """

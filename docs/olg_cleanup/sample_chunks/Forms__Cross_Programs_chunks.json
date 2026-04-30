@@ -1,0 +1,62 @@
+[
+  {
+    "chunk_id": "sec__Forms__Cross_Programs__000",
+    "doc_type": "section",
+    "text": "Forms > Online Forms > Cross Programs\n\n| Number | Title | Language |\n| --- | --- | --- |\n|  | ADA Executive Referral Form | English |\n| RER-1 | Agreement to Repay Cash Assistance | English |\n| RER-1 (S) | Agreement to Repay Cash Assistance | Spanish |\n| F&FD-1 | Application for Payment of Funeral and Final Disposition | English |\n| F&FD-1 (S) | Application for Payment of Funeral and Final Disposition | Spanish |\n| Cash Appt-T | Cash Appointment Letter Telephone Interview | English/Spanish |\n|  | Claim for Replacement of Stolen Benefits form |  |\n| CTC | Checklist for Transfer Cases |  |\n| CF-1 | Client Feedback Form | English |\n| CF-1 (S) | Client Feedback Form | Spanish |\n| Veh Calc | Countable Amount Vehicle Worksheet |  |\n| NFL-5A | Denial Notification | English |\n| NFL-5A (S) | Denial Notification | Spanish |\n| CA/DD | Direct Deposit |  |\n| DTA RFS | DTA Registration Face Sheet | English |\n| DTA RFS (S) | DTA Registration Face Sheet | Spanish |\n| FA-1 | Financial Assistance Form | English |\n| FA-1 (S) | Financial Assistance Form | Spanish |\n| NFL-12 | Hearing Decision Notice |  |\n| HLS-1 | Request for Heightened Level of Security | English |\n| HLS-1 (S) | Request for Heightened Level of Security | Spanish |\n| IRF | Interpreter Request Form |  |\n| LL-VER | Landlord Verification Form |  |\n| MHCR-1 | MassHealth Card Replacement Request |  |\n|  | MBTA Youth Pass Program | English/Spanish |\n| NFL-9 | Notice of Approval, or Denial of Requested Benefits | English |",
+    "metadata": {
+      "url": "https://eohhs.ehs.state.ma.us/DTA/PolicyOnline/BEACON5/!SSL!/WebHelp/Forms/Cross_Programs.htm",
+      "program": "Forms",
+      "breadcrumb": "Forms > Online Forms",
+      "page_title": "Cross Programs",
+      "section_heading": null,
+      "parent_heading": null,
+      "section_level": 0,
+      "last_updated": null,
+      "chunk_index": 0,
+      "chunk_n": 1,
+      "chunk_total": 3,
+      "parent_page_id": "page__Forms__Cross_Programs",
+      "outbound_links": []
+    }
+  },
+  {
+    "chunk_id": "sec__Forms__Cross_Programs__001",
+    "doc_type": "section",
+    "text": "Forms > Online Forms > Cross Programs\n\n| Number | Title | Language |\n| --- | --- | --- |\n| NFL-9 (S) | Notice of Approval, or Denial of Requested Benefits | Spanish |\n| NFL-5 | Notice of Denial of Application | English |\n| NFL-5 (S) | Notice of Denial of Application | Spanish |\n| NLD | Notice of Late Document | English |\n| NLD (S) | Notice of Late Document | Spanish |\n| RMN-1 | Notice of Returned Mail | English |\n| RMN-1 (S) | Notice of Returned Mail | Spanish |\n| RMN-1A | Notice of Returned Mail (NVRA-Returned Mail Project) | English |\n| RMN-1A (S) | Notice of Returned Mail (NVRA-Returned Mail Project) | Spanish |\n| PV-1 | Postal Verification Form |  |\n|  | Privacy Poster | English |\n|  | Privacy Poster | Spanish |\n| EBT-16 | Religious Exemption Certification Statement | English |\n| EBT-16 (S) | Religious Exemption Certification Statement | Spanish |\n| DOH-10 | Request for an Appeal | English |\n| DOH-10 (S) | Request for an Appeal | Spanish |\n| Image-10 | Request to Choose Someone to Be My Authorized Representative | English |\n| Image-10 (S) | Request to Choose Someone to Be My Authorized Representative | Spanish |\n| EBT-4 | Request for Deduction from EBT Account | English |\n| DORL-1 | Request for Employment Information |  |\n| FCB-1 | Request for Replacement Check | English |\n| RDN | Returned Document Notice |  |\n| VW-1 | Request To Stop Benefits or Withdraw Application | English |\n| VW-1 (S) | Request To Stop Benefits or Withdraw Application | Spanish |",
+    "metadata": {
+      "url": "https://eohhs.ehs.state.ma.us/DTA/PolicyOnline/BEACON5/!SSL!/WebHelp/Forms/Cross_Programs.htm",
+      "program": "Forms",
+      "breadcrumb": "Forms > Online Forms",
+      "page_title": "Cross Programs",
+      "section_heading": null,
+      "parent_heading": null,
+      "section_level": 0,
+      "last_updated": null,
+      "chunk_index": 1,
+      "chunk_n": 2,
+      "chunk_total": 3,
+      "parent_page_id": "page__Forms__Cross_Programs",
+      "outbound_links": []
+    }
+  },
+  {
+    "chunk_id": "sec__Forms__Cross_Programs__002",
+    "doc_type": "section",
+    "text": "Forms > Online Forms > Cross Programs\n\n| Number | Title | Language |\n| --- | --- | --- |\n| EBT-CC-Info Flyer | Save More of Your Cash Benefits Flyer | English |\n| EBT-CC-Info Flyer (S) | Save More of Your Cash Benefits Flyer | Spanish |\n| SV-1 | School Verification Notice |  |\n| SD-1 | Self-Declaration Form | English |\n| SD-1 (S) | Self-Declaration Form | Spanish |\n| VLA | Shared Housing Verification |  |\n| VLA (S) | Shared Housing Verification | Spanish |\n| SNAP-CSA | SNAP CSA Cancellation Form | English |\n| ENUM-2 | Social Security Number Request |  |\n| VPA-L | Vendor Payment Agreement | English |\n| VPA-L (S) | Vendor Payment Agreement | Spanish |\n| VP/NFL-2 | Vendor Payments Vendor Notification Letter |  |\n|  | Veterans Vendor Payments Form | English |\n| VARi-OI | Voluntary Consent to Release Information | English |\n| VARi-OI (S) | Voluntary Consent to Release Information | Spanish |",
+    "metadata": {
+      "url": "https://eohhs.ehs.state.ma.us/DTA/PolicyOnline/BEACON5/!SSL!/WebHelp/Forms/Cross_Programs.htm",
+      "program": "Forms",
+      "breadcrumb": "Forms > Online Forms",
+      "page_title": "Cross Programs",
+      "section_heading": null,
+      "parent_heading": null,
+      "section_level": 0,
+      "last_updated": null,
+      "chunk_index": 2,
+      "chunk_n": 3,
+      "chunk_total": 3,
+      "parent_page_id": "page__Forms__Cross_Programs",
+      "outbound_links": []
+    }
+  }
+]

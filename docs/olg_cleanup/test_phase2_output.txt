@@ -1,0 +1,593 @@
+==============================================================================
+TEST: BP__Overview__BPov_NG_Overview.json
+  reason: mid-word table cell split (yo|u must mention)
+==============================================================================
+  source: BP__Overview__BPov_NG_Overview.json
+  Sections in page (raw):  3
+  Section-level chunks:    11
+
+  --- sec__BP__Overview__BPov_NG_Overview__000 (661 chars) ---
+    heading: None
+    parent : None
+    chunk_n/total: 1/1
+    text head: 'Business Process (BP) > BP Overview > Narratives Guidelines Overview\n\nThis document provides a standardized template for BEACON Narratives. While the details most relevant to a Narrative vary by scena'
+    text tail: ' these abbreviations to ensure consistent, understandable Narratives statewide. Outlined at the end of this document are common Narrative scenarios, including examples of Narratives for each scenario.'
+
+  --- sec__BP__Overview__BPov_NG_Overview__001 (142 chars) ---
+    heading: 'Essential Components for Every Narrative'
+    parent : None
+    chunk_n/total: 1/3
+    text     : 'Business Process (BP) > BP Overview > Narratives Guidelines Overview > Essential Components for Every Narrative\n\n| SNAP | Cash |\n| --- | --- |'
+
+  --- sec__BP__Overview__BPov_NG_Overview__002 (2000 chars) ---
+    heading: 'Essential Components for Every Narrative (continued)'
+    parent : None
+    chunk_n/total: 2/3
+    text head: 'Business Process (BP) > BP Overview > Narratives Guidelines Overview > Essential Components for Every Narrative (continued)\n\n| What Business Queue and Action Type were associated with the case?; What '
+    text tail: 'ss Changes, you must record the voter registration services you reviewed with the household; For Applications and Recertifications, you must mention if an ADA Accommodation was requested or declined |'
+
+  --- sec__BP__Overview__BPov_NG_Overview__003 (1241 chars) ---
+    heading: 'Essential Components for Every Narrative (continued)'
+    parent : None
+    chunk_n/total: 3/3
+    text head: 'Business Process (BP) > BP Overview > Narratives Guidelines Overview > Essential Components for Every Narrative (continued)\n\nBelow is a checklist that denotes pertinent areas that should be included i'
+    text tail: 'ible?; *AU Mandatory Window Correct?; *Legal\xa0SNAP\xa0disqualified Correct?; *Verification appropriate; *SAVE checked |\n| Work Program Requirements | *Requirement or Appropriate Exemption; *Date updated |'
+
+  --- sec__BP__Overview__BPov_NG_Overview__004 (515 chars) ---
+    heading: 'Acceptable Abbreviations'
+    parent : None
+    chunk_n/total: 1/7
+    text head: 'Business Process (BP) > BP Overview > Narratives Guidelines Overview > Acceptable Abbreviations\n\nClick the terms below for their definitions:\n\nABAWD\n\nADA\n\nAppt\n\nAU\n\nAUM\n\nBENDEX\n\nBSC\n\nCAC\n\nCC\n\nCM\n\nDDS\n'
+    text tail: 'LPR\n\nMRC\n\nNOMI\n\nPBJS\n\nP&P\n\nPRUCOL\n\nPSS\n\nRAC\n\nRFA\n\nRSDI\n\nSAVE\n\nSDX\n\nSNAP\n\nSSA\n\nSSI\n\nSSN\n\nSSS\n\nSUA\n\nSVES\n\nTAFDC\n\nTAO\n\nTBA\n\nTPS\n\nVC-1\n\nWIT\n\nWPR\n\n| Scenario | Description | Narrative |\n| --- | --- | --- |'
+
+  --- sec__BP__Overview__BPov_NG_Overview__005 (1682 chars) ---
+    heading: 'Acceptable Abbreviations (continued)'
+    parent : None
+    chunk_n/total: 2/7
+    text head: 'Business Process (BP) > BP Overview > Narratives Guidelines Overview > Acceptable Abbreviations (continued)\n\n| SNAP Application Interview | Identify HH composition, income, and expenses being used for'
+    text tail: 'to be processed for ongoing benefits by BEACON on next business day as there are no outstanding verifications. Follow-up action created and self-assigned to review SVES request on next business day. |'
+
+  --- sec__BP__Overview__BPov_NG_Overview__006 (861 chars) ---
+    heading: 'Acceptable Abbreviations (continued)'
+    parent : None
+    chunk_n/total: 3/7
+    text head: 'Business Process (BP) > BP Overview > Narratives Guidelines Overview > Acceptable Abbreviations (continued)\n\n| SNAP Application | Identify method of application, results of Cold Call attempt, if an in'
+    text tail: 'cheduled for Monday 2/13/17 at 9:00am. SVES requested for all five household members. SNAP Benefits Application has been dispositioned as Reviewed and Entered. Application remains pending Interview. |'
+
+  --- sec__BP__Overview__BPov_NG_Overview__007 (1306 chars) ---
+    heading: 'Acceptable Abbreviations (continued)'
+    parent : None
+    chunk_n/total: 4/7
+    text head: 'Business Process (BP) > BP Overview > Narratives Guidelines Overview > Acceptable Abbreviations (continued)\n\n| SNAP Interim Report | Identify HH composition, income, expenses, and what changes were re'
+    text tail: 'erim Report Without Changes | Identify that a Process Online Interim Report Action was received for an Interim Report without changes. | Processing Queue – Authorized Interim Report without changes. |'
+
+  --- sec__BP__Overview__BPov_NG_Overview__008 (1554 chars) ---
+    heading: 'Acceptable Abbreviations (continued)'
+    parent : None
+    chunk_n/total: 5/7
+    text head: 'Business Process (BP) > BP Overview > Narratives Guidelines Overview > Acceptable Abbreviations (continued)\n\n| SNAP Recertification | Identify results of Cold Call attempt, if an interview was schedul'
+    text tail: 'avis Vision and household rent remains $1,200/monthly and Non-heating SUA. New employment/income causes household to exceed their gross income limit. VC-1 has been issued for grantee’s new earnings. |'
+
+  --- sec__BP__Overview__BPov_NG_Overview__009 (895 chars) ---
+    heading: 'Acceptable Abbreviations (continued)'
+    parent : None
+    chunk_n/total: 6/7
+    text head: 'Business Process (BP) > BP Overview > Narratives Guidelines Overview > Acceptable Abbreviations (continued)\n\n| SNAP\xa0Reinstatement | Identify the closure reason and list the outstanding verifications. '
+    text tail: 'Earned income has been updated. Documents have been dispositioned as Entered. Interim Report has been submitted and processed. Benefit amount decreased due to increase in household’s monthly income. |'
+
+  --- sec__BP__Overview__BPov_NG_Overview__010 (1302 chars) ---
+    heading: 'Acceptable Abbreviations (continued)'
+    parent : None
+    chunk_n/total: 7/7
+    text head: 'Business Process (BP) > BP Overview > Narratives Guidelines Overview > Acceptable Abbreviations (continued)\n\n| TAFDC\xa0Application | Always put what program the client is applying for, whether they are '
+    text tail: 'are referral. | Grantee returned the ESP referral for the Job Search/Job Readiness Program at JVS. She has been accepted and will attend for 20 hours a week. \xa0\xa0\xa0Part-time child care referral issued. |'
+
+  ✓ No mid-word splits detected
+
+==============================================================================
+TEST: SNAP__Eligibility__Stu_Students.json
+  reason: mid-word table cell split (Enr|olled in)
+==============================================================================
+  source: SNAP__Eligibility__Stu_Students.json
+  Sections in page (raw):  24
+  Section-level chunks:    52
+
+  --- sec__SNAP__Eligibility__Stu_Students__000 (256 chars) ---
+    heading: 'Who is Subject to Student Eligibility Criteria?'
+    parent : None
+    chunk_n/total: 1/1
+    text     : 'SNAP > Eligibility Requirements > Students > Who is Subject to Student Eligibility Criteria?\n\nA student between the ages of 18 and 49 who is enrolled at least half time in an institution of higher education is subject to student eligibility rules for SNAP.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__001 (632 chars) ---
+    heading: 'Who is Not Subject to Student Eligibility Criteria?'
+    parent : None
+    chunk_n/total: 1/1
+    text head: 'SNAP > Eligibility Requirements > Students > Who is Not Subject to Student Eligibility Criteria?\n\nSNAP student eligibility rules do not apply to persons who are:\n\n- age 17 or younger or age 50 or olde'
+    text tail: 'an ineligible type of curriculum (e.g., vocational program that does not require a high school diploma, college course or program that does not lead to a degree)\n- attending school less than half-time'
+
+  --- sec__SNAP__Eligibility__Stu_Students__002 (1100 chars) ---
+    heading: 'What is an Institution of Higher Education?'
+    parent : None
+    chunk_n/total: 1/1
+    text head: 'SNAP > Eligibility Requirements > Students > What is an Institution of Higher Education?\n\nAn institution of higher education is any public or private nonprofit educational institution that admits pers'
+    text tail: 'ols considered institutions of higher education include but are not limited to:\n\n- business, technical, trade, or vocational schools\n- colleges\n- universities\n- correspondence schools\n- online schools'
+
+  --- sec__SNAP__Eligibility__Stu_Students__003 (1119 chars) ---
+    heading: 'Student Eligibility Requirements'
+    parent : None
+    chunk_n/total: 1/4
+    text head: 'SNAP > Eligibility Requirements > Students > Student Eligibility Requirements\n\nTo be eligible for SNAP, a student must meet at least one of the following requirements. The student must:\n\n- be employed'
+    text tail: 'te or federally financed work study program during the regular school year (see the Work Study section below for more details)\n\nNote : Massachusetts does not operate a state-funded work-study program.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__004 (1143 chars) ---
+    heading: 'Student Eligibility Requirements (continued)'
+    parent : None
+    chunk_n/total: 2/4
+    text head: 'SNAP > Eligibility Requirements > Students > Student Eligibility Requirements (continued)\n\n- be physically/mentally unfit for employment.\n\n  - Students are considered unfit for employment if they have'
+    text tail: 'of 12 for whom adequate childcare is not available to enable the student to attend school and work a minimum of 20 hours per week, or participate in a work-study program during the regular school year'
+
+  --- sec__SNAP__Eligibility__Stu_Students__005 (1209 chars) ---
+    heading: 'Student Eligibility Requirements (continued)'
+    parent : None
+    chunk_n/total: 3/4
+    text head: 'SNAP > Eligibility Requirements > Students > Student Eligibility Requirements (continued)\n\n- be a single parent enrolled full-time in an institution of higher education and responsible for the care of'
+    text tail: 'n an employment and training program subject to the condition that the course or program of study is limited to remedial courses, basic adult education, literacy, or English as a Second Language (ESL)'
+
+  --- sec__SNAP__Eligibility__Stu_Students__006 (1029 chars) ---
+    heading: 'Student Eligibility Requirements (continued)'
+    parent : None
+    chunk_n/total: 4/4
+    text head: 'SNAP > Eligibility Requirements > Students > Student Eligibility Requirements (continued)\n\n- be assigned to or placed in an institution of higher education through:\n- a program under the Workforce Inn'
+    text tail: 'les as a student attending at least half-time, the Education page must reflect an active start date and an anticipated graduation date that is in the future. Therefore, you must complete these fields.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__007 (644 chars) ---
+    heading: 'Community College Students'
+    parent : None
+    chunk_n/total: 1/1
+    text head: 'SNAP > Eligibility Requirements > Students > Community College Students\n\nIf a student is enrolled at a community college or at a post-secondary program at a vocational/technical school, this means the'
+    text tail: 'vide either a telephonic or written self-declaration of the community college they are enrolled at. The school must be entered in BEACON, and no additional verification is needed, unless questionable.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__008 (987 chars) ---
+    heading: 'Massachusetts Community Colleges'
+    parent : 'Community College Students'
+    chunk_n/total: 1/1
+    text head: 'SNAP > Eligibility Requirements > Students > Community College Students > Massachusetts Community Colleges\n\n- Massachusetts Community Colleges\n- Berkshire Community College\n- Bristol Community College'
+    text tail: 'live in Attleboro, but attend Community College of Rhode Island (CCRI). Students who attend an out-of-state community college still meet student status under the Perkins IV eligible program exemption.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__009 (361 chars) ---
+    heading: 'Quasi-State Schools'
+    parent : None
+    chunk_n/total: 1/1
+    text     : 'SNAP > Eligibility Requirements > Students > Quasi-State Schools\n\nStudents meet the student exemption of being enrolled in a CTE program under Perkins IV or in a program of study that would lead to employment regardless if they are enrolled in a 2 or 4 year degree program at these schools:\n\n- Benjamin Franklin Cummings Institute of Technology\n- Quincy College'
+
+  --- sec__SNAP__Eligibility__Stu_Students__010 (1361 chars) ---
+    heading: 'Regional Vocational Technical Schools'
+    parent : None
+    chunk_n/total: 1/1
+    text head: 'SNAP > Eligibility Requirements > Students > Regional Vocational Technical Schools\n\n- Regional Vocational Technical Schools\n- Assabet Valley Regional Vocational Technical\n- Blackstone Valley Regional '
+    text tail: 'ble for SNAP. Students who attend these schools for a high school curriculum are not held to the student eligibility requirements (i.e., not considered enrolled in an institution of higher education).'
+
+  --- sec__SNAP__Eligibility__Stu_Students__011 (249 chars) ---
+    heading: 'Four Year College/University Students'
+    parent : None
+    chunk_n/total: 1/1
+    text     : 'SNAP > Eligibility Requirements > Students > Four Year College/University Students\n\nIf a client indicates they are a student at a four-year college or university, the student must meet at least one of the student eligibility criteria outlined above.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__012 (1046 chars) ---
+    heading: 'Continuous Enrollment'
+    parent : None
+    chunk_n/total: 1/1
+    text head: 'SNAP > Eligibility Requirements > Students > Continuous Enrollment\n\nA student’s status does not change when the school is not in session, provided the student is enrolled for the next regular session.'
+    text tail: 'ive SNAP benefits, with the exception of work study.\n\nImportant : A student is not subject to continuous enrollment rules if the student enrolls for the first time and the start date is in the future.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__013 (1439 chars) ---
+    heading: 'College Students Coming Home for Summer Breaks'
+    parent : 'Continuous Enrollment'
+    chunk_n/total: 1/3
+    text head: 'SNAP > Eligibility Requirements > Students > Continuous Enrollment > College Students Coming Home for Summer Breaks\n\nPrimarily during the beginning of summer break, SNAP households may request to add '
+    text tail: 'ork study is approved, whichever is later. This exemption does not continue between terms when there is a break of one month or more unless the student is participating in work study during the break.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__014 (1292 chars) ---
+    heading: 'College Students Coming Home for Summer Breaks (continued)'
+    parent : 'Continuous Enrollment'
+    chunk_n/total: 2/3
+    text head: 'SNAP > Eligibility Requirements > Students > Continuous Enrollment > College Students Coming Home for Summer Breaks (continued)\n\nExample 1 Example 1\n\nA grantee calls the DTA Assistance Line to add the'
+    text tail: 'us school year. Since John has not received his finalized financial aid award letter, the student exemption of MassGrant can be used from the previous school year based on continuous enrollment rules.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__015 (524 chars) ---
+    heading: 'College Students Coming Home for Summer Breaks (continued)'
+    parent : 'Continuous Enrollment'
+    chunk_n/total: 3/3
+    text head: 'SNAP > Eligibility Requirements > Students > Continuous Enrollment > College Students Coming Home for Summer Breaks (continued)\n\nImportant: Students that come home for the summer who previously had a '
+    text tail: 'they are no longer receiving a meal plan during the time of the break and are not considered boarding at that time. Their SNAP eligibility will be redetermined at the household’s next recertification.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__016 (1166 chars) ---
+    heading: 'Work-study'
+    parent : None
+    chunk_n/total: 1/1
+    text head: 'SNAP > Eligibility Requirements > Students > Work-study\n\nFinancial aid offices award work study funds as part of a student’s financial aid package. If a student accepts the package, these funds are di'
+    text tail: ' as these three criteria are met, the student will be eligible for the work study exemption. However, a student who refuses a work study assignment is not considered to be participating in work study.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__017 (1200 chars) ---
+    heading: 'Anticipating Participation in Work Study'
+    parent : 'Work-study'
+    chunk_n/total: 1/3
+    text head: 'SNAP > Eligibility Requirements > Students > Work-study > Anticipating Participation in Work Study\n\nThere is a difference between anticipating working and refusing to participate in work study. For ex'
+    text tail: 'participating in work study do not need to meet the exemption of working 20 hours a week. The work study exemption does not have a specific number of hours per week. These are two separate exemptions.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__018 (1178 chars) ---
+    heading: 'Anticipating Participation in Work Study (continued)'
+    parent : 'Work-study'
+    chunk_n/total: 2/3
+    text head: 'SNAP > Eligibility Requirements > Students > Work-study > Anticipating Participation in Work Study (continued)\n\nThe exemption does not continue between terms when there is a break of one month or more'
+    text tail: 'fit their schedule. Teddy cannot obtain student eligibility by the work study exemption as: Teddy has not yet started working in the work study position and the Spring semester is more than half over.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__019 (1273 chars) ---
+    heading: 'Anticipating Participation in Work Study (continued)'
+    parent : 'Work-study'
+    chunk_n/total: 3/3
+    text head: 'SNAP > Eligibility Requirements > Students > Work-study > Anticipating Participation in Work Study (continued)\n\nExample 3 Example 3\n\nJulie (she/her) applies for SNAP for herself on July 1st. Julie ind'
+    text tail: 'tudy exemption as: He was approved for work study at the time he applied/recertified for SNAP; The work study is approved for the current remainder of the term, and; Jonah anticipates actually working'
+
+  --- sec__SNAP__Eligibility__Stu_Students__020 (1530 chars) ---
+    heading: 'Verifying Student Eligibility'
+    parent : None
+    chunk_n/total: 1/2
+    text head: 'SNAP > Eligibility Requirements > Students > Verifying Student Eligibility\n\nStudents can provide a telephonic or written self-declaration of the school they are attending and the student eligibility c'
+    text tail: 'and create a mandatory User-Entered Additional Verification item for student eligibility as their financial aid award of work study is now considered questionable and documentary evidence is required.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__021 (692 chars) ---
+    heading: 'Verifying Student Eligibility (continued)'
+    parent : None
+    chunk_n/total: 2/2
+    text head: 'SNAP > Eligibility Requirements > Students > Verifying Student Eligibility (continued)\n\nExample 3 Example 3\n\nRachael is applying for SNAP for themself and has reported that they are attending Boston U'
+    text tail: 'A mandatory VC-1 must be sent for the wages.\n\nImportant : If a student is working on-campus and the employment is not tied to any financial aid award, the wages are considered countable earned income.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__022 (430 chars) ---
+    heading: 'Conversation With a Household Member About Student Eligibility'
+    parent : None
+    chunk_n/total: 1/1
+    text head: 'SNAP > Eligibility Requirements > Students > Conversation With a Household Member About Student Eligibility\n\nWhen a client indicates that they or a household member is a college student, you must ask '
+    text tail: 'he college they attend. If this is not a community college, you must continue to screen for student eligibility. You must start with eligibility requirements that are based on household circumstances.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__023 (1283 chars) ---
+    heading: 'Eligibility Based on Household Circumstances'
+    parent : 'Conversation With a Household Member About Student Eligibility'
+    chunk_n/total: 1/5
+    text head: 'SNAP > Eligibility Requirements > Students > Conversation With a Household Member About Student Eligibility > Eligibility Based on Household Circumstances\n\nThis is likely to be information we would ha'
+    text tail: ':\n\n- have received any documentation such as their financial aid award letter, an email/letter from the Department of Education, or Student Aid Report (SAR) stating they have been awarded a MassGrant.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__024 (1244 chars) ---
+    heading: 'Eligibility Based on Household Circumstances (continued)'
+    parent : 'Conversation With a Household Member About Student Eligibility'
+    chunk_n/total: 2/5
+    text head: 'SNAP > Eligibility Requirements > Students > Conversation With a Household Member About Student Eligibility > Eligibility Based on Household Circumstances (continued)\n\n- are unable to work due to bein'
+    text tail: 'on Act, or\n  - a SNAP Path to Work Program employment and training program\n\nQuestions to ask the student if they state they are physically/mentally unfit for employment but are not federally disabled:'
+
+  --- sec__SNAP__Eligibility__Stu_Students__025 (1295 chars) ---
+    heading: 'Eligibility Based on Household Circumstances (continued)'
+    parent : 'Conversation With a Household Member About Student Eligibility'
+    chunk_n/total: 3/5
+    text head: 'SNAP > Eligibility Requirements > Students > Conversation With a Household Member About Student Eligibility > Eligibility Based on Household Circumstances (continued)\n\n1. Are you in receipt of tempora'
+    text tail: 'can be verified with the SNAP E&T unit):\n\n1. Do you receive any part of your training program through an institution of higher education such as a trade/vocational tech school, college, or university?'
+
+  --- sec__SNAP__Eligibility__Stu_Students__026 (1294 chars) ---
+    heading: 'Eligibility Based on Household Circumstances (continued)'
+    parent : 'Conversation With a Household Member About Student Eligibility'
+    chunk_n/total: 4/5
+    text head: 'SNAP > Eligibility Requirements > Students > Conversation With a Household Member About Student Eligibility > Eligibility Based on Household Circumstances (continued)\n\n1. If NO, client is not consider'
+    text tail: 'd contacts the Department and states the student exemption and it is not questionable, you must verify the student exemption via telephonic self-declaration. You must not request further verification.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__027 (817 chars) ---
+    heading: 'Eligibility Based on Household Circumstances (continued)'
+    parent : 'Conversation With a Household Member About Student Eligibility'
+    chunk_n/total: 5/5
+    text head: 'SNAP > Eligibility Requirements > Students > Conversation With a Household Member About Student Eligibility > Eligibility Based on Household Circumstances (continued)\n\nIf student eligibility is not al'
+    text tail: 'e client telephonically verifies.\n\nImportant : A student can attest to the name of their school, student eligibility reason, and their meal plan status (if applicable) all in one telephonic signature.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__028 (1539 chars) ---
+    heading: 'Documentary Evidence is Required When Student Eligibility is Considered Questionable'
+    parent : None
+    chunk_n/total: 1/3
+    text head: 'SNAP > Eligibility Requirements > Students > Documentary Evidence is Required When Student Eligibility is Considered Questionable\n\nIn most cases, proof of student eligibility can be self-declared. How'
+    text tail: 'same academic year and stated they did not meet any student eligibility criteria and now stating they do meet student eligibility by receipt of Work Study. | Financial Aid Award letter or pay stubs. |'
+
+  --- sec__SNAP__Eligibility__Stu_Students__029 (1386 chars) ---
+    heading: 'Documentary Evidence is Required When Student Eligibility is Considered Questionable (continued)'
+    parent : None
+    chunk_n/total: 2/3
+    text head: 'SNAP > Eligibility Requirements > Students > Documentary Evidence is Required When Student Eligibility is Considered Questionable (continued)\n\n| Participating in an on-the-job training program | Clien'
+    text tail: 'tance (DUA) or the MassHire Career Center. | Letter from MassHire Career Center.; Letter from the Department of Unemployment Assistance (DUA) confirming that the client is approved for TAA training. |'
+
+  --- sec__SNAP__Eligibility__Stu_Students__030 (721 chars) ---
+    heading: 'Documentary Evidence is Required When Student Eligibility is Considered Questionable (continued)'
+    parent : None
+    chunk_n/total: 3/3
+    text head: 'SNAP > Eligibility Requirements > Students > Documentary Evidence is Required When Student Eligibility is Considered Questionable (continued)\n\n| Mentally or physically unfit for employment | Client is'
+    text tail: 'am or other Massachusetts approved vocational rehabilitation programs.; Letter from the student’s physician/certified psychologist stating the student is physically or mentally unfit for employment. |'
+
+  --- sec__SNAP__Eligibility__Stu_Students__031 (1302 chars) ---
+    heading: 'Meal Plan'
+    parent : None
+    chunk_n/total: 1/3
+    text head: 'SNAP > Eligibility Requirements > Students > Meal Plan\n\nVerifying whether a student has a meal plan is another aspect that is pertinent only to students who reside and attend 4-year colleges or univer'
+    text tail: 'r meal plan. If the client reports that they are a student and reside on campus, staff must ask if they have a meal plan that covers at least 2 out of their 3 daily meals or 14 or more meals per week.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__032 (1177 chars) ---
+    heading: 'Meal Plan (continued)'
+    parent : None
+    chunk_n/total: 2/3
+    text head: 'SNAP > Eligibility Requirements > Students > Meal Plan (continued)\n\nYou must verify whether the student has a meal plan by asking:\n\n- “Do you have a meal plan that provides at least two out of three o'
+    text tail: 'ered an eligible college student as she attends Bunker Hill Community College. Although Isla has a meal plan, she is eligible for SNAP as she is not residing on campus and boarding rules do not apply.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__033 (1541 chars) ---
+    heading: 'Meal Plan (continued)'
+    parent : None
+    chunk_n/total: 3/3
+    text head: 'SNAP > Eligibility Requirements > Students > Meal Plan (continued)\n\nExample 2 Example 2\n\nAndrew (he/him) applies for SNAP on September 9th. He indicates that he is a college student at Berkley College'
+    text tail: 'vers about 5 meals a week and some snacks. Christina is an eligible college student as they are in receipt of the MassGrant, and the meal plan does not cover more than 2 out of 3 of their daily meals.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__034 (1274 chars) ---
+    heading: 'Verifying a Meal Plan When it is Considered Questionable'
+    parent : None
+    chunk_n/total: 1/2
+    text head: 'SNAP > Eligibility Requirements > Students > Verifying a Meal Plan When it is Considered Questionable\n\nIf the student response is considered questionable (such as, but not limited to the student indic'
+    text tail: "arceration.\n\nThis will generate a notice that states, “you and/or a household member do not meet the program's rules because you are a resident of a facility that provides the majority of your meals.”"
+
+  --- sec__SNAP__Eligibility__Stu_Students__035 (671 chars) ---
+    heading: 'Verifying a Meal Plan When it is Considered Questionable (continued)'
+    parent : None
+    chunk_n/total: 2/2
+    text head: 'SNAP > Eligibility Requirements > Students > Verifying a Meal Plan When it is Considered Questionable (continued)\n\nIf the student indicates that they receive a meal plan that covers the majority of th'
+    text tail: 'ts.\n\nImportant: Students that come home for the summer break are eligible for SNAP if they meet student eligibility criteria, regardless of if they were receiving a meal plan while boarding at school.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__036 (1280 chars) ---
+    heading: 'How to Request Proof of Student Eligibility and/or Status of a Meal Plan When it is Considered Questionable'
+    parent : None
+    chunk_n/total: 1/3
+    text head: 'SNAP > Eligibility Requirements > Students > How to Request Proof of Student Eligibility and/or Status of a Meal Plan When it is Considered Questionable\n\nWhen staff enter the student’s education infor'
+    text tail: 'tion Details page and write Mandatory Verification of Student Eligibility Requested in the Other comment section. This will verify the item so that the CCE information will not be printed on the VC-1.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__037 (1172 chars) ---
+    heading: 'How to Request Proof of Student Eligibility and/or Status of a Meal Plan When it is Considered Questionable (continued)'
+    parent : None
+    chunk_n/total: 2/3
+    text head: 'SNAP > Eligibility Requirements > Students > How to Request Proof of Student Eligibility and/or Status of a Meal Plan When it is Considered Questionable (continued)\n\n3. To request verification of stud'
+    text tail: ' told us that you or someone in your household is a college student. \xa0You can call and tell us if the student meets an eligibility reason below or send us any documentation verifying that the student:'
+
+  --- sec__SNAP__Eligibility__Stu_Students__038 (1323 chars) ---
+    heading: 'How to Request Proof of Student Eligibility and/or Status of a Meal Plan When it is Considered Questionable (continued)'
+    parent : None
+    chunk_n/total: 3/3
+    text head: 'SNAP > Eligibility Requirements > Students > How to Request Proof of Student Eligibility and/or Status of a Meal Plan When it is Considered Questionable (continued)\n\n2. {+ Add Row}\n    1. receives Mas'
+    text tail: ' training\n    2. is mentally or physically unfit for employment: such as a letter from the student’s physician/certified psychologist stating the student is physically or mentally unfit for employment'
+
+  --- sec__SNAP__Eligibility__Stu_Students__039 (483 chars) ---
+    heading: 'Meal Plan'
+    parent : 'How to Request Proof of Student Eligibility and/or Status of a Meal Plan When it is Considered Questionable'
+    chunk_n/total: 1/1
+    text head: 'SNAP > Eligibility Requirements > Students > How to Request Proof of Student Eligibility and/or Status of a Meal Plan When it is Considered Questionable > Meal Plan\n\n1. To request verification of a me'
+    text tail: ' the Details field, enter Meal Plan.\n2. Annotate the Document(s) of Evidence section with:\n\n  1. “You told us you are a college student that has a meal plan. \xa0Please provide a copy of your meal plan.”'
+
+  --- sec__SNAP__Eligibility__Stu_Students__040 (817 chars) ---
+    heading: 'Ineligible Students'
+    parent : None
+    chunk_n/total: 1/1
+    text head: 'SNAP > Eligibility Requirements > Students > Ineligible Students\n\nThe income and assets of an ineligible student must not be included in eligibility determinations.\n\nTo remove an ineligible student fr'
+    text tail: "carceration. This will generate a notice that states, “you and/or a household member do not meet the program's rules because you are a resident of a facility that provides the majority of your meals.”"
+
+  --- sec__SNAP__Eligibility__Stu_Students__041 (1308 chars) ---
+    heading: 'Educational Loans, Grants, Scholarships, and Reimbursements'
+    parent : None
+    chunk_n/total: 1/2
+    text head: 'SNAP > Eligibility Requirements > Students > Educational Loans, Grants, Scholarships, and Reimbursements\n\nFinancial assistance paid to a student as part of a financial aid package, grant, loan or scho'
+    text tail: ' the campus bookstore and be paid regular wages because they do not receive work study as part of their financial aid package. This income is countable as wages according to the rules of each program.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__042 (450 chars) ---
+    heading: 'Educational Loans, Grants, Scholarships, and Reimbursements (continued)'
+    parent : None
+    chunk_n/total: 2/2
+    text head: 'SNAP > Eligibility Requirements > Students > Educational Loans, Grants, Scholarships, and Reimbursements (continued)\n\nNote : Internships are considered countable earned income, and must be entered as '
+    text tail: ' financial aid package. Since the internship is countable earned income, the client can use the hours worked to determine if the client meets student eligibility criteria of working 20 hours per week.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__043 (1248 chars) ---
+    heading: 'Student Examples'
+    parent : None
+    chunk_n/total: 1/9
+    text head: 'SNAP > Eligibility Requirements > Students > Student Examples\n\nQ1 . Dante (he/him) was previously a student and reported during an interview that he is not in school anymore and does not plan to retur'
+    text tail: 'loma or equivalency certificate is required for enrollment, Hui must meet student eligibility requirements. If there is no such requirement, Hui does not need to meet student eligibility requirements.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__044 (1243 chars) ---
+    heading: 'Student Examples (continued)'
+    parent : None
+    chunk_n/total: 2/9
+    text head: 'SNAP > Eligibility Requirements > Students > Student Examples (continued)\n\nQ3 . If a student enrolled in school for the first time or has formally withdrawn, and the semester has not started, does stu'
+    text tail: 'ent eligibility criteria, you are to process the case maintaining the same eligibility reason. A detailed narrative must be left, and student eligibility will be explored at the next reporting period.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__045 (1207 chars) ---
+    heading: 'Student Examples (continued)'
+    parent : None
+    chunk_n/total: 3/9
+    text head: 'SNAP > Eligibility Requirements > Students > Student Examples (continued)\n\nQ5. Drew (he/they) is an ineligible college student as they do not meet any eligibility requirements for a college student. D'
+    text tail: 'go in at the end of the summer and remove the client or mark the client as Institutionalized based on Simplified Reporting rules. The next reporting period will adjust the client’s eligibility status.'
+
+  --- sec__SNAP__Eligibility__Stu_Students__046 (1118 chars) ---
+    heading: 'Student Examples (continued)'
+    parent : None
+    chunk_n/total: 4/9
+    text head: 'SNAP > Eligibility Requirements > Students > Student Examples (continued)\n\nQ7 . Jamie (they/them) is at their recertification period in June. During the recertification interview, Jamie states that th'
+    text tail: 's that he is a student attending Boston University and works approximately 22 hours per week for a local business. William supplies his wage stubs for the previous four weeks. The wage stubs indicate:'
+
+  --- sec__SNAP__Eligibility__Stu_Students__047 (1268 chars) ---
+    heading: 'Student Examples (continued)'
+    parent : None
+    chunk_n/total: 5/9
+    text head: 'SNAP > Eligibility Requirements > Students > Student Examples (continued)\n\n- 10/27 – 11/2, listing $300.00 in gross income\n- 11/3 – 11/9, listing $360.00 in gross income\n- 11/10 – 11/16, listing $390.'
+    text tail: 'ew, Sarah states that she is a commuting, full-time student at UMass Amherst, and works approximately 25 hours per week. Sarah supplies wage stubs for the previous four weeks. The wage stubs indicate:'
+
+  --- sec__SNAP__Eligibility__Stu_Students__048 (1084 chars) ---
+    heading: 'Student Examples (continued)'
+    parent : None
+    chunk_n/total: 6/9
+    text head: 'SNAP > Eligibility Requirements > Students > Student Examples (continued)\n\n- 3/30 – 4/13, listing $520.00 in gross income\n- 4/14 – 4/27, listing $552.00 in gross income\n\nWhen reviewing Sarah’s verific'
+    text tail: 'and works an average of 20 hours per week. Zion does not meet any other student eligibility criteria. Is Zion an eligible student? Do I count the assistantship income, and does it need to be verified?'
+
+  --- sec__SNAP__Eligibility__Stu_Students__049 (1418 chars) ---
+    heading: 'Student Examples (continued)'
+    parent : None
+    chunk_n/total: 7/9
+    text head: 'SNAP > Eligibility Requirements > Students > Student Examples (continued)\n\nA10 : Zion is not an eligible college student as the assistantship is considered noncountable educational income, and therefo'
+    text tail: ' is receiving a scholarship from their local Credit Union to go towards school expenses. Do I count the income from the local Credit Union and the Work Study? Does Jeremiah need to verify this income?'
+
+  --- sec__SNAP__Eligibility__Stu_Students__050 (1259 chars) ---
+    heading: 'Student Examples (continued)'
+    parent : None
+    chunk_n/total: 8/9
+    text head: 'SNAP > Eligibility Requirements > Students > Student Examples (continued)\n\nA12 : No, Jeremiah does not need to verify the scholarship from the local Credit Union, as all educational income, including '
+    text tail: 'n the Bachelor of Science, Business Management program. Since Quincy College is a quasi-state school, does Jodie qualify as an eligible student based on their program and attendance at Quincy College?'
+
+  --- sec__SNAP__Eligibility__Stu_Students__051 (1096 chars) ---
+    heading: 'Student Examples (continued)'
+    parent : None
+    chunk_n/total: 9/9
+    text head: 'SNAP > Eligibility Requirements > Students > Student Examples (continued)\n\nA14 : Yes. Since Quincy College offers eligible CTE programs under Perkins IV or programs that would lead to employment, Jodi'
+    text tail: 'port from her university’s reasonable accommodation’s office.\n\nRelated Topics Earned Income Policy and Procedures Other Income Introduction Students Policy and Procedures Last Update: January 26, 2026'
+
+  ✓ No mid-word splits detected
+
+==============================================================================
+TEST: Forms__Cross_Programs.json
+  reason: mid-word table cell split (Reques|t for Deduction)
+==============================================================================
+  source: Forms__Cross_Programs.json
+  Sections in page (raw):  1
+  Section-level chunks:    3
+
+  --- sec__Forms__Cross_Programs__000 (1486 chars) ---
+    heading: None
+    parent : None
+    chunk_n/total: 1/3
+    text head: 'Forms > Online Forms > Cross Programs\n\n| Number | Title | Language |\n| --- | --- | --- |\n|  | ADA Executive Referral Form | English |\n| RER-1 | Agreement to Repay Cash Assistance | English |\n| RER-1 ('
+    text tail: 'rd Verification Form |  |\n| MHCR-1 | MassHealth Card Replacement Request |  |\n|  | MBTA Youth Pass Program | English/Spanish |\n| NFL-9 | Notice of Approval, or Denial of Requested Benefits | English |'
+
+  --- sec__Forms__Cross_Programs__001 (1501 chars) ---
+    heading: None
+    parent : None
+    chunk_n/total: 2/3
+    text head: 'Forms > Online Forms > Cross Programs\n\n| NFL-9\xa0(S) | Notice of Approval, or Denial of Requested Benefits | Spanish |\n| NFL-5 | Notice of Denial of Application | English |\n| NFL-5\xa0(S) | Notice of Denia'
+    text tail: 't To Stop Benefits or Withdraw Application | English |\n| VW-1 (S) | Request To Stop Benefits or Withdraw Application | Spanish |\n| EBT-CC-Info Flyer | Save More of Your Cash Benefits Flyer | English |'
+
+  --- sec__Forms__Cross_Programs__002 (777 chars) ---
+    heading: None
+    parent : None
+    chunk_n/total: 3/3
+    text head: 'Forms > Online Forms > Cross Programs\n\n| EBT-CC-Info Flyer\xa0(S) | Save More of Your Cash Benefits Flyer | Spanish |\n| SV-1 | School Verification Notice |  |\n| SD-1 | Self-Declaration Form | English |\n|'
+    text tail: 'ication Letter |  |\n|  | Veterans Vendor Payments Form | English |\n| VARi-OI | Voluntary Consent to Release Information | English |\n| VARi-OI (S) | Voluntary Consent to Release Information | Spanish |'
+
+  ✓ No mid-word splits detected
+
+==============================================================================
+TEST: COVID__COVID_ProcPandUCInc.json
+  reason: subsection-merge contamination (H2 intro absorbing first H3)
+==============================================================================
+  source: COVID__COVID_ProcPandUCInc.json
+  Sections in page (raw):  10
+  Section-level chunks:    12
+
+  --- sec__COVID__COVID_ProcPandUCInc__001 (735 chars) ---
+    heading: 'Pandemic Unemployment Assistance (PUA)'
+    parent : 'Pandemic Unemployment Compensation Types'
+    chunk_n/total: 1/1
+    text head: 'COVID-19 > Processing Cases with Pandemic UC Income > Pandemic Unemployment Compensation Types > Pandemic Unemployment Assistance (PUA)\n\nPUA provides unemployment benefits to claimants who are not wor'
+    text tail: ' in the tax year before the client applied.\n\nUI Online displays limited information about the PUA income type. Procedures for verifying PUA are found later in this document under Verifying PUA Income.'
+
+  --- sec__COVID__COVID_ProcPandUCInc__002 (446 chars) ---
+    heading: 'Pandemic Emergency Unemployment Compensation (PEUC)'
+    parent : 'Pandemic Unemployment Compensation Types'
+    chunk_n/total: 1/1
+    text head: 'COVID-19 > Processing Cases with Pandemic UC Income > Pandemic Unemployment Compensation Types > Pandemic Emergency Unemployment Compensation (PEUC)\n\nThe PEUC program provides extended unemployment in'
+    text tail: 'ed their previous unemployment benefits. PEUC claimants will be identified in the Current Program column in the Weeks Claimed section of the claimant’s UI Online profile. It will be displayed as PEUC.'
+
+  --- sec__COVID__COVID_ProcPandUCInc__003 (750 chars) ---
+    heading: 'Federal Pandemic Unemployment Compensation (FPUC)'
+    parent : 'Pandemic Unemployment Compensation Types'
+    chunk_n/total: 1/1
+    text head: 'COVID-19 > Processing Cases with Pandemic UC Income > Pandemic Unemployment Compensation Types > Federal Pandemic Unemployment Compensation (FPUC)\n\nThis benefit provides an additional $300 per week to'
+    text tail: 'mn. It will be displayed as FPUC when you click the Week End Date.\n\nImportant: This income is not countable for SNAP and TAFDC and must not be added to the client’s weekly unemployment benefit amount.'
+
+  --- sec__COVID__COVID_ProcPandUCInc__004 (1082 chars) ---
+    heading: 'Mixed Earner Unemployment Compensation (MEUC)'
+    parent : 'Pandemic Unemployment Compensation Types'
+    chunk_n/total: 1/1
+    text head: 'COVID-19 > Processing Cases with Pandemic UC Income > Pandemic Unemployment Compensation Types > Mixed Earner Unemployment Compensation (MEUC)\n\nMixed Earner Unemployment Compensation payments are a ty'
+    text tail: 'C, including the weekly amount, frequency, and that it is noncountable. An update will be provided when more information is available about how this benefit type will or will not display on UI Online.'
+
+  --- sec__COVID__COVID_ProcPandUCInc__005 (1007 chars) ---
+    heading: 'Termination of All Pandemic Unemployment Compensation Types'
+    parent : None
+    chunk_n/total: 1/1
+    text head: 'COVID-19 > Processing Cases with Pandemic UC Income > Termination of All Pandemic Unemployment Compensation Types\n\nEffective for week ending September 4, 2021 all Pandemic Unemployment Compensation ty'
+    text tail: 'y HLS) or have not opted-out of text messaging, will also receive a DTA Text Alert notifying them that the Department is working with DUA to remove the income and that they do not need to do anything.'
+
+  --- sec__COVID__COVID_ProcPandUCInc__006 (1118 chars) ---
+    heading: 'Termination of Pandemic Unemployment Compensation at Application – SNAP'
+    parent : 'Termination of All Pandemic Unemployment Compensation Types'
+    chunk_n/total: 1/3
+    text head: 'COVID-19 > Processing Cases with Pandemic UC Income > Termination of All Pandemic Unemployment Compensation Types > Termination of Pandemic Unemployment Compensation at Application – SNAP\n\nIf a client'
+    text tail: 'the week of 9/6/21) has not yet been issued, you must use the same amount the client previously received the week prior as the income amount to be added to the client’s total terminated income amount.'
+
+  --- sec__COVID__COVID_ProcPandUCInc__007 (1216 chars) ---
+    heading: 'Termination of Pandemic Unemployment Compensation at Application – SNAP (continued)'
+    parent : 'Termination of All Pandemic Unemployment Compensation Types'
+    chunk_n/total: 2/3
+    text head: 'COVID-19 > Processing Cases with Pandemic UC Income > Termination of All Pandemic Unemployment Compensation Types > Termination of Pandemic Unemployment Compensation at Application – SNAP (continued)\n'
+    text tail: ' ongoing.\n\nRemember: All types of unemployment compensation that have ended for a client near the application date (including Regular UI) must always be considered as terminated income, if applicable.'
+
+  --- sec__COVID__COVID_ProcPandUCInc__008 (495 chars) ---
+    heading: 'Termination of Pandemic Unemployment Compensation at Application – SNAP (continued)'
+    parent : 'Termination of All Pandemic Unemployment Compensation Types'
+    chunk_n/total: 3/3
+    text head: 'COVID-19 > Processing Cases with Pandemic UC Income > Termination of All Pandemic Unemployment Compensation Types > Termination of Pandemic Unemployment Compensation at Application – SNAP (continued)\n'
+    text tail: 'in BEACON. For procedures regarding how to find and enter the payment date, please see Unemployment Compensation .\n\nImportant: The PUA benefit section on UI Online already identifies the payment date.'
+
+  --- sec__COVID__COVID_ProcPandUCInc__009 (673 chars) ---
+    heading: 'Termination of Pandemic Unemployment Compensation at Application – TAFDC'
+    parent : 'Termination of All Pandemic Unemployment Compensation Types'
+    chunk_n/total: 1/1
+    text head: 'COVID-19 > Processing Cases with Pandemic UC Income > Termination of All Pandemic Unemployment Compensation Types > Termination of Pandemic Unemployment Compensation at Application – TAFDC\n\nIf a clien'
+    text tail: 'ment compensation payment was received.\n\nYou must follow up once the first month’s benefits are released to remove the terminated income from being counted in the ongoing calculation of SNAP benefits.'
+
+  --- sec__COVID__COVID_ProcPandUCInc__010 (1336 chars) ---
+    heading: 'Termination of Pandemic Unemployment Compensation at Recertification and Ongoing – SNAP'
+    parent : 'Termination of All Pandemic Unemployment Compensation Types'
+    chunk_n/total: 1/2
+    text head: 'COVID-19 > Processing Cases with Pandemic UC Income > Termination of All Pandemic Unemployment Compensation Types > Termination of Pandemic Unemployment Compensation at Recertification and Ongoing – S'
+    text tail: 'se the client’s September cyclical month start and end dates for both the September supplement and the Emergency Allotment supplement when entering the amounts in the Related Benefit window in BEACON.'
+
+  --- sec__COVID__COVID_ProcPandUCInc__011 (768 chars) ---
+    heading: 'Termination of Pandemic Unemployment Compensation at Recertification and Ongoing – SNAP (continued)'
+    parent : 'Termination of All Pandemic Unemployment Compensation Types'
+    chunk_n/total: 2/2
+    text head: 'COVID-19 > Processing Cases with Pandemic UC Income > Termination of All Pandemic Unemployment Compensation Types > Termination of Pandemic Unemployment Compensation at Recertification and Ongoing – S'
+    text tail: 'ement for the September Emergency Allotment. Clients will still be made whole through the SNAP Emergency Allotment batch process. For more information regarding SNAP Emergency Allotments, click here .'
+
+  --- sec__COVID__COVID_ProcPandUCInc__012 (749 chars) ---
+    heading: 'Overpayment Referrals - SNAP'
+    parent : None
+    chunk_n/total: 1/1
+    text head: 'COVID-19 > Processing Cases with Pandemic UC Income > Overpayment Referrals - SNAP\n\nIf a client failed to report PUA income at application or recertification an overpayment referral (UPV) must made.\n\n'
+    text tail: 'cord in BEACON, the batch will automatically create an Overpayment Referral. A batch narrative will be generated stating, “Batch Referral – Confirm Unemployment Income Not Previously Known to BEACON.”'
+
+  ✓ No mid-word splits detected
+
+==============================================================================
+Phase 2 summary
+==============================================================================
+  BP__Overview__BPov_NG_Overview.json: 11 chunks, 0 mid-word splits
+  SNAP__Eligibility__Stu_Students.json: 52 chunks, 0 mid-word splits
+  Forms__Cross_Programs.json: 3 chunks, 0 mid-word splits
+  COVID__COVID_ProcPandUCInc.json: 12 chunks, 0 mid-word splits
+
+  ! 2 oversize warnings:
+    oversize table chunk (1875 chars) in section heading='Essential Components for Every Narrative'
+    oversize table chunk (1573 chars) in section heading='Acceptable Abbreviations'
