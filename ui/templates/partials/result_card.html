@@ -13,6 +13,8 @@
             <span class="result-context">FNS 310 &gt; Ch{{ meta.get("chapter", "") }}: {{ meta.get("chapter_title", "") }}</span>
         {% elif source == "cmr" %}
             <span class="result-context">106 CMR {{ meta.get("chapter", "") }} ({{ meta.get("program", "") }})</span>
+        {% elif source == "cfr" %}
+            <span class="result-context">7 CFR {{ meta.get("part", "") }} ({{ meta.get("program", "") }})</span>
         {% endif %}
     </div>
 
@@ -40,6 +42,16 @@
             {% endif %}
             {% if meta.get("chapter_title") %}
                 <span class="meta-item"><strong>Chapter:</strong> {{ meta.chapter_title[:80] }}</span>
+            {% endif %}
+        {% elif source == "cfr" %}
+            {% if meta.get("section_number") %}
+                <span class="meta-item"><strong>Section:</strong> § {{ meta.section_number }} {{ meta.get("section_title", "") }}</span>
+            {% endif %}
+            {% if meta.get("part_title") %}
+                <span class="meta-item"><strong>Part:</strong> {{ meta.part_title[:80] }}</span>
+            {% endif %}
+            {% if meta.get("subpart_title") %}
+                <span class="meta-item"><strong>Subpart:</strong> {{ meta.subpart_title[:80] }}</span>
             {% endif %}
         {% endif %}
     </div>

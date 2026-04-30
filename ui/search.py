@@ -32,6 +32,11 @@ SOURCES = {
         "short_label": "FNS",
         "has_program_filter": False,
     },
+    "cfr": {
+        "label": "7 CFR (Federal SNAP Regulations)",
+        "short_label": "CFR",
+        "has_program_filter": True,
+    },
 }
 
 DEFAULT_SOURCE = "olg"

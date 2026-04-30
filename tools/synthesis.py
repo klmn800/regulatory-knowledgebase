@@ -86,7 +86,8 @@ SEARCH_POLICY_TOOL = {
         "Available sources:\n"
         "- olg: DTA Online Guide (staff procedures and policy)\n"
         "- cmr: Code of Massachusetts Regulations, Title 106 (state law)\n"
-        "- fns: FNS Handbook 310 (federal SNAP QC standard)\n\n"
+        "- fns: FNS Handbook 310 (federal SNAP QC standard)\n"
+        "- cfr: 7 CFR Parts 271-275, 280, 292 (federal SNAP regulations)\n\n"
         "Try different query angles: specific policy terms, BEACON procedures, "
         "broader topic areas, synonyms, related topics."
     ),
@@ -95,7 +96,7 @@ SEARCH_POLICY_TOOL = {
         "properties": {
             "source": {
                 "type": "string",
-                "enum": ["olg", "cmr", "fns"],
+                "enum": ["olg", "cmr", "fns", "cfr"],
                 "description": "Which source to search",
             },
             "query": {
@@ -116,6 +117,7 @@ SOURCE_LABELS = {
     "olg": "OLG",
     "cmr": "CMR",
     "fns": "FNS",
+    "cfr": "CFR",
 }
 
 
@@ -168,6 +170,23 @@ def format_results_for_prompt(results: list[dict], source: str) -> str:
             header += f" | 106 CMR {chapter} ({program})"
             if sec_num:
                 header += f" | Section: {sec_num} {sec_title}"
+            if hierarchy_path:
+                header += f"\n  Subsection: {hierarchy_path}"
+            if chunk_total is not None and chunk_total > 1:
+                header += f" (part {chunk_n} of {chunk_total})"
+
+        elif source == "cfr":
+            part = meta.get("part", "")
+            program = meta.get("program", "")
+            sec_num = meta.get("section_number", "")
+            sec_title = meta.get("section_title", "")
+            hierarchy_path = meta.get("hierarchy_full_path") or meta.get("hierarchy_path", "")
+            chunk_n = meta.get("chunk_n")
+            chunk_total = meta.get("chunk_total")
+            header = f"[{label} Match {i+1}] Score: {score:.2f}"
+            header += f" | 7 CFR {part} ({program})"
+            if sec_num:
+                header += f" | Section: § {sec_num} {sec_title}"
             if hierarchy_path:
                 header += f"\n  Subsection: {hierarchy_path}"
             if chunk_total is not None and chunk_total > 1:
@@ -556,7 +575,7 @@ def main():
     parser.add_argument("question", help="Policy question to answer")
     parser.add_argument(
         "--sources", nargs="+", default=["olg"],
-        choices=["olg", "cmr", "fns"],
+        choices=["olg", "cmr", "fns", "cfr"],
         help="Sources to search (default: olg)"
     )
     parser.add_argument(
