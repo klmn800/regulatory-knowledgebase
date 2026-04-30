@@ -4,13 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Policy Navigator** is a multi-source RAG (Retrieval-Augmented Generation) system for Massachusetts DTA (Department of Transitional Assistance) policy. It indexes three authoritative policy sources in priority order:
+**Policy Navigator** is a multi-source RAG (Retrieval-Augmented Generation) system for Massachusetts DTA (Department of Transitional Assistance) policy. It indexes four authoritative policy sources in priority order:
 
 1. **OLG** (Online Guide) — DTA's internal staff guide; ~1,200 HTML pages covering SNAP, TAFDC, EAEDC, and cross-program policy. This is what workers follow day-to-day.
 2. **CMR** (Code of Massachusetts Regulations, Title 106) — The state regulations the OLG implements. 18 PDFs, ~360 pages of formal legal language.
 3. **FNS Handbook 310** — The federal SNAP Quality Control standard the CMR is supposed to implement. Single PDF, 306 pages, 483 numbered sections.
+4. **7 CFR** (federal SNAP regulations) — Parts 271-275, 280, 292. The federal codification that 106 CMR implements. 7 PDFs, 517 pages, 118 sections.
 
-**Use cases**: Staff/agents ask policy questions and get answers using sources in OLG → CMR → FNS order. The system also compares sources to find gaps, and authors new OLG content from research.
+**Use cases**: Staff/agents ask policy questions and get answers using sources in OLG → CMR → FNS / CFR order. The system also compares sources to find gaps, and authors new OLG content from research.
 
 **When sources disagree, the disagreement IS the finding.**
 
@@ -21,15 +22,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | OLG | COMPLETE (1,202 pages) | COMPLETE (1,202 + 6,785) | COMPLETE | COMPLETE | N/A |
 | FNS | COMPLETE (482 sections) | COMPLETE (14 + 722) | COMPLETE | COMPLETE | ALL 5 CHAPTERS COMPLETE (270 sections) |
 | CMR | COMPLETE (592 sections) | COMPLETE (18 + 1,275) | COMPLETE | COMPLETE | Used in L3 cross-check |
+| CFR | COMPLETE (118 sections) | COMPLETE (7 + 1,623) | COMPLETE | COMPLETE | Used in L3 cross-check (alongside CMR) |
 
 | Component | Status |
 |-----------|--------|
 | Search engine (web UI) | COMPLETE — Ask + History tabs, standard + deep synthesis |
-| Comparator | COMPLETE — All 5 FNS chapters (7-11), 270 sections analyzed |
+| Comparator | COMPLETE — All 5 FNS chapters (7-11), 270 sections analyzed; CFR L3 cross-check added |
 | OLG authoring pipeline | COMPLETE — Research + Draft + Format, CLI + web UI |
-| HTML report | COMPLETE — Filterable comparator findings viewer |
+| QC analyzer | COMPLETE — extractor + judge + CMR/FNS/CFR cross-checks |
+| HTML report | COMPLETE — Filterable comparator findings viewer (CMR + CFR detail blocks) |
 
-**All three sources are fully indexed and searchable.** All major tools are built and operational.
+**All four sources are fully indexed and searchable.** All major tools are built and operational.
 
 ## Architecture
 
@@ -39,7 +42,7 @@ Each source follows the same pipeline pattern: **Parse → Chunk → Embed → Q
 - **Embedding model**: Voyage AI `voyage-3` (1,024 dimensions). Single unified `config.ini` at project root.
 - **Vector store**: ChromaDB (persistent, embedded mode — no server). All sources share a single instance at `index/chroma_db/`.
 - **LLM**: Claude via Anthropic API (synthesis, comparator L0/L1/L3) and Claude Code CLI (comparator L2, authoring drafts).
-- **Multi-source CLI**: Both `rag/embedder.py` and `rag/query.py` accept `--source olg|fns|cmr` to target any source.
+- **Multi-source CLI**: Both `rag/embedder.py` and `rag/query.py` accept `--source olg|fns|cmr|cfr` to target any source.
 
 ### OLG Pipeline (`rag/olg/`)
 
@@ -82,12 +85,27 @@ Fully complete (parse, chunk, embed, query).
 
 **Parsed output**: 592 JSON files in `index/cmr/parsed_sections/`, one per regulation section.
 
+### CFR Pipeline (`rag/cfr/`)
+
+Fully complete (parse, chunk, embed, query). Used in comparator L3 cross-check and QC analyzer cross-check.
+
+| Module | Role |
+|--------|------|
+| `rag/cfr/parser.py` | 7 CFR PDFs → structured JSON sections via pdfplumber. 3-line header + 1-line footer stripping per page, TOC boundary via duplicate detection, subpart extraction from raw TOC, amendment-note stripping (`[Amdt. ...]`, `[NN FR ...]`), `[Reserved]` filtering. |
+| `rag/cfr/chunker.py` | Two-tier output: part-level docs (7) + section-level chunks (1,623). Hierarchy profile `(a)(1)(i)(A)`. Three section JSON variants (top-marker / fullpath / context-with-ancestor-intros). Top-level marker break is unconditional. Hierarchy-boundary splitting reduced mid-sentence breaks from 332 to 4. Dedicated definition chunker for 271.2 / 292.2. Section-level program labels (SNAP / Issuance / Administration / QC / Disaster / Summer-EBT). |
+
+**ChromaDB collections**: `cfr_parts` (7 docs), `cfr_sections` (1,623 chunks)
+
+**Parsed output**: 118 JSON files in `index/cfr/parsed_sections/`, one per regulation section. **Embedded variant**: `index/cfr/section_chunks_context.json` (chosen for parent-context preamble).
+
+**Manual cleanup**: 16 garbled multi-column tables in 273.18, 275.3, and 275.11 were rewritten as flowing prose directly in the parsed JSONs. See [`docs/cfr_pipeline.md`](docs/cfr_pipeline.md) for the recovery procedure if those JSONs are ever regenerated.
+
 ### Shared RAG Modules (`rag/`)
 
 | Module | Role |
 |--------|------|
-| `rag/embedder.py` | Batch embedding via Voyage AI → ChromaDB. `--source olg\|fns\|cmr` flag routes to correct chunk files and collections. Token-aware batching, resume support, cost estimation, `--dry-run`, `--force`, `--only`. |
-| `rag/query.py` | Three interfaces: CLI, Python API (`search()` / `create_client(source)` + `search_with_client()`), JSON output. `--source olg\|fns\|cmr` flag. Program filtering (OLG/CMR), `--exclude-programs` filter, similarity scoring, parent context fetching, source-specific display formatting. |
+| `rag/embedder.py` | Batch embedding via Voyage AI → ChromaDB. `--source olg\|fns\|cmr\|cfr` flag routes to correct chunk files and collections. Token-aware batching, resume support, cost estimation, `--dry-run`, `--force`, `--only`. |
+| `rag/query.py` | Three interfaces: CLI, Python API (`search()` / `create_client(source)` + `search_with_client()`), JSON output. `--source olg\|fns\|cmr\|cfr` flag. Program filtering (OLG/CMR), `--exclude-programs` filter, similarity scoring, parent context fetching, source-specific display formatting. |
 
 ### Tools (`tools/`)
 
@@ -180,6 +198,11 @@ python rag/query.py "income" --source fns --collection chapters
 # CMR
 python rag/query.py "income deduction" --source cmr
 python rag/query.py "work requirements" --source cmr --program SNAP
+
+# CFR
+python rag/query.py "income deduction" --source cfr
+python rag/query.py "summer EBT eligibility" --source cfr --collection parts
+python rag/query.py "income" --source cfr --exclude-programs "Administration,QC"
 ```
 
 ### Authoring
@@ -313,19 +336,22 @@ policy_navigator/
 - **OLG scraped data**: `index/olg/scraped_pages/*.json` (~1,202 files)
 - **FNS parsed data**: `index/fns/parsed_sections/*.json` (~482 files)
 - **CMR parsed data**: `index/cmr/parsed_sections/*.json` (~592 files)
-- **Shared vector store**: `index/chroma_db/` (6 collections)
+- **CFR parsed data**: `index/cfr/parsed_sections/*.json` (118 files)
+- **CFR chunk variant chosen for embedding**: `index/cfr/section_chunks_context.json`
+- **Shared vector store**: `index/chroma_db/` (8 collections)
 - **Comparator results**: `output/comparator/results/` (per-section JSONs), `output/comparator/FNS-{ch}.csv`
 - **Author outputs**: `output/author/{name}/` (top-level latest + `research/`, `drafts/`, `formats/` version dirs)
 - **QC analysis outputs**: `output/qc_analysis/`
 - **Search history**: `output/search_history.db`
 - **FNS source PDF**: `raw/FNS Handbook 310 1.13.26.pdf`
 - **CMR source PDFs**: `raw/cmr/*.pdf` (18 files)
+- **CFR source PDFs**: `raw/cfr/*.pdf` (7 files)
 - **Shared prompts**: `prompts/domain_preamble.md`, `prompts/synthesis.md`, `prompts/author_research.md`
 - **Comparator prompts**: `programs/comparator/prompts/`
 - **Author prompts**: `programs/author/prompts/author_draft.md`
 - **QC prompts**: `programs/qc/prompts/`
 - **Author references**: `programs/author/references/` (style guide, templates, sample pages)
-- **Pipeline documentation**: `docs/olg_pipeline.md`, `docs/fns_pipeline.md`, `docs/cmr_pipeline.md`, `docs/comparator.md`
+- **Pipeline documentation**: `docs/olg_pipeline.md`, `docs/fns_pipeline.md`, `docs/cmr_pipeline.md`, `docs/cfr_pipeline.md`, `docs/comparator.md`
 
 ### User Preferences
 - **Incremental Development**: One component at a time

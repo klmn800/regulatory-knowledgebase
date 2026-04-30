@@ -1,14 +1,15 @@
 # Policy Navigator
 
-Multi-source RAG system for Massachusetts DTA (Department of Transitional Assistance) policy. Indexes three authoritative sources, searches across them, identifies gaps and conflicts, and authors new OLG content.
+Multi-source RAG system for Massachusetts DTA (Department of Transitional Assistance) policy. Indexes four authoritative sources, searches across them, identifies gaps and conflicts, and authors new OLG content.
 
 ## Sources (priority order)
 
 1. **OLG** (Online Guide) -- DTA's internal staff guide. ~1,200 HTML pages. What workers follow day-to-day.
 2. **CMR** (Code of Massachusetts Regulations, 106 CMR) -- State regulations the OLG implements. 18 PDFs, ~360 pages.
 3. **FNS Handbook 310** -- Federal SNAP Quality Control standard. Single PDF, 306 pages, 483 sections.
+4. **7 CFR** (federal SNAP regulations) -- Parts 271-275, 280, 292. The federal codification that 106 CMR implements. 7 PDFs, 517 pages, 118 sections, 1,623 chunks. Section-level program labels (SNAP / Issuance / Administration / QC / Disaster / Summer-EBT) for audience filtering.
 
-All three sources are fully parsed, chunked, embedded, and searchable via a shared ChromaDB instance.
+All four sources are fully parsed, chunked, embedded, and searchable via a shared ChromaDB instance.
 
 ## What It Does
 
@@ -248,5 +249,6 @@ Single `config.ini` at project root (gitignored). Key sections:
 - [OLG Pipeline](docs/olg_pipeline.md)
 - [FNS Pipeline](docs/fns_pipeline.md)
 - [CMR Pipeline](docs/cmr_pipeline.md)
+- [CFR Pipeline](docs/cfr_pipeline.md)
 - [Comparator](docs/comparator.md)
 - [Search Engine Architecture](docs/search_engine_architecture.md)

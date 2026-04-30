@@ -1,4 +1,6 @@
-# 7 CFR Processing Notes
+# 7 CFR Processing Notes (HISTORICAL — pre-implementation)
+
+> **Status**: This is the original planning document from 2026-04-22, captured before the CFR pipeline was built. Many of the open questions below have been answered and the design has evolved during implementation. **For the canonical record of what was actually built and why, see [`docs/cfr_pipeline.md`](../cfr_pipeline.md).** This file is preserved as a historical reference for tracing the original design intent.
 
 **Date**: 2026-04-22
 **Source**: 7 CFR Parts 271, 272, 273, 274, 275, 280, 292 (SNAP federal regulations)
