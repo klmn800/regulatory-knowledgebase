@@ -136,13 +136,20 @@ def format_results_for_prompt(results: list[dict], source: str) -> str:
         if source == "olg":
             page_title = meta.get("page_title", meta.get("title", ""))
             heading = meta.get("section_heading", "")
+            parent_heading = meta.get("parent_heading", "")
             breadcrumb = meta.get("breadcrumb", "")
             url = meta.get("url", "")
+            chunk_n = meta.get("chunk_n")
+            chunk_total = meta.get("chunk_total")
             header = f"[{label} Match {i+1}] Score: {score:.2f}"
             if page_title:
                 header += f" | Page: {page_title}"
             if heading:
                 header += f" | Section: {heading}"
+            if chunk_total is not None and chunk_total > 1:
+                header += f" (part {chunk_n} of {chunk_total})"
+            if parent_heading:
+                header += f"\n  Within: {parent_heading}"
             if breadcrumb:
                 header += f"\n  Path: {breadcrumb}"
             if url:

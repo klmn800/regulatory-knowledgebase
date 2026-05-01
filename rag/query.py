@@ -675,11 +675,18 @@ def _format_olg_result(lines: list[str], result: dict, meta: dict,
 
     if collection == "sections":
         page_title = meta.get("page_title", "")
+        parent_heading = meta.get("parent_heading", "")
         section_heading = meta.get("section_heading", "")
         if page_title:
             lines.append(f"     Page:    {page_title}")
+        if parent_heading:
+            lines.append(f"     Parent:  {parent_heading}")
         if section_heading:
             lines.append(f"     Section: {section_heading}")
+        chunk_n = meta.get("chunk_n")
+        chunk_total = meta.get("chunk_total")
+        if chunk_total is not None and chunk_total > 1:
+            lines.append(f"     Part:    {chunk_n} of {chunk_total}")
     else:
         title = meta.get("title", "")
         if title:

@@ -168,6 +168,10 @@ _UI_ARTIFACT_PATTERNS = [
     r"\bPrint\s+Topic\b",
     r"\bPrint\s+this\s+page\b",
     r"\bLoading\.\.\.",
+    # "Recently added" banner DTA injects on revised pages — pure UI cruft,
+    # not policy content. The optional second clause hedges against minor
+    # phrasing variants (e.g. truncated form on shorter pages).
+    r"This topic has been recently added to the Online Guide(?:\s+or has been substantially or completely revised)?",
 ]
 
 _UI_ARTIFACT_RE = re.compile("|".join(_UI_ARTIFACT_PATTERNS), re.IGNORECASE)
@@ -177,16 +181,22 @@ def _strip_ui_artifacts(text: str) -> str:
     """
     Remove JS toggle button labels and other UI cruft from extracted text.
     Cleans up any double-spaces or excess blank lines left behind.
+
+    Note: leading whitespace on content lines is preserved — the chunker
+    relies on it to recognize nested-list depth (e.g. "  a. sub-item"
+    inside a parent "1." step). Only fully-blank lines have their
+    whitespace stripped.
     """
     if not text:
         return text
     cleaned = _UI_ARTIFACT_RE.sub("", text)
-    # Collapse runs of whitespace left by the substitutions
-    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    # Collapse internal runs of whitespace left by the substitutions, but
+    # ONLY mid-line — anchor away from line starts so list indents survive.
+    cleaned = re.sub(r"(?<=\S)[ \t]{2,}", " ", cleaned)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
-    # Remove orphan punctuation/whitespace at line starts/ends caused by deletions
+    # Trim trailing whitespace at line ends and zero out fully-blank lines.
     cleaned = re.sub(r"[ \t]+\n", "\n", cleaned)
-    cleaned = re.sub(r"\n[ \t]+", "\n", cleaned)
+    cleaned = re.sub(r"^[ \t]+$", "", cleaned, flags=re.MULTILINE)
     return cleaned.strip()
 
 
@@ -349,20 +359,47 @@ def _element_to_text(element: Tag) -> str:
     return text
 
 
-def _list_to_text(list_element: Tag, ordered: bool = False) -> str:
+def _ordered_marker(i: int, depth: int) -> str:
     """
-    Convert a <ul> or <ol> into readable text with bullet markers.
+    Pick a marker for ordered-list item `i` at nesting `depth` (1-indexed).
 
-    Nested lists are indented. For example:
-        - First item
-        - Second item
-          1. Nested ordered item
-          2. Another nested item
-        - Third item
+    MadCap Flare's source HTML emits bare nested <ol> tags with no `type`
+    attribute — depth differentiation is purely CSS in the browser. To
+    keep our text rendering legible (so a sub-item under "7." doesn't
+    visually look like a peer "1.", "2.", "3."), we pick depth-specific
+    markers ourselves:
+
+      depth 1 → "1.", "2.", "3.", ...
+      depth 2 → "a.", "b.", "c.", ... (falls back to digits past 26)
+      depth 3+ → bullets — beyond two levels, ordering rarely matters
+                 to the reader and roman numerals look awkward in prose.
+    """
+    if depth <= 1:
+        return f"{i}."
+    if depth == 2:
+        if 1 <= i <= 26:
+            return f"{chr(ord('a') + i - 1)}."
+        return f"{i}."
+    return "-"
+
+
+def _list_to_text(list_element: Tag, ordered: bool = False, depth: int = 1) -> str:
+    """
+    Convert a <ul> or <ol> into readable text with depth-aware markers.
+
+    Nested lists are indented two spaces per level. Ordered-list markers
+    rotate per depth (see _ordered_marker) so hierarchy is visible
+    without requiring CSS:
+
+        7. Step seven
+          a. sub-item
+          b. another sub-item
+            - deeper sub-item
+        8. Step eight
     """
     lines = []
     for i, li in enumerate(list_element.find_all("li", recursive=False), start=1):
-        marker = f"{i}." if ordered else "-"
+        marker = _ordered_marker(i, depth) if ordered else "-"
 
         # Get the direct text of this <li> (excluding nested lists)
         parts = []
@@ -374,7 +411,11 @@ def _list_to_text(list_element: Tag, ordered: bool = False) -> str:
             elif isinstance(child, Tag):
                 if child.name in ("ul", "ol"):
                     # Handle nested list — will be appended as indented block
-                    nested = _list_to_text(child, ordered=(child.name == "ol"))
+                    nested = _list_to_text(
+                        child,
+                        ordered=(child.name == "ol"),
+                        depth=depth + 1,
+                    )
                     # Indent nested list
                     indented = "\n".join(
                         "  " + line for line in nested.split("\n") if line

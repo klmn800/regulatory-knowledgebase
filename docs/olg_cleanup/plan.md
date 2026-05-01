@@ -1,7 +1,8 @@
 # OLG Cleanup Plan
 
-**Status**: Draft, awaiting approval before implementation
+**Status**: Phase 1 + 2 + 2.6 + 2.7 + 5 + 6 (re-scrape) + 3.1 + 3.2 + 3.4 COMPLETE; pending 3.3 (Ben spot-check) + 6.2 (re-embed, gated)
 **Created**: 2026-04-29
+**Last updated**: 2026-05-01
 **Parallels**: `docs/cmr_cleanup/plan.md` (completed 2026-04-27)
 
 ## Goal

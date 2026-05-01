@@ -32,7 +32,7 @@
                     <div class="result-header">
                         <span class="result-score" title="Similarity: {{ '%.4f'|format(score) }}">{{ score_pct }}%</span>
                         {% if source_key == "olg" %}
-                            <span class="result-context">{{ meta.get("breadcrumb", "") }}</span>
+                            <span class="result-context">{{ meta.get("breadcrumb", "") }}{% if meta.get("chunk_total", 0) > 1 %} (part {{ meta.get("chunk_n", "") }} of {{ meta.get("chunk_total", "") }}){% endif %}</span>
                         {% elif source_key == "fns" %}
                             <span class="result-context">FNS {{ meta.get("section_number", "") }}: {{ meta.get("section_title", "") }}</span>
                         {% elif source_key == "cmr" %}
@@ -45,6 +45,9 @@
                         {% if source_key == "olg" %}
                             {% if meta.get("page_title") %}
                                 <span class="meta-item"><strong>Page:</strong> {{ meta.page_title }}</span>
+                            {% endif %}
+                            {% if meta.get("parent_heading") %}
+                                <span class="meta-item"><strong>Within:</strong> {{ meta.parent_heading }}</span>
                             {% endif %}
                             {% if meta.get("section_heading") %}
                                 <span class="meta-item"><strong>Section:</strong> {{ meta.section_heading }}</span>

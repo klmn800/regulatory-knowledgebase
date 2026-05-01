@@ -1,11 +1,22 @@
 ============================================================
 DTA Online Guide Scrape Report
-Generated: 2026-03-02 15:25:36
+Generated: 2026-04-30 17:04:33
 ============================================================
 
 Total pages in manifest:  1202
-Successfully scraped:     1202
-404 Not Found:            0
+Successfully scraped:     1195
+404 Not Found:            7
 Failed (other errors):    0
 Remaining (not yet run):  0
-Elapsed time:             0.3s
+Elapsed time:             2043.6s
+
+------------------------------------------------------------
+Pages returning 404 (may be removed or renamed):
+------------------------------------------------------------
+  COVID/COVID_TemVerif.htm
+  EAEDC/Gen_NonFinancial_Req/Eligible_Noncitizens_-_EAEDC.htm
+  EAEDC/RelBenefits_Services/NewMMIS_MemberID.htm
+  EAEDC/RelBenefits_Services/NewMMIS_MemberID.htm#IDReplacement
+  SNAP/Eligibility/Res_OutofStateEBT.htm
+  TAFDC/RelatedBenefits/MH_CreateTempID.htm
+  TAFDC/RelatedBenefits/MH_MemIDCardRep.htm

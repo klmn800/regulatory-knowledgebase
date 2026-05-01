@@ -28,7 +28,11 @@ import argparse
 import json
 import re
 import statistics
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from rag.olg.page_excludes import PAGE_EXCLUDES, CHUNK_EXCLUDES
 
 
 # ============================================================
@@ -395,16 +399,25 @@ _TABLE_KINDS = {"table_row", "table_sep"}
 _oversized_line_warnings: list[str] = []
 
 
-def classify_line(line: str) -> str:
-    """Return one of: blank, table_sep, table_row, numbered, paren_num,
-    alpha, bullet, prose."""
+def classify_line(line: str) -> tuple[str, int]:
+    """
+    Return (kind, indent) where indent is the count of leading spaces.
+
+    kind is one of: blank, table_sep, table_row, numbered, paren_num,
+    alpha, bullet, prose. Indent matters for list items: a "  a. sub"
+    line (indent=2) is a child of a "1. parent" line (indent=0) and
+    should not be split away from it. The splitter uses indent to
+    decide whether a list-item line is a top-of-block flush boundary
+    or a sub-item that must stay with its parent.
+    """
+    indent = len(line) - len(line.lstrip(" "))
     stripped = line.strip()
     if not stripped:
-        return "blank"
+        return ("blank", 0)
     for kind, pat in _LINE_PATTERNS:
         if pat.match(stripped):
-            return kind
-    return "prose"
+            return (kind, indent)
+    return ("prose", indent)
 
 
 def _is_header_only(lines: list[str]) -> bool:
@@ -415,7 +428,7 @@ def _is_header_only(lines: list[str]) -> bool:
     non_blank = [l for l in lines if l.strip()]
     if not non_blank or len(non_blank) > 2:
         return False
-    kinds = [classify_line(l) for l in non_blank]
+    kinds = [classify_line(l)[0] for l in non_blank]
     if kinds == ["table_row"]:
         return True
     if kinds == ["table_row", "table_sep"]:
@@ -463,7 +476,7 @@ def split_large_section(section: dict) -> list[dict]:
         }]
 
     lines = text.split("\n")
-    classified = [(line, classify_line(line)) for line in lines]
+    classified = [(line,) + classify_line(line) for line in lines]
 
     chunks: list[list[str]] = []
     current: list[str] = []
@@ -471,13 +484,28 @@ def split_large_section(section: dict) -> list[dict]:
     in_table_run = False
     active_header: list[str] = []  # most recent [header_row, sep] for the table
 
+    # Smallest indent of any list-item line currently in `current`. None when
+    # the buffer holds no list items. Used to decide whether a new list-item
+    # line is a flushable top-of-block boundary or a deeper sub-child that
+    # must stay with the parent already accumulated.
+    buffer_min_list_indent: int | None = None
+
+    def _recompute_min_list_indent(buf: list[str]) -> int | None:
+        result: int | None = None
+        for ln in buf:
+            k, ind = classify_line(ln)
+            if k in _LIST_KINDS:
+                if result is None or ind < result:
+                    result = ind
+        return result
+
     def flush():
         """
         Emit `current` as a chunk and reset. If `current` is just a table
         header (no data), hold it instead — the header carries forward
         into the next chunk.
         """
-        nonlocal current, current_size
+        nonlocal current, current_size, buffer_min_list_indent
         if not current:
             return
         # Trim trailing blanks
@@ -485,6 +513,7 @@ def split_large_section(section: dict) -> list[dict]:
             current.pop()
         if not current:
             current_size = 0
+            buffer_min_list_indent = None
             return
         # Don't emit header-only chunks — hold and let the next data row join
         if _is_header_only(current):
@@ -492,6 +521,7 @@ def split_large_section(section: dict) -> list[dict]:
         chunks.append(list(current))
         current = []
         current_size = 0
+        buffer_min_list_indent = None
         # If we just flushed mid-table, prepend the active header so the
         # continuation chunk includes it.
         if in_table_run and active_header:
@@ -499,7 +529,51 @@ def split_large_section(section: dict) -> list[dict]:
                 current.append(h)
                 current_size += len(h) + 1
 
-    for line, kind in classified:
+    def split_flush_at_top_level() -> bool:
+        """
+        Split current at the last top-of-block list-item boundary so the
+        emitted "head" is everything before that boundary, and `current`
+        becomes the trailing "tail" (parent step + any accumulated
+        children). Used when must_flush triggers on a deep sub-item — we
+        keep the parent step with its kids in the next chunk instead of
+        ejecting all of current as one big chunk that orphans the kids.
+
+        Returns True if the split happened, False if no usable split
+        point exists (caller falls back to plain flush).
+        """
+        nonlocal current, current_size, buffer_min_list_indent
+        if buffer_min_list_indent is None:
+            return False
+        split_idx: int | None = None
+        # Walk backward; idx 0 is not a usable split (would emit empty head).
+        for idx in range(len(current) - 1, 0, -1):
+            k, ind = classify_line(current[idx])
+            if k in _LIST_KINDS and ind == buffer_min_list_indent:
+                split_idx = idx
+                break
+        if split_idx is None:
+            return False
+        head = current[:split_idx]
+        tail = current[split_idx:]
+        while head and not head[-1].strip():
+            head.pop()
+        if head and not _is_header_only(head):
+            chunks.append(list(head))
+        current = list(tail)
+        current_size = sum(len(l) + 1 for l in current)
+        buffer_min_list_indent = _recompute_min_list_indent(current)
+        return True
+
+    def _peek_next_non_blank(start_idx: int) -> tuple[str, int] | None:
+        """Return (kind, indent) of the next non-blank line at or after
+        start_idx, or None if there isn't one."""
+        for j in range(start_idx, len(classified)):
+            _, k, ind = classified[j]
+            if k != "blank":
+                return (k, ind)
+        return None
+
+    for i, (line, kind, indent) in enumerate(classified):
         line_size = len(line) + 1
 
         # Detect "start of new table" BEFORE updating in_table_run state.
@@ -518,7 +592,7 @@ def split_large_section(section: dict) -> list[dict]:
         elif kind == "table_sep":
             in_table_run = True
             # The line above us in `current` is the table's header row
-            if current and classify_line(current[-1]) == "table_row":
+            if current and classify_line(current[-1])[0] == "table_row":
                 active_header = [current[-1], line]
         elif kind == "blank":
             in_table_run = False
@@ -540,15 +614,48 @@ def split_large_section(section: dict) -> list[dict]:
 
         if current and current_size >= TARGET_CHUNK_SIZE:
             if kind == "blank":
-                prefer_flush = True
+                # Paragraph boundary — usually a good flush point, but
+                # peek ahead: if the next non-blank line is a list-item
+                # deeper than the parent we've already accumulated, the
+                # blank separates a parent from its sub-children. Don't
+                # split them across chunks.
+                next_lookup = _peek_next_non_blank(i + 1)
+                holds_for_subitem = (
+                    next_lookup is not None
+                    and next_lookup[0] in _LIST_KINDS
+                    and buffer_min_list_indent is not None
+                    and next_lookup[1] > buffer_min_list_indent
+                )
+                if not holds_for_subitem:
+                    prefer_flush = True
             elif kind in _LIST_KINDS and not in_table_run:
-                prefer_flush = True
+                # Only flush at a list-item boundary if this item is at
+                # the top-of-block level (or shallower) for what's already
+                # in the buffer. A deeper-indented item is a sub-child
+                # of the parent we just accumulated — don't strand it.
+                if (buffer_min_list_indent is None
+                        or indent <= buffer_min_list_indent):
+                    prefer_flush = True
 
-        if must_flush or prefer_flush:
+        if must_flush:
+            # If we'd be orphaning a deep sub-item from its parent, try
+            # to split before the last top-of-block boundary so parent +
+            # accumulated children stay together.
+            if (kind in _LIST_KINDS
+                    and buffer_min_list_indent is not None
+                    and indent > buffer_min_list_indent):
+                if not split_flush_at_top_level():
+                    flush()
+            else:
+                flush()
+        elif prefer_flush:
             flush()
 
         current.append(line)
         current_size += line_size
+        if kind in _LIST_KINDS:
+            if buffer_min_list_indent is None or indent < buffer_min_list_indent:
+                buffer_min_list_indent = indent
 
     flush()
 
@@ -568,7 +675,7 @@ def split_large_section(section: dict) -> list[dict]:
             continue
 
         chunk_lines = chunk_text.split("\n")
-        kinds = {classify_line(l) for l in chunk_lines if l.strip()}
+        kinds = {classify_line(l)[0] for l in chunk_lines if l.strip()}
         if kinds & _TABLE_KINDS:
             _oversized_line_warnings.append(
                 f"oversize table chunk ({len(chunk_text)} chars) in section "
@@ -778,8 +885,13 @@ def process_all_pages() -> tuple[list[dict], list[dict]]:
 
     page_chunks = []
     section_chunks = []
+    excluded_count = 0
 
     for page_file in page_files:
+        if page_file.name in PAGE_EXCLUDES:
+            excluded_count += 1
+            continue
+
         with open(page_file, "r", encoding="utf-8") as f:
             page_data = json.load(f)
 
@@ -796,6 +908,16 @@ def process_all_pages() -> tuple[list[dict], list[dict]]:
         # Create section-level chunks
         sec_chunks = create_section_chunks(page_data, sections_with_tables)
         section_chunks.extend(sec_chunks)
+
+    if CHUNK_EXCLUDES:
+        before = len(section_chunks)
+        section_chunks = [c for c in section_chunks if c["chunk_id"] not in CHUNK_EXCLUDES]
+        chunk_drop = before - len(section_chunks)
+    else:
+        chunk_drop = 0
+
+    if excluded_count or chunk_drop:
+        print(f"Excluded {excluded_count} pages and {chunk_drop} chunks via page_excludes.py")
 
     return page_chunks, section_chunks
 
