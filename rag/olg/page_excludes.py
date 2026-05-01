@@ -42,6 +42,24 @@ PAGE_EXCLUDES: set[str] = {
     "Forms__SNAP.json",
     "Forms__TAFDC.json",
     "Forms__Voter_Registration.json",
+
+    # Phase 3.3a — Cross Program Forms book (9 of 16; Ben review 2026-05-01)
+    # Pure catalog/list pages — no policy content
+    "NoticeForms__NF_EBTRPForms.json",       # list of EBT replacement forms
+    "NoticeForms__NF_CPNotices.json",        # list of cross-program notices
+    "NoticeForms__NF_SNAPNotices.json",      # list of SNAP notices
+    # Notice template/example pages — placeholder content, no policy
+    "NoticeForms__NF_CalcPageOvw.json",      # Calculation Page Overview
+    "NoticeForms__NF_EAEDCCalcEx.json",      # EAEDC Calc Page Example
+    "NoticeForms__NF_SNAPCalcEx.json",       # SNAP Calc Page Example
+    "NoticeForms__NF_TAFDCCalcEx.json",      # TAFDC Calc Page Example
+    "NoticeForms__NF_RevCalc.json",          # Revised Calculation Page
+    # Single-section background note, not procedural
+    "NoticeForms__NF_PregInfo.json",         # Pregnancy Information Update
+
+    # Phase 3.3b — Notices/Forms book unique page (1; Ben review 2026-05-01)
+    # Same catalog shape as NF_CPNotices / NF_SNAPNotices
+    "NoticeForms__NF_TAFDCNotices.json",     # list of TAFDC notices
 }
 
 

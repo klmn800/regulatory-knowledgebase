@@ -33,6 +33,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from rag.olg.page_excludes import PAGE_EXCLUDES, CHUNK_EXCLUDES
+from rag.olg.chunker_overrides import URL_OVERRIDES
 
 
 # ============================================================
@@ -811,16 +812,21 @@ def create_section_chunks(page_data: dict, sections_with_tables: list[dict]) -> 
     program = page_data.get("program", "")
     page_id = make_page_id(url)
 
-    # Step 0: Stamp each H3 with its parent H2 heading (no parser change needed)
-    sections_with_parents = add_parent_headings(sections_with_tables)
+    if url in URL_OVERRIDES:
+        # Manual override bypasses merge/split — the handler returns the
+        # final topical sections with chunk_n/chunk_total pre-set.
+        split_sections = URL_OVERRIDES[url](page_data)
+    else:
+        # Step 0: Stamp each H3 with its parent H2 heading (no parser change needed)
+        sections_with_parents = add_parent_headings(sections_with_tables)
 
-    # Step 1: Merge small sections (cross-level merge protection applies)
-    merged = merge_small_sections(sections_with_parents)
+        # Step 1: Merge small sections (cross-level merge protection applies)
+        merged = merge_small_sections(sections_with_parents)
 
-    # Step 2: Split large sections with hierarchy-aware walker
-    split_sections = []
-    for section in merged:
-        split_sections.extend(split_large_section(section))
+        # Step 2: Split large sections with hierarchy-aware walker
+        split_sections = []
+        for section in merged:
+            split_sections.extend(split_large_section(section))
 
     # Step 3: Build chunks with context prefixes and metadata
     chunks = []
