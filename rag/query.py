@@ -172,22 +172,31 @@ def embed_query(query_text: str, client: voyageai.Client,
 # ============================================================
 
 def _build_where_filter(
+    programs: list[str] | None = None,
     program: str | None = None,
     exclude_programs: list[str] | None = None,
 ) -> dict | None:
     """
     Build a ChromaDB where filter from query parameters.
 
-    Returns None if no filters are specified.
+    Args:
+        programs: Include only these programs (preferred — list-based,
+            no hidden carve-outs).
+        program: Single-program shorthand (legacy, CLI compat).
+        exclude_programs: Exclude these programs (legacy, CLI compat).
+
+    `programs` takes precedence over `program`/`exclude_programs` when
+    both are set. Returns None if no filters are specified.
     """
     conditions = []
 
-    if program:
-        # Include Hearings chapter (343 Fair Hearing Rules) which applies
-        # to all programs and should never be excluded by program filter
-        conditions.append(
-            {"$or": [{"program": program}, {"program": "Hearings"}]}
-        )
+    if programs:
+        if len(programs) == 1:
+            conditions.append({"program": programs[0]})
+        else:
+            conditions.append({"program": {"$in": list(programs)}})
+    elif program:
+        conditions.append({"program": program})
     elif exclude_programs:
         conditions.append({"program": {"$nin": exclude_programs}})
 
@@ -398,6 +407,7 @@ def search_with_client(
     query: str,
     clients: dict,
     collection: str = DEFAULT_COLLECTION,
+    programs: list[str] | None = None,
     program: str | None = None,
     exclude_programs: list[str] | None = None,
     top_n: int = DEFAULT_TOP_N,
@@ -415,10 +425,11 @@ def search_with_client(
         clients: Dict from create_client() with initialized clients.
         collection: Which collection to search ('sections', 'pages',
                     or 'chapters').
-        program: Filter by program (e.g., 'SNAP'). OLG only.
-        exclude_programs: Exclude these programs from results (e.g.,
-                         ['TAFDC', 'EAEDC']). OLG only. Ignored if
-                         program is set.
+        programs: Include only these programs (preferred). Empty list
+                  or None means no filter.
+        program: Single-program shorthand (legacy, CLI compat).
+        exclude_programs: Exclude these programs (legacy, CLI compat).
+                          Ignored if `programs` or `program` is set.
         top_n: Maximum number of results to return.
         threshold: Minimum similarity score (0-1). 0 = no threshold.
         include_context: If True and searching sections, include the
@@ -444,23 +455,25 @@ def search_with_client(
         coll = clients["granular_collection"]
         collection = granular_name
 
-    # Handle program filter
+    # Handle program filter — sources without program metadata skip it entirely
+    resolved_programs = None
     resolved_program = None
     resolved_excludes = None
-    if program:
-        if not source_config["has_program_filter"]:
-            print(f"Note: Program filtering is not available for {source_config['source_label']} "
-                  f"(all content is SNAP QC). Ignoring --program.")
-        else:
+    if source_config["has_program_filter"]:
+        if programs:
+            resolved_programs = [
+                _resolve_program_name(p, clients["granular_collection"])
+                for p in programs
+            ]
+        elif program:
             resolved_program = _resolve_program_name(
                 program, clients["granular_collection"]
             )
-    elif exclude_programs and source_config["has_program_filter"]:
-        resolved_excludes = [
-            _resolve_program_name(p, clients["granular_collection"])
-            for p in exclude_programs
-        ]
-        resolved_excludes = [p for p in resolved_excludes if p]
+        elif exclude_programs:
+            resolved_excludes = [
+                _resolve_program_name(p, clients["granular_collection"])
+                for p in exclude_programs
+            ]
 
     # Embed the query
     query_embedding = embed_query(
@@ -469,6 +482,7 @@ def search_with_client(
 
     # Build filter and search
     where = _build_where_filter(
+        programs=resolved_programs,
         program=resolved_program,
         exclude_programs=resolved_excludes,
     )
@@ -495,6 +509,8 @@ def search_with_client(
 
     # Build filters dict for the response
     filters = {}
+    if resolved_programs:
+        filters["programs"] = resolved_programs
     if resolved_program:
         filters["program"] = resolved_program
     if resolved_excludes:
@@ -514,6 +530,7 @@ def search(
     query: str,
     source: str = "olg",
     collection: str = DEFAULT_COLLECTION,
+    programs: list[str] | None = None,
     program: str | None = None,
     exclude_programs: list[str] | None = None,
     top_n: int = DEFAULT_TOP_N,
@@ -531,6 +548,7 @@ def search(
     return search_with_client(
         query, clients,
         collection=collection,
+        programs=programs,
         program=program,
         exclude_programs=exclude_programs,
         top_n=top_n,
@@ -562,12 +580,12 @@ def _resolve_program_name(
     if canonical:
         return canonical
 
-    # No exact match — suggest alternatives
-    print(f"Warning: Program '{user_input}' not found.")
-    print(f"Available programs: {', '.join(programs)}")
-    print(f"Use --list-programs to see all options.")
-    print()
-    return None
+    # No exact match — caller decides how to handle. Raise so the bug
+    # surfaces instead of silently dropping the filter.
+    raise ValueError(
+        f"Program {user_input!r} not found. "
+        f"Available programs: {', '.join(programs)}"
+    )
 
 
 # ============================================================
@@ -980,6 +998,7 @@ def run_query(
     query: str,
     source: str = "olg",
     collection: str = DEFAULT_COLLECTION,
+    programs: list[str] | None = None,
     program: str | None = None,
     exclude_programs: list[str] | None = None,
     top_n: int = DEFAULT_TOP_N,
@@ -998,6 +1017,7 @@ def run_query(
     response = search_with_client(
         query, clients,
         collection=collection,
+        programs=programs,
         program=program,
         exclude_programs=exclude_programs,
         top_n=top_n,
@@ -1057,12 +1077,19 @@ Examples:
         help=f"Which collection to search (default: {DEFAULT_COLLECTION})",
     )
     parser.add_argument(
+        "--programs",
+        help="Include only these programs (comma-separated, e.g., SNAP,Hearings). "
+             "Preferred over --program/--exclude-programs. Sources without program "
+             "metadata (FNS) ignore this flag.",
+    )
+    parser.add_argument(
         "--program", "-p",
-        help="Filter results by program (e.g., SNAP, TAFDC) — OLG only",
+        help="Single-program shorthand (kept for compat — prefer --programs)",
     )
     parser.add_argument(
         "--exclude-programs",
-        help="Exclude programs from results (comma-separated, e.g., TAFDC,EAEDC) — OLG only",
+        help="Exclude programs from results (comma-separated, e.g., TAFDC,EAEDC). "
+             "Kept for compat — prefer --programs",
     )
     parser.add_argument(
         "--top", "-n", type=int, default=DEFAULT_TOP_N,
@@ -1133,6 +1160,9 @@ Examples:
     if not args.query:
         parser.error("Search query is required (or use --list-programs / --chunk-id)")
 
+    programs = None
+    if args.programs:
+        programs = [p.strip() for p in args.programs.split(",") if p.strip()]
     exclude = None
     if args.exclude_programs:
         exclude = [p.strip() for p in args.exclude_programs.split(",")]
@@ -1141,6 +1171,7 @@ Examples:
         query=args.query,
         source=args.source,
         collection=args.collection,
+        programs=programs,
         program=args.program,
         exclude_programs=exclude,
         top_n=args.top,

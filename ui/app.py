@@ -27,7 +27,10 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from ui.search import SOURCES, DEFAULT_SOURCE, init_clients, do_search
+from ui.search import (
+    SOURCES, DEFAULT_SOURCE, PROGRAM_REGISTRY, get_default_programs,
+    init_clients, do_search,
+)
 from ui.history import init_db, save_search, get_recent, get_by_id
 from ui.versioning import (
     list_versions,
@@ -86,6 +89,7 @@ templates = Jinja2Templates(directory=UI_DIR / "templates")
 # Make source registry and markdown filter available to all templates
 templates.env.globals["SOURCES"] = SOURCES
 templates.env.globals["DEFAULT_SOURCE"] = DEFAULT_SOURCE
+templates.env.globals["PROGRAM_REGISTRY"] = PROGRAM_REGISTRY
 templates.env.filters["markdown"] = lambda text: markdown.markdown(
     text, extensions=["tables", "fenced_code"]
 )
@@ -97,42 +101,48 @@ async def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
 
-PROGRAM_FILTERS = {
-    "all": {"program": None, "exclude_programs": None},
-    "snap": {"program": None, "exclude_programs": ["TAFDC", "EAEDC"]},
-    "tafdc": {"program": None, "exclude_programs": ["SNAP", "EAEDC"]},
-    "eaedc": {"program": None, "exclude_programs": ["SNAP", "TAFDC"]},
-    "snap_only": {"program": "SNAP", "exclude_programs": None},
-    "tafdc_only": {"program": "TAFDC", "exclude_programs": None},
-    "eaedc_only": {"program": "EAEDC", "exclude_programs": None},
-}
+def _programs_by_source_from_form(
+    form: dict, active_sources: list[str]
+) -> dict[str, list[str]]:
+    """
+    Extract per-source program selections from form data.
+
+    Reads `programs_<source>` fields (multi-value) for each active source
+    that has a program filter. Sources without checkboxes (e.g. FNS) get
+    no entry. Sources whose user submitted zero checkboxes get an empty
+    list — interpreted by the backend as "no programs match" (returns 0
+    results). To indicate "no filter", omit the source key entirely.
+    """
+    result: dict[str, list[str]] = {}
+    for src in active_sources:
+        cfg = SOURCES.get(src, {})
+        if not cfg.get("has_program_filter"):
+            continue
+        # FastAPI forms expose multi-value as repeated keys
+        values = form.getlist(f"programs_{src}")
+        result[src] = [v for v in values if v]
+    return result
 
 
 @app.post("/ask", response_class=HTMLResponse)
-async def ask(
-    request: Request,
-    question: str = Form(...),
-    sources: Optional[list[str]] = Form(None),
-    program_filter: str = Form("all"),
-    deep: bool = Form(False),
-):
+async def ask(request: Request):
     """Synthesize an answer to a policy question."""
-    question = question.strip()
+    form = await request.form()
+    question = (form.get("question") or "").strip()
     if not question:
         return HTMLResponse("")
 
-    if not sources:
-        sources = [DEFAULT_SOURCE]
+    sources = form.getlist("sources") or [DEFAULT_SOURCE]
+    deep = form.get("deep") == "true"
 
-    pf = PROGRAM_FILTERS.get(program_filter, PROGRAM_FILTERS["all"])
+    programs_by_source = _programs_by_source_from_form(form, sources)
 
     # Run synthesis in a thread to avoid blocking the event loop
     result = await asyncio.to_thread(
         run_synthesis,
         question=question,
         sources=sources,
-        program=pf["program"],
-        exclude_programs=pf["exclude_programs"],
+        programs_by_source=programs_by_source,
         deep=deep,
     )
 
@@ -141,7 +151,7 @@ async def ask(
         save_search,
         question=question,
         sources=sources,
-        program_filter=program_filter,
+        programs_by_source=programs_by_source,
         deep=deep,
         result=result,
     )
@@ -296,17 +306,20 @@ async def search_export(search_id: int):
 # ============================================================
 
 @app.post("/search", response_class=HTMLResponse)
-async def search(
-    request: Request,
-    query: str = Form(...),
-    source: str = Form(DEFAULT_SOURCE),
-):
+async def search(request: Request):
     """Raw search — returns result cards (kept for power users)."""
-    query = query.strip()
+    form = await request.form()
+    query = (form.get("query") or "").strip()
     if not query:
         return HTMLResponse("")
 
-    results = do_search(query=query, source=source)
+    source = form.get("source") or DEFAULT_SOURCE
+    cfg = SOURCES.get(source, {})
+    programs = None
+    if cfg.get("has_program_filter"):
+        programs = [v for v in form.getlist(f"programs_{source}") if v]
+
+    results = do_search(query=query, source=source, programs=programs)
 
     return templates.TemplateResponse(
         request,

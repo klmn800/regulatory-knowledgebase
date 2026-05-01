@@ -7,7 +7,6 @@ Database created automatically at data/search_history.db.
 
 import json
 import sqlite3
-from datetime import datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -24,7 +23,7 @@ def _get_conn() -> sqlite3.Connection:
 
 
 def init_db():
-    """Create the searches table if it doesn't exist."""
+    """Create the searches table if it doesn't exist; add new columns if missing."""
     conn = _get_conn()
     conn.execute("""
         CREATE TABLE IF NOT EXISTS searches (
@@ -43,6 +42,14 @@ def init_db():
             created_at TEXT DEFAULT (datetime('now', 'localtime'))
         )
     """)
+
+    # Per-source filter column added 2026-05-01. Legacy `program_filter` (a
+    # preset string like "snap_only") stays around for old rows; new rows
+    # write to `programs_by_source` (JSON dict source -> list[str]) instead.
+    existing_cols = {row["name"] for row in conn.execute("PRAGMA table_info(searches)")}
+    if "programs_by_source" not in existing_cols:
+        conn.execute("ALTER TABLE searches ADD COLUMN programs_by_source TEXT")
+
     conn.commit()
     conn.close()
 
@@ -50,7 +57,7 @@ def init_db():
 def save_search(
     question: str,
     sources: list[str],
-    program_filter: str,
+    programs_by_source: dict[str, list[str]],
     deep: bool,
     result,
 ) -> int:
@@ -71,13 +78,14 @@ def save_search(
     conn = _get_conn()
     cursor = conn.execute(
         """INSERT INTO searches
-           (question, sources, program_filter, deep, answer, evidence,
+           (question, sources, program_filter, programs_by_source, deep,
+            answer, evidence,
             input_tokens, output_tokens, cost, duration_seconds, model)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             question,
             json.dumps(sources),
-            program_filter,
+            json.dumps(programs_by_source, ensure_ascii=False),
             1 if deep else 0,
             result.answer,
             json.dumps(evidence_summary, ensure_ascii=False),
@@ -98,8 +106,8 @@ def get_recent(limit: int = 20) -> list[dict]:
     """Get recent searches, newest first."""
     conn = _get_conn()
     rows = conn.execute(
-        """SELECT id, question, sources, program_filter, deep,
-                  duration_seconds, cost, created_at
+        """SELECT id, question, sources, program_filter, programs_by_source,
+                  deep, duration_seconds, cost, created_at
            FROM searches ORDER BY id DESC LIMIT ?""",
         (limit,),
     ).fetchall()
@@ -127,11 +135,15 @@ def get_by_id(search_id: int) -> dict | None:
 
 def _row_to_dict(row: sqlite3.Row) -> dict:
     """Convert a Row to a plain dict with parsed JSON fields."""
+    pbs_raw = row["programs_by_source"] if "programs_by_source" in row.keys() else None
+    programs_by_source = json.loads(pbs_raw) if pbs_raw else None
+
     return {
         "id": row["id"],
         "question": row["question"],
         "sources": json.loads(row["sources"]),
         "program_filter": row["program_filter"],
+        "programs_by_source": programs_by_source,
         "deep": bool(row["deep"]),
         "duration_seconds": row["duration_seconds"],
         "cost": row["cost"],

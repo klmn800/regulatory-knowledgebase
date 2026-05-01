@@ -234,6 +234,7 @@ def get_search_clients(source: str) -> dict:
 
 
 def do_search(source: str, query: str, top_n: int = 5,
+              programs: list[str] | None = None,
               program: str | None = None,
               exclude_programs: list[str] | None = None) -> dict:
     """Execute a search against a source. Returns query.py response dict."""
@@ -242,6 +243,7 @@ def do_search(source: str, query: str, top_n: int = 5,
         query=query,
         clients=clients,
         collection="sections",
+        programs=programs,
         program=program,
         exclude_programs=exclude_programs,
         top_n=top_n,
@@ -256,6 +258,7 @@ def do_search(source: str, query: str, top_n: int = 5,
 def run_standard(
     question: str,
     sources: list[str],
+    programs_by_source: dict[str, list[str]] | None,
     program: str | None,
     exclude_programs: list[str] | None,
     config: configparser.ConfigParser,
@@ -278,8 +281,11 @@ def run_standard(
     search_queries = []
 
     for source in sources:
+        src_programs = (programs_by_source or {}).get(source)
         print(f"  Searching {SOURCE_LABELS.get(source, source)}...", end="", flush=True)
-        response = do_search(source, question, top_n=results_per_search, program=program, exclude_programs=exclude_programs)
+        response = do_search(source, question, top_n=results_per_search,
+                             programs=src_programs,
+                             program=program, exclude_programs=exclude_programs)
         all_evidence[source] = response["results"]
         search_queries.append(f"{source}: {question}")
 
@@ -328,6 +334,7 @@ def run_standard(
 def run_deep(
     question: str,
     sources: list[str],
+    programs_by_source: dict[str, list[str]] | None,
     program: str | None,
     exclude_programs: list[str] | None,
     config: configparser.ConfigParser,
@@ -352,8 +359,11 @@ def run_deep(
     search_queries = []
 
     for source in sources:
+        src_programs = (programs_by_source or {}).get(source)
         print(f"  Searching {SOURCE_LABELS.get(source, source)}...", end="", flush=True)
-        response = do_search(source, question, top_n=results_per_search, program=program, exclude_programs=exclude_programs)
+        response = do_search(source, question, top_n=results_per_search,
+                             programs=src_programs,
+                             program=program, exclude_programs=exclude_programs)
         all_evidence[source] = response["results"]
         search_queries.append(f"{source}: {question}")
 
@@ -470,6 +480,7 @@ def run_deep(
                     search_response = do_search(
                         source, query,
                         top_n=results_per_search,
+                        programs=(programs_by_source or {}).get(source),
                         program=program,
                         exclude_programs=exclude_programs,
                     )
@@ -531,6 +542,7 @@ def run_deep(
 def run_synthesis(
     question: str,
     sources: list[str] | None = None,
+    programs_by_source: dict[str, list[str]] | None = None,
     program: str | None = None,
     exclude_programs: list[str] | None = None,
     deep: bool = False,
@@ -544,8 +556,11 @@ def run_synthesis(
     Args:
         question: Natural language policy question.
         sources: Which sources to search (default: ["olg"]).
-        program: Filter to only this program (SNAP, TAFDC, EAEDC).
-        exclude_programs: Exclude these programs (keeps cross-program content).
+        programs_by_source: Per-source program filter, e.g.
+            {"olg": ["SNAP", "TAFDC"], "cmr": ["SNAP"]}. Each source uses
+            its own list. Sources without an entry are unfiltered.
+        program: Single-program shorthand applied to ALL sources (legacy).
+        exclude_programs: Exclude these programs from ALL sources (legacy).
         deep: If True, use agentic loop with iterative search.
         max_searches: Override max search budget for deep mode.
         prompt_name: Which prompt file to use (default: "synthesis").
@@ -564,10 +579,12 @@ def run_synthesis(
             config.set("synthesis", key, str(value))
 
     if deep:
-        return run_deep(question, sources, program, exclude_programs, config,
+        return run_deep(question, sources, programs_by_source,
+                        program, exclude_programs, config,
                         prompt_name=prompt_name)
     else:
-        return run_standard(question, sources, program, exclude_programs, config,
+        return run_standard(question, sources, programs_by_source,
+                            program, exclude_programs, config,
                             prompt_name=prompt_name)
 
 

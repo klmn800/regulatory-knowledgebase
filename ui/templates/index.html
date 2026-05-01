@@ -20,27 +20,15 @@
         <div class="source-checkboxes">
             <span class="option-label">Sources:</span>
             {% for key, src in SOURCES.items() %}
-            <label class="checkbox-label">
+            <label class="checkbox-label source-toggle">
                 <input type="checkbox"
                        name="sources"
                        value="{{ key }}"
+                       data-source="{{ key }}"
                        {{ 'checked' if key == DEFAULT_SOURCE }}>
                 {{ src.short_label }}
             </label>
             {% endfor %}
-        </div>
-
-        <div class="program-filter">
-            <span class="option-label">Program:</span>
-            <select name="program_filter">
-                <option value="all">All programs</option>
-                <option value="snap">Exclude TAFDC & EAEDC</option>
-                <option value="tafdc">Exclude SNAP & EAEDC</option>
-                <option value="eaedc">Exclude SNAP & TAFDC</option>
-                <option value="snap_only">SNAP only</option>
-                <option value="tafdc_only">TAFDC only</option>
-                <option value="eaedc_only">EAEDC only</option>
-            </select>
         </div>
 
         <label class="checkbox-label deep-toggle">
@@ -48,6 +36,28 @@
             Deep analysis
         </label>
     </div>
+
+    <details class="program-filters" open>
+        <summary>Filter programs <small>(uncheck a program to drop it from results for that source)</small></summary>
+        <div class="program-groups">
+            {% for key, src in SOURCES.items() if src.has_program_filter %}
+            <fieldset class="program-group"
+                      data-source="{{ key }}"
+                      {{ '' if key == DEFAULT_SOURCE else 'disabled hidden' }}>
+                <legend>{{ src.short_label }}</legend>
+                {% for prog in PROGRAM_REGISTRY[key]["all"] %}
+                <label class="checkbox-label">
+                    <input type="checkbox"
+                           name="programs_{{ key }}"
+                           value="{{ prog }}"
+                           {{ 'checked' if prog in PROGRAM_REGISTRY[key]["default_checked"] }}>
+                    {{ prog }}
+                </label>
+                {% endfor %}
+            </fieldset>
+            {% endfor %}
+        </div>
+    </details>
 </form>
 
 <div id="answer-area">
@@ -63,6 +73,25 @@
 </div>
 
 <script>
+function syncProgramGroups() {
+    document.querySelectorAll('.source-toggle input[data-source]').forEach(function(cb) {
+        var src = cb.dataset.source;
+        var fs = document.querySelector('.program-group[data-source="' + src + '"]');
+        if (!fs) return;
+        if (cb.checked) {
+            fs.removeAttribute('disabled');
+            fs.removeAttribute('hidden');
+        } else {
+            fs.setAttribute('disabled', '');
+            fs.setAttribute('hidden', '');
+        }
+    });
+}
+document.querySelectorAll('.source-toggle input[data-source]').forEach(function(cb) {
+    cb.addEventListener('change', syncProgramGroups);
+});
+syncProgramGroups();
+
 document.addEventListener('htmx:beforeRequest', function(e) {
     if (e.detail.target && e.detail.target.id === 'answer-area') {
         var area = document.getElementById('answer-area');
