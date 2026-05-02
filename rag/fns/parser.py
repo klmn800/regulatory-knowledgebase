@@ -86,8 +86,11 @@ CHAPTER_RANGES = {
 }
 
 # Page header pattern to strip
+# Case-insensitive: the handbook uses both "FNS HANDBOOK 310" and "FNS Handbook 310"
+# (the latter appears in the right column of side-by-side example boxes).
 PAGE_HEADER_PATTERN = re.compile(
-    r"^(?:FNS\s+HANDBOOK\s+310|FFFNNNSSS\s+HHHAAANNNDDDBBBOOOOOOKKK\s+333111000)\s*$"
+    r"^(?:FNS\s+HANDBOOK\s+310|FFFNNNSSS\s+HHHAAANNNDDDBBBOOOOOOKKK\s+333111000)\s*$",
+    re.IGNORECASE,
 )
 
 # Page footer patterns to strip
@@ -99,6 +102,15 @@ PAGE_FOOTER_PATTERNS = [
     re.compile(r"^(i{1,3}|iv|vi{0,3}|ix|xi{0,3}|xiv|xv)$"),
     # Change annotations
     re.compile(r"^Change\s+\d+\s+\(.*\)\s*$"),
+]
+
+# Chapter divider patterns. Each chapter starts on a new page with a
+# divider showing "Chapter N" and the chapter title centered. Without
+# stripping, that text leaks into the LAST section of the previous chapter.
+CHAPTER_DIVIDER_PATTERNS = [
+    re.compile(r"^Chapter\s+\d{1,2}\s*$", re.IGNORECASE),
+    # Chapter N + ALL CAPS title on one line (after soft-wrap flattening)
+    re.compile(r"^Chapter\s+\d{1,2}\s+[A-Z][A-Z\s]{3,}$"),
 ]
 
 # Section heading pattern: a numbered section at the start of a line
@@ -193,17 +205,20 @@ def parse_handbook(
             break
 
         page = pdf.pages[page_idx]
-        is_side_by_side = page_num in side_by_side_set
 
-        if is_side_by_side:
-            main_text, example_text, extraction_ok = _extract_columns(page)
-            flags = ["side_by_side_page"]
-            if not extraction_ok:
-                flags.append("manual_review_needed")
-        else:
-            main_text = page.extract_text() or ""
-            example_text = None
-            flags = []
+        # Always try column detection. The auto-detector falls back to
+        # single-column extract_text() when no two-column structure is
+        # found, so this is safe on every page. The manual side_by_side
+        # list still acts as a hint flag for traceability/review.
+        main_text, example_text, extraction_ok = _extract_columns(page)
+
+        flags = []
+        if example_text:
+            flags.append("side_by_side_page")
+        if page_num in side_by_side_set and not example_text:
+            # Manual hint says it's side-by-side but auto-detection didn't
+            # find columns — flag for review
+            flags.append("manual_review_needed")
 
         # Extract tables from this page
         tables = _extract_tables(page)
@@ -211,8 +226,11 @@ def parse_handbook(
         # Get handbook page number from footer
         handbook_page = _extract_handbook_page_number(main_text)
 
-        # Clean the text
+        # Clean the text — apply to both columns so the right-column example
+        # box gets the same header/footer stripping as the left column.
         main_text = _clean_page_text(main_text)
+        if example_text:
+            example_text = _clean_page_text(example_text)
 
         raw_pages.append({
             "pdf_page": page_num,
@@ -290,22 +308,71 @@ def save_sections(sections: list[dict], output_dir: str) -> None:
 # TEXT EXTRACTION
 # ============================================================
 
+def _detect_column_boundary_histogram(words, page_width: float) -> float | None:
+    """
+    Detect a two-column page by analyzing where words start (x0 histogram).
+
+    A two-column page has TWO dominant x0 cluster peaks:
+      - Left column (typically around x=80-100)
+      - Right column (typically around x=315-330)
+
+    Returns a column-boundary x value if the page looks two-column,
+    otherwise None. More robust than per-line gap detection because
+    it handles pages where left and right column rows don't share
+    y-buckets (5-pixel vertical offset between columns is common).
+    """
+    if len(words) < 30:
+        return None
+
+    from collections import Counter
+    middle = page_width * 0.5
+
+    # Bucket word start positions in 10-pixel buckets
+    x0_buckets = Counter(int(w["x0"] // 10) * 10 for w in words)
+
+    # Find peak word-count buckets in left half and right-mid section
+    left_buckets = [(count, x) for x, count in x0_buckets.items()
+                    if x < middle * 0.95]
+    right_buckets = [(count, x) for x, count in x0_buckets.items()
+                     if middle * 1.0 <= x < page_width * 0.7]
+
+    if not left_buckets or not right_buckets:
+        return None
+
+    left_peak_count, left_peak_x = max(left_buckets)
+    right_peak_count, right_peak_x = max(right_buckets)
+
+    # Both peaks need substantial word counts to be considered columns.
+    # Tables or random scattered right-side words wouldn't accumulate.
+    if left_peak_count < 8 or right_peak_count < 8:
+        return None
+
+    # Peaks should be at least 100 pixels apart for clear two-column structure
+    if right_peak_x - left_peak_x < 100:
+        return None
+
+    return (left_peak_x + right_peak_x) / 2
+
+
 def _extract_columns(page) -> tuple[str, str | None, bool]:
     """
     Extract text from a page with side-by-side content by separating
     left (policy text) and right (example box) columns.
 
-    Uses word-level x-coordinates to determine which column each word
-    belongs to. The page midpoint (roughly x=300 on a 612-wide page)
-    serves as the dividing line, but we look for natural gaps in the
-    word positions to find the actual boundary.
+    Two-stage detection:
+      1. Per-line gap detection: scan each y-bucket for wide horizontal
+         gaps in the middle of the page. Robust when 3+ lines align well.
+      2. Histogram fallback: count word x-start positions, look for a
+         bimodal distribution. Handles pages where left/right rows don't
+         share y-buckets (typical 5-pixel vertical offset between cols).
+
+    If neither detects columns, falls back to single-column extract_text().
 
     Returns:
         (main_text, example_text, extraction_ok)
         - main_text: Left column text (the actual policy)
-        - example_text: Right column text (the illustrative example), or
-          None if column separation wasn't clear
-        - extraction_ok: True if column separation looked reliable
+        - example_text: Right column text (illustrative example) or None
+        - extraction_ok: True if separation looked reliable
     """
     words = page.extract_words(keep_blank_chars=True, y_tolerance=3, x_tolerance=3)
 
@@ -313,7 +380,7 @@ def _extract_columns(page) -> tuple[str, str | None, bool]:
         return page.extract_text() or "", None, True
 
     page_width = page.width
-    midpoint = page_width * 0.45  # Example boxes tend to start around 45-55%
+    midpoint = page_width * 0.45
 
     # Group words by y-position (same line)
     lines = {}
@@ -322,8 +389,7 @@ def _extract_columns(page) -> tuple[str, str | None, bool]:
         lines.setdefault(y_key, [])
         lines[y_key].append(w)
 
-    # Find lines that have a significant gap (indicating two columns)
-    # and determine the column boundary
+    # Stage 1: per-line gap detection
     gap_x_positions = []
     for y_key in sorted(lines.keys()):
         line_words = sorted(lines[y_key], key=lambda w: w["x0"])
@@ -334,23 +400,106 @@ def _extract_columns(page) -> tuple[str, str | None, bool]:
                 if midpoint * 0.7 < gap_x < page_width * 0.65:
                     gap_x_positions.append(gap_x)
 
-    if len(gap_x_positions) < 3:
-        # Not enough evidence of two columns — treat as single column
+    if len(gap_x_positions) >= 3:
+        # Use the median gap position as the column boundary
+        gap_x_positions.sort()
+        boundary = gap_x_positions[len(gap_x_positions) // 2]
+    else:
+        # Stage 2: histogram fallback
+        boundary = _detect_column_boundary_histogram(words, page_width)
+        if boundary is None:
+            return page.extract_text() or "", None, True
+
+    # Identify the two-column y-range. A page may have full-width content
+    # at the top (preceding section that ended on this page, or a section
+    # heading paragraph that wraps full width) AND two-column content
+    # below. Apply column split ONLY where both sides have a wide gap
+    # at the boundary (i.e., a true two-column row, not a full-width
+    # line whose words happen to span the boundary).
+    line_buckets = {}
+    for w in words:
+        y_bucket = round(w["top"] / 12) * 12
+        line_buckets.setdefault(y_bucket, []).append(w)
+
+    def _is_two_col_row(ws) -> bool:
+        """A row is two-column when there's a >25px gap at the boundary."""
+        left_xs = [w["x1"] for w in ws if w["x0"] < boundary - 5]
+        right_xs = [w["x0"] for w in ws if w["x0"] > boundary + 5]
+        if not left_xs or not right_xs:
+            return False
+        return min(right_xs) - max(left_xs) > 25
+
+    two_col_ys = sorted(
+        y for y, ws in line_buckets.items() if _is_two_col_row(ws)
+    )
+
+    if len(two_col_ys) < 3:
+        # Histogram suggested two columns but row alignment doesn't
+        # confirm — fall back to single-column extraction
         return page.extract_text() or "", None, True
 
-    # Use the median gap position as the column boundary
-    gap_x_positions.sort()
-    boundary = gap_x_positions[len(gap_x_positions) // 2]
+    two_col_min_y = two_col_ys[0] - 6
+    two_col_max_y = two_col_ys[-1] + 6
 
-    # Split words into left and right columns
+    # Extend the range forward AND backward to cover example-box headers
+    # and trailers that may not have left-column counterparts at the same
+    # y-position. Example boxes often begin with a header line that's
+    # right-only and end with content that continues past where the left
+    # column has stopped (sometimes with stray punctuation remnants).
+    sorted_ys = sorted(line_buckets.keys())
+
+    # Forward extension. Extend over right-dominant rows AND sparse
+    # left-only rows (single trailing word like "covered." that punctuates
+    # the end of left content while right column continues with example
+    # box prose). STOP only when we hit substantial left-side content
+    # or gap too far.
+    last_y = two_col_max_y
+    for y in sorted_ys:
+        if y <= last_y:
+            continue
+        if y - last_y > 40:
+            break
+        ws = line_buckets[y]
+        left_count = sum(1 for w in ws if w["x0"] < boundary - 5)
+        right_count = sum(1 for w in ws if w["x0"] > boundary + 5)
+        if left_count > 3:
+            # Substantial left content — full-width has resumed
+            break
+        if right_count >= 1 or left_count <= 2:
+            last_y = y + 6
+            continue
+        break
+    two_col_max_y = last_y
+
+    # Backward extension (mirror of forward)
+    first_y = two_col_min_y
+    for y in reversed(sorted_ys):
+        if y >= first_y:
+            continue
+        if first_y - y > 40:
+            break
+        ws = line_buckets[y]
+        left_count = sum(1 for w in ws if w["x0"] < boundary - 5)
+        right_count = sum(1 for w in ws if w["x0"] > boundary + 5)
+        if left_count > 3:
+            break
+        if right_count >= 1 or left_count <= 2:
+            first_y = y - 6
+            continue
+        break
+    two_col_min_y = first_y
+
+    # Split words into left and right columns. Words OUTSIDE the
+    # two-column y-range (full-width content above or below the columned
+    # region) all go to the main (left) text — their x-position past the
+    # boundary is just trailing-word position in a full-width line.
     left_lines = {}
     right_lines = {}
 
     for y_key in sorted(lines.keys()):
+        in_two_col_range = two_col_min_y <= y_key <= two_col_max_y
         for w in lines[y_key]:
-            # A word belongs to the right column if its left edge is
-            # past the boundary
-            if w["x0"] > boundary:
+            if in_two_col_range and w["x0"] > boundary:
                 right_lines.setdefault(y_key, [])
                 right_lines[y_key].append(w)
             else:
@@ -422,11 +571,16 @@ def _extract_handbook_page_number(raw_text: str) -> str | None:
 
 def _clean_page_text(text: str) -> str:
     """
-    Clean extracted page text by stripping headers, footers, and
-    fixing special characters.
+    Clean extracted page text by stripping headers, footers, chapter
+    divider lines, and fixing special characters.
     """
     if not text:
         return ""
+
+    # Build the chapter title strip set lazily — uppercase forms of every
+    # chapter title appear on divider pages and should be removed so they
+    # don't bleed into the previous chapter's last section.
+    upper_titles = {t.upper() for t in CHAPTER_TITLES.values()}
 
     lines = text.split("\n")
     cleaned = []
@@ -440,6 +594,15 @@ def _clean_page_text(text: str) -> str:
 
         # Skip page footers
         if any(p.match(stripped) for p in PAGE_FOOTER_PATTERNS):
+            continue
+
+        # Skip chapter divider lines ("Chapter 12" or "Chapter 12 MAKING THE...")
+        if any(p.match(stripped) for p in CHAPTER_DIVIDER_PATTERNS):
+            continue
+
+        # Skip an isolated chapter title line on a divider page
+        # (e.g. "MAKING THE REVIEW DECISION" alone on a line)
+        if stripped in upper_titles:
             continue
 
         # Replace Wingdings bullet with standard bullet
@@ -726,6 +889,109 @@ def _extract_section_title(raw_title: str) -> str:
 
 
 # ============================================================
+# SOFT LINE-WRAP FLATTENING
+# ============================================================
+
+# Detect sentence terminators at end of a line (handles trailing close
+# quotes / parens). Used to distinguish real paragraph breaks from PDF
+# line-wrap artifacts.
+_SENTENCE_END_RE = re.compile(r"[.!?][\"')\]]?\s*$")
+
+# Detect lines that are structural elements (bullets, list items, table
+# rows) — these must stay on their own lines.
+_STRUCTURAL_RE = re.compile(
+    r"^(?:[•·➢▪○\-—–]\s+|\d+\.\s+|[A-Za-z]\.\s+|\([A-Za-z\d]{1,2}\)\s+|\|.*\|\s*$)"
+)
+
+
+def _flatten_soft_wraps(text: str) -> str:
+    """
+    Join consecutive prose lines that are PDF line-wrap artifacts rather
+    than real paragraph breaks. PDF text extraction wraps lines at the
+    visual column width, leaving every wrap point as a `\\n`. These
+    wraps have no semantic meaning and should be flattened so chunk
+    text reads as flowing prose.
+
+    A line break is preserved when:
+      - The next line is a structural element (bullet, numbered/lettered
+        item, table row).
+      - The next line is blank (paragraph separator).
+      - The previous line ends with `.!?` AND the next line starts with
+        a capital letter (real paragraph break).
+
+    Otherwise the line break is treated as a soft wrap and replaced with
+    a single space.
+
+    Visual paragraph clarity: where a paragraph break is preserved AND it
+    transitions from a prose line OR a structural list item BACK to prose,
+    a blank line is inserted between them. This makes list-end visually
+    obvious in the chunk text — readers can tell where a list stops and
+    new prose begins.
+    """
+    if not text:
+        return text
+
+    lines = text.split("\n")
+    out = []
+
+    def append_with_blank():
+        """Insert a blank-line separator before adding the next line, but
+        only if there isn't already one."""
+        if out and out[-1].strip():
+            out.append("")
+
+    for line in lines:
+        stripped = line.strip()
+
+        # Blank line: paragraph separator. Keep.
+        if not stripped:
+            out.append(line)
+            continue
+
+        if not out:
+            out.append(line)
+            continue
+
+        prev_line = out[-1]
+        prev_stripped = prev_line.strip()
+
+        # If previous line is blank, can't merge into it
+        if not prev_stripped:
+            out.append(line)
+            continue
+
+        prev_is_structural = bool(_STRUCTURAL_RE.match(prev_stripped))
+        cur_is_structural = bool(_STRUCTURAL_RE.match(stripped))
+
+        # Current line is a structural element (bullet, table row, etc.)
+        if cur_is_structural:
+            # Insert a blank when transitioning from prose to a list start
+            # (only when prev didn't end with a colon — colon-ending lines
+            # are list intros that should flow directly into the list).
+            if not prev_is_structural and not prev_stripped.endswith(":"):
+                append_with_blank()
+            out.append(line)
+            continue
+
+        # Real paragraph break: prev ends with sentence terminator AND
+        # cur starts with a capital letter
+        prev_terminates = bool(_SENTENCE_END_RE.search(prev_stripped))
+        cur_capital = stripped[0].isupper()
+        if prev_terminates and cur_capital:
+            # Insert a blank before the new paragraph for visual clarity.
+            # This is especially important for bullet → prose transitions
+            # (list end) and prose → prose paragraph breaks.
+            append_with_blank()
+            out.append(line)
+            continue
+
+        # Otherwise: soft wrap. Merge into previous line with a space.
+        out[-1] = prev_line.rstrip() + " " + stripped
+
+    return "\n".join(out)
+
+
+# ============================================================
 # SECTION ENRICHMENT
 # ============================================================
 
@@ -735,6 +1001,13 @@ def _enrich_section(section: dict) -> None:
     cross-references.
     """
     sec_num = section["section_number"]
+
+    # Flatten soft line wraps (PDF column-width artifacts) in the section
+    # text and example_text. After this, line breaks are semantically
+    # meaningful (paragraph or structural), not visual layout noise.
+    section["text"] = _flatten_soft_wraps(section["text"])
+    if section.get("example_text"):
+        section["example_text"] = _flatten_soft_wraps(section["example_text"])
 
     # Determine chapter from section number
     base_num = int(sec_num.split(".")[0])
