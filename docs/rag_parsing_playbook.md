@@ -203,6 +203,18 @@ The prefix is part of the embedded text — Voyage AI sees it. This anchors the 
 
 Pattern: `<source-id> > <chapter/part-title> > <section-number section-title>`. CMR / CFR add a sub-topic level when hierarchy markers are present (`(D) Vehicles`, `Access device`).
 
+**Include the parent section's title when sections are nested**. If a section has a meaningful `parent_section` (e.g., FNS §812.2 has parent §812 "Students"), insert the parent section number + title between the chapter line and the section line:
+
+```
+FNS 310 > Chapter 8: Non-Financial Eligibility Criteria > 812 Students > 812.2 Standard Verification
+```
+
+Without this, a chunk like §812.2 "Standard Verification" reads as "verification of what?" — the embedding misses the topical anchor (school enrollment) entirely. Parent titles are typically 5-25 chars. Look up the parent's title from the parsed_sections collection at chunker build time.
+
+**Skip parent_title when**: (a) `parent_section` is the chapter root, (b) the parent's title duplicates the chapter title, or (c) the section's own title is already long enough to convey its topic on its own (FNS uses a 60-char threshold). Reason for (c): a 145-char section title like §726.7 "Income Exceeds Certified Household's Required Income Reporting Limit Due to a New Household Member(s) with Income AORD" already communicates the topic; piling a parent title on top eats body chunk budget for no signal gain. The threshold is empirical — tune per-source.
+
+**Reserve actual prefix length, not a fixed `PREFIX_BUDGET`**. Once parent titles enter the picture, prefix lengths range from ~80 to ~250 chars. Compute the prefix once per section, then pass `MAX_CHUNK_SIZE - len(prefix) - 2` as the splitter's `max_size`. Static `PREFIX_BUDGET = 200` was always a fiction — long FNS section titles (e.g., §726.7's 145-char title) already exceeded it before parent titles were added. Using actual prefix length avoids both oversize chunks (when prefix > budget) and over-split chunks (when prefix ≪ budget).
+
 **Do NOT include `(part N of M)` in the prefix.** Position info lives in `chunk_n` / `chunk_total` metadata — that's the canonical source. We tried adding `(part N of M)` to the FNS prefix initially; it diverged from the other sources for no benefit. Display layers (CLI, UI, synthesis) read the metadata and render position however they want.
 
 ### Position metadata (REQUIRED on every chunk)
@@ -266,6 +278,21 @@ When a section exceeds `MAX_CHUNK_SIZE` (or `MAX_CHUNK_SIZE - PREFIX_BUDGET` if 
 - Before a sub-bullet line (`➢ ▪ ○ -`) — sub-bullets are continuations of their parent top-level bullet
 - Before a TABLE_SEP line (would orphan separator from header)
 - Right after a TABLE_HDR or TABLE_SEP line (would orphan the table)
+- Inside an example paragraph (between `^Example( of)?:` and the next example or end of example block)
+
+### Example / callout block recognition
+
+PDFs frequently contain bordered example or callout boxes that interleave with policy prose. After column extraction merges them into chunkable text, the splitter needs to know about them so it doesn't break inside an example.
+
+**Detection**: a line matching `^\s*Example( of [^:]{0,80})?:` (or comparable callout markers like `Note:`, `Important:`) starts an example/callout block. The block ends at the next example-start line, the next sub-heading, or section end.
+
+**Splitter rules**:
+- Break BEFORE an example-start line: score 65-70 (sub-heading-equivalent — high-priority topic boundary).
+- The text → first-example seam (transitioning from policy prose to the first `Example of...` line): score 70+. This is the natural boundary between policy and illustration.
+- Break BETWEEN sibling examples: score 60 (clean topical boundary).
+- Break INSIDE an example paragraph: forbidden (score 0). If an example exceeds MAX_CHUNK_SIZE, fall back to sentence-split inside that example only — but the example as a unit owns the whole chunk.
+
+This applies to FNS side-by-side example boxes after column extraction concatenates `text + example_text` for chunking. Same pattern applies to any source with bordered example/callout content (OLG has Note/Important callouts; CMR has indented example boxes in some chapters).
 
 ### List-intro orphan prevention
 
@@ -274,6 +301,10 @@ When the line just BEFORE a structural element (bullet / numbered / table) ends 
 Example: `"To establish... must verify all four parts below:" / "1. There is..."` — the colon signals the intro for the numbered list. Break score before "1." drops from 80 to 5.
 
 This was a real bug we hit on §848.1.
+
+**Important refinement #1: walk through blank lines when checking for the colon.** The list-intro signal is on the line ending with `:`, but the parser often inserts a blank line between the intro and the list. Looking only at `prev_line` (the immediately preceding line) misses the colon when prev is a BLANK. Walk back through `BLANK` lines to the most recent non-blank line and check ITS trailing char. FNS §1065.2 had `"...AORD, provided:\n\n• The source..."` — the score for break-before bullet was 80 (treating it as a clean entry from non-bullet) when it should have been 5.
+
+**Important refinement #2: walk-back fallback for colon-orphan**. After fixing the colon detection, a score of 5 means "low priority, last resort." But if the walk-back finds NO higher-scoring break in `[MIN..MAX]`, the score-5 colon-orphan break still gets used (as the only option). The list-integrity walk-back rule (prefer below-MIN high-priority break over in-range low-priority break) must apply here too — when the only in-range option is a colon-orphan score-5 break AND a high-priority break (≥60) exists in `[HARD_MIN..MIN]`, take the below-MIN break and accept a slightly-small chunk.
 
 ### Sub-heading detection
 
@@ -288,6 +319,14 @@ Examples: `"Verification."`, `"Application processing."`, `"Four-part test to es
 When detected, breaking BEFORE a sub-heading scores 65 (very high — topic introducer). When the PREVIOUS line is a sub-heading, breaking AFTER it scores 15 (penalty — would orphan heading at chunk end).
 
 Apply this rule **regardless of prev's class** (works whether prev is a list item ending the previous topic, a paragraph end, or a blank line). FNS hit a bug where sub-heading detection only fired when prev was PROSE; expand to all "sentence/list-end" prev classes.
+
+**Numbered step / phase patterns** (`Step 1.`, `Step 2.`, `Phase 1.`, `Stage A.`) are sub-heading variants. Detect them as sub-headings AND treat their bodies as a sequence — a "Step N." block is one logical unit, like a numbered list item. This means:
+
+- Break BEFORE `Step N.` scores 65 (sub-heading).
+- The list-integrity rule (prefer keeping the full sequence together) applies — if Steps 1-3 fit in one chunk, keep them together rather than putting Step 1 in chunk A and Steps 2-3 in chunk B.
+- Once a chunk starts a step's body, prefer breaking only at the next `Step N.` boundary or at section end. A break in the middle of Step 1's body that orphans the rest from its heading is poor.
+
+FNS hit this on §726.7: chunk ended with `Step 1.\nComplete Comparison I.` and the rest of step 1's body fell into the next chunk. The fix is to detect step sequences as a list and apply list-integrity logic.
 
 ### Definitions-section handler
 
@@ -488,6 +527,35 @@ For ongoing TODOs that affect future work, add memory entries (`~/.claude/projec
 
 ---
 
+## LLM-assisted column cleanup (long-tail PDF parsing)
+
+For PDFs with two-column layouts (policy text + example boxes), heuristic column extraction usually gets ~85% of pages right. The remaining ~15% produce stranded fragments, mis-attributed cross-references, stray bullet glyphs on sub-headings, and runaway whitespace. These edge cases are too varied for more heuristics — use a one-shot LLM pass.
+
+**Pattern** (see `tools/fns_column_cleanup.py` for the FNS implementation):
+
+1. Standalone batch script in `tools/`, NOT inline at parse-time. Parsed JSONs are the source of truth; cleanup commits become reviewable diffs.
+2. Scope to sections flagged `side_by_side_page` (or equivalent). Don't re-run the LLM over already-clean sections.
+3. Use Haiku via Anthropic API. Per-section input is ~2-3k tokens, output ~2-3k. Cost: ~$0.005-$0.015/section.
+4. Prompt structure (system message):
+   - Frame the artifacts the LLM will encounter (stranded fragments, cross-references in example_text, stray bullet glyphs, whitespace runs, soft-wrapped lines)
+   - Hard rule: PRESERVE every factual sentence. Mechanical reassembly only — no editing/summarizing/rewording.
+   - Return JSON with `cleaned_text`, `cleaned_example_text`, `moves` (list of changes), `concerns` (anything weird)
+5. Idempotency: write back to JSON with `column_cleanup_applied: true` and `column_cleanup_moves` / `column_cleanup_concerns` for reviewability. Skip already-flagged sections unless `--force`.
+6. Generate a findings markdown listing per-section changes — surfaces parser-side bugs you didn't know existed (FNS cleanup found severe double-letter encoding artifacts in §442.1 the original parser missed entirely).
+
+**Caveat on LLM self-reporting**: the `moves` list is sometimes aspirational. The model claims a move that didn't actually happen. Trust the output content; treat the natural-language move descriptions as a hint, not ground truth.
+
+**Pass 2: cross-section example dedup (deterministic)**
+
+When multiple sections share a PDF page with a side-by-side example, the parser typically duplicates the example onto each section. After the LLM pass, remaining byte-identical duplicates can be deduped deterministically:
+
+- Heuristic: prefer the section whose text contains "examples", "shows how", "follow", or "see" (signals the example introducer); tie-break by longest text.
+- Drop fragments below ~60 chars as junk.
+- Hard-code manual overrides for the few cases the heuristic gets wrong.
+- Mark non-owners with `example_text_origin: "<owner_section_number>"` for traceability.
+
+See `tools/fns_dedup_examples.py`.
+
 ## Lessons learned (chronological)
 
 A short log of "we hit this once" gotchas that aren't obvious upfront:
@@ -508,3 +576,9 @@ A short log of "we hit this once" gotchas that aren't obvious upfront:
 - **FNS**: Chapter divider pages ("Chapter 12 / MAKING THE REVIEW DECISION") leaked into the last section of the previous chapter. Strip them in `_clean_page_text` per-line.
 - **FNS**: List-end ambiguity (a stranded bullet followed by prose looks like bullet continuation). Fix by inserting blank lines at real paragraph breaks during soft-wrap flattening.
 - **All**: Parsed_sections JSONs are the source of truth for everything downstream. Worth keeping clean.
+- **FNS**: Heuristic column extraction got ~85% of side-by-side pages right; the long-tail ~15% needed an LLM cleanup pass (Haiku, ~$0.30 for 56 sections). Stranded fragments, mis-attributed cross-refs, and stray bullet glyphs on sub-headings are pattern-rich enough for an LLM but too varied for more heuristics.
+- **FNS**: When sections share a PDF page with a side-by-side example, the parser duplicates the example onto every section. After Pass 1 LLM cleanup, remaining byte-identical dupes are dedup'd deterministically with manual overrides for the 1-2 cases the heuristic gets wrong.
+- **FNS**: §1170.5 chunks broke inside example paragraphs because the splitter didn't recognize `Example of X:` as a sub-heading-equivalent. Add example-block detection (see "Example / callout block recognition").
+- **FNS**: §1065.2 chunk ended with `:` before its list because list-intro orphan penalty (score 5) was the only in-range option. Walk-back must also accept below-MIN high-priority breaks in this case, like list integrity does for mid-list breaks.
+- **FNS**: §726.7 broke after `Step 1.\nComplete Comparison I.`, orphaning the rest of step 1's body. Numbered step patterns (`Step \d+\.`) need list-integrity treatment.
+- **FNS**: §812.2 chunk header `FNS 310 > Chapter 8: Non-Financial Eligibility Criteria > 812.2 Standard Verification` is missing the parent §812 ("Students") title. Multi-level section hierarchies need parent_section title in the prefix.

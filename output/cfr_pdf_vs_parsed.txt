@@ -1,0 +1,35 @@
+Step 1: scanning parsed CFR JSONs...
+
+Parsed-output non-ASCII chars: 10 unique
+
+Scanning 7 CFR Part 271.pdf...
+Scanning 7 CFR Part 272.pdf...
+Scanning 7 CFR Part 273.pdf...
+Scanning 7 CFR Part 274.pdf...
+Scanning 7 CFR Part 275.pdf...
+Scanning 7 CFR Part 280.pdf...
+Scanning 7 CFR Part 292.pdf...
+
+Live-PDF non-ASCII chars: 10 unique
+
+======================================================================
+CHARS IN LIVE PDF BUT MISSING FROM PARSED OUTPUT
+(these were lost or substituted in the parser/chunker pipeline)
+======================================================================
+(none — every non-ASCII char that pdfplumber extracts also appears in parsed JSON)
+
+======================================================================
+CHARS IN PARSED OUTPUT BUT MISSING FROM LIVE PDF EXTRACTION
+(these may be artifacts the parser introduced — e.g., mojibake)
+======================================================================
+(none)
+
+======================================================================
+SUMMARY: char-counts that disagree (in both, but counts differ)
+======================================================================
+  U+00A7  '§'  SECTION SIGN   PDF:1608  parsed:1342  delta:266
+  U+2014  '—'  EM DASH   PDF:151  parsed:109  delta:42
+  U+201D  '”'  RIGHT DOUBLE QUOTATION MARK   PDF:151  parsed:112  delta:39
+  U+201C  '“'  LEFT DOUBLE QUOTATION MARK   PDF:151  parsed:112  delta:39
+  U+2032  '′'  PRIME   PDF:26  parsed:14  delta:12
+  U+2212  '−'  MINUS SIGN   PDF:10  parsed:6  delta:4

@@ -98,6 +98,12 @@ SUB_BULLET_RE = re.compile(r"^[➢▪○\-—–]\s+")
 # Numbered list items: "1. ", "2. ", etc.
 NUMBERED_RE = re.compile(r"^\d+\.\s+")
 
+# Procedural step markers: "Step 1.", "Step 2.", etc. Used in §726.x and similar
+# step-by-step instruction sections. Treated as numbered list items so that
+# list-integrity rules keep step bodies together and break-before-step gets
+# a high score.
+STEP_RE = re.compile(r"^Step\s+\d+\.\s+")
+
 # Lettered list items: "A. ", "a. ", etc. (rare in FNS)
 LETTERED_RE = re.compile(r"^[A-Za-z]\.\s+")
 
@@ -140,6 +146,8 @@ def classify_line(line: str) -> str:
         return "BULLET_TOP"
     if SUB_BULLET_RE.match(stripped):
         return "BULLET_SUB"
+    if STEP_RE.match(stripped):
+        return "NUMBERED"
     if NUMBERED_RE.match(stripped):
         return "NUMBERED"
     if LETTERED_RE.match(stripped):
@@ -210,6 +218,41 @@ CAPITAL_START_RE = re.compile(r"^[A-Z]")
 DEFINITION_LINE_RE = re.compile(r"^[A-Z][A-Za-z0-9 ,'()/-]{1,80}\s+[–—-]\s+\S")
 
 
+# Detects a line that begins an example/callout block. Two forms:
+#   "Example: ...rest..."
+#   "Example of {subject}: ...rest..."
+# The {subject} portion is bounded to avoid pathological matches.
+EXAMPLE_START_RE = re.compile(r"^\s*Example(\s+of\s+[^:]{0,80})?:")
+
+
+def _is_example_start(line: str) -> bool:
+    """True when the line begins an example/callout block."""
+    return bool(EXAMPLE_START_RE.match(line))
+
+
+def annotate_example_ranges(lines: list[str]) -> list[bool]:
+    """
+    Return per-line booleans flagging lines INSIDE an example block.
+
+    Example blocks span from an example-start line (exclusive) to the next
+    example-start line OR end of section. The example-start line itself is
+    False — it's the desired break-before target, not a forbidden one.
+    Lines BEFORE the first example-start are also False.
+
+    The splitter uses this to forbid breaks inside an example paragraph,
+    so an example as a unit owns its chunk (or chunks if it overflows MAX).
+    """
+    in_example = [False] * len(lines)
+    inside = False
+    for i, line in enumerate(lines):
+        if _is_example_start(line):
+            inside = True
+            in_example[i] = False
+        else:
+            in_example[i] = inside
+    return in_example
+
+
 def _is_subheading(line: str) -> bool:
     """
     Detect a prose line that functions as a sub-heading inside a section —
@@ -239,14 +282,32 @@ def _is_subheading(line: str) -> bool:
     return True
 
 
-def score_break_before(idx: int, classes: list[str], lines: list[str]) -> int:
+def _prev_meaningful_ends_colon(idx: int, lines: list[str],
+                                 classes: list[str]) -> bool:
+    """
+    Walk backward through BLANK lines from idx-1 to the most recent non-blank
+    line and check whether it ends with `:`. The list-intro orphan signal
+    (colon directly preceding a list/table) is otherwise lost when the parser
+    inserts a blank line between the intro and the list.
+    """
+    j = idx - 1
+    while j >= 0 and classes[j] == "BLANK":
+        j -= 1
+    if j < 0:
+        return False
+    return lines[j].rstrip().endswith(":")
+
+
+def score_break_before(idx: int, classes: list[str], lines: list[str],
+                       in_example: list[bool] | None = None) -> int:
     """
     Return a score for breaking BEFORE line[idx]. Higher = better.
     0 means do not break here.
 
     `lines` is passed so we can look at content (sentence terminators,
     capitalized starts, definition patterns) when class-only scoring is
-    insufficient.
+    insufficient. `in_example` (when provided) marks lines inside an example
+    block so the splitter avoids mid-example breaks.
     """
     if idx == 0 or idx >= len(classes):
         return 0
@@ -257,6 +318,20 @@ def score_break_before(idx: int, classes: list[str], lines: list[str]) -> int:
 
     if cur in FORBIDDEN_BEFORE:
         return 0
+
+    # Inside an example block — break here only as a last resort. The example
+    # owns its chunk; mid-example breaks orphan the example body from its
+    # heading. Score 1 (not 0) so the forced-break fallback can still place
+    # a break here when no other option exists in the size window.
+    if in_example is not None and in_example[idx]:
+        return 1
+
+    # Example-start line — high break-before score (sub-heading-equivalent).
+    # Captures both "Example: ..." and "Example of X: ..." forms. This applies
+    # regardless of prev's class, including the policy-text → first-example
+    # seam (where prev is typically a BLANK line).
+    if _is_example_start(cur_line):
+        return 70
 
     # Don't break right after a table header / separator (would orphan the table)
     if prev in ("TABLE_HDR", "TABLE_SEP"):
@@ -276,10 +351,12 @@ def score_break_before(idx: int, classes: list[str], lines: list[str]) -> int:
         if prev_complete:
             return 65
 
-    # If the previous line ends with a colon, it's an intro/lead-in to a
-    # following list or table. Breaking between the intro and what it
-    # introduces orphans context. Penalize structural-entry scores in that case.
-    prev_ends_colon = prev_line.rstrip().endswith(":")
+    # If the previous (non-blank) line ends with a colon, it's an intro/lead-in
+    # to a following list or table. Breaking between the intro and what it
+    # introduces orphans the context. Penalize structural-entry scores in
+    # that case. Looking through blanks is required because the parser often
+    # inserts a blank between the intro and the list.
+    prev_ends_colon = _prev_meaningful_ends_colon(idx, lines, classes)
 
     # Entering structures from prose / blank
     if cur == "TABLE_HDR" and prev not in ("TABLE_ROW", "TABLE_HDR", "TABLE_SEP"):
@@ -450,6 +527,7 @@ def split_text_by_breaks(text: str, max_size: int = MAX_CHUNK_SIZE,
     # break-priority algorithm has more candidates in continuous prose.
     lines = _expand_long_prose_lines(lines)
     classes = annotate_table_headers([classify_line(l) for l in lines])
+    in_example = annotate_example_ranges(lines)
     table_blocks = find_table_blocks(classes)
 
     # Map line index → header line index for table rows in mid-table blocks.
@@ -489,7 +567,7 @@ def split_text_by_breaks(text: str, max_size: int = MAX_CHUNK_SIZE,
                     break
                 if window_size > max_size:
                     continue
-                sc = score_break_before(j, classes, lines)
+                sc = score_break_before(j, classes, lines, in_example)
                 if window_size >= min_size:
                     if sc > best_in_range[0]:
                         best_in_range = (sc, j)
@@ -648,21 +726,47 @@ def append_example_text(text: str, example_text: str | None) -> str:
 # CONTEXT PREFIX
 # ============================================================
 
+# Section titles longer than this carry enough topical signal on their own;
+# adding parent_section title becomes redundant and bloats the prefix at the
+# cost of body chunk budget. Below the threshold (e.g., §812.2 "Standard
+# Verification" = 21 chars), the parent ("School Enrollment") is the
+# topical anchor the embedding needs.
+PARENT_TITLE_SECTION_TITLE_THRESHOLD = 60
+
+
 def build_context_prefix(chapter: int, chapter_title: str,
                          section_number: str | None = None,
-                         section_title: str | None = None) -> str:
+                         section_title: str | None = None,
+                         parent_section: str | None = None,
+                         parent_title: str | None = None) -> str:
     """
     Build the hierarchical context line prepended to chunk text before
     embedding. Position-within-section info (chunk_n / chunk_total) lives
     in metadata only — consistent with OLG, CMR, and CFR.
 
+    When a section has a meaningful `parent_section` (e.g., §812.2's parent
+    is §812 "School Enrollment"), the parent's number + title is inserted
+    between the chapter line and the section line so the embedding captures
+    the topical anchor. Skipped when parent_title is missing, duplicates the
+    chapter title, or when section_title is already long enough to convey
+    its topic on its own (avoids prefix bloat that would crowd body budget).
+
     Example:
-        FNS 310 > Chapter 10: Income > 1021.1 Positive Allegation
+        FNS 310 > Chapter 8: Non-Financial Eligibility Criteria > 812 School Enrollment > 812.2 Standard Verification
     """
     parts = ["FNS 310", f"Chapter {chapter}: {chapter_title}"]
 
-    if section_number and section_title:
-        parts.append(f"{section_number} {section_title}")
+    sec_title_clean = (section_title or "").strip()
+    parent_title_clean = (parent_title or "").strip()
+    chapter_title_clean = chapter_title.strip()
+    if (parent_section
+            and parent_title_clean
+            and parent_title_clean.lower() != chapter_title_clean.lower()
+            and len(sec_title_clean) <= PARENT_TITLE_SECTION_TITLE_THRESHOLD):
+        parts.append(f"{parent_section} {parent_title_clean}")
+
+    if section_number and sec_title_clean:
+        parts.append(f"{section_number} {sec_title_clean}")
     elif section_number:
         parts.append(section_number)
 
@@ -710,7 +814,7 @@ def _is_fns_definition_start(line: str) -> str | None:
     return m.group(1).strip().rstrip(".")
 
 
-def chunk_fns_definitions(section: dict) -> list[str]:
+def chunk_fns_definitions(section: dict, body_max: int | None = None) -> list[str]:
     """
     Chunk a definitions section with one chunk per defined term. Mirrors
     CFR's chunk_definitions(): each definition becomes its own chunk,
@@ -719,7 +823,10 @@ def chunk_fns_definitions(section: dict) -> list[str]:
 
     Returns a list of chunk body strings (no prefix yet — caller adds it).
     Oversized single definitions are split at sentence boundaries.
+    `body_max` overrides the default cap; defaults to MAX_CHUNK_SIZE - PREFIX_BUDGET.
     """
+    if body_max is None:
+        body_max = MAX_CHUNK_SIZE - PREFIX_BUDGET
     text = section["text"]
     lines = [l for l in text.split("\n") if l.strip()]
 
@@ -758,12 +865,12 @@ def chunk_fns_definitions(section: dict) -> list[str]:
     raw_chunks = []
     for term, entry_lines in entries:
         entry_text = "\n".join(entry_lines)
-        if len(entry_text) <= MAX_CHUNK_SIZE - PREFIX_BUDGET:
+        if len(entry_text) <= body_max:
             raw_chunks.append(entry_text)
         else:
             parts = split_text_by_breaks(
                 entry_text,
-                max_size=MAX_CHUNK_SIZE - PREFIX_BUDGET,
+                max_size=body_max,
                 min_size=MIN_CHUNK_SIZE,
             )
             raw_chunks.extend(parts)
@@ -835,18 +942,38 @@ def create_chapter_document(chapter_num: int, chapter_title: str,
 # ============================================================
 
 def create_section_chunks(chapter_num: int, chapter_title: str,
-                          sections: list[dict]) -> list[dict]:
+                          sections: list[dict],
+                          section_title_lookup: dict[str, str] | None = None,
+                          ) -> list[dict]:
     """
     Create section-level chunks. No cross-section merging — each FNS
     section becomes its own chunk (or set of split chunks if oversized).
+
+    `section_title_lookup` maps section_number → section_title across all
+    chapters; used to resolve `parent_section` titles for the chunk prefix.
     """
     chapter_id = make_chapter_id(chapter_num)
     program = FNS_CHAPTER_PROGRAM.get(chapter_num, "QC_Process")
+    if section_title_lookup is None:
+        section_title_lookup = {}
 
     chunks = []
     for section in sections:
         sec_num = section["section_number"]
         sec_title = section.get("section_title")
+        parent_section_num = (section.get("parent_section") or "").strip()
+        parent_title = section_title_lookup.get(parent_section_num, "")
+
+        # Compute the actual prefix once and use its length as the body
+        # budget reserve. This adapts to long section titles (legitimate)
+        # and to parent_section titles that aren't a fixed 200 chars.
+        prefix = build_context_prefix(
+            chapter_num, chapter_title, sec_num, sec_title,
+            parent_section=parent_section_num or None,
+            parent_title=parent_title or None,
+        )
+        # +2 for the "\n\n" separator between prefix and body in chunk_text.
+        body_max = max(MIN_CHUNK_SIZE * 2, MAX_CHUNK_SIZE - len(prefix) - 2)
 
         # Build the full body: original text + example_text + tables
         body = section["text"].strip()
@@ -859,28 +986,25 @@ def create_section_chunks(chapter_num: int, chapter_title: str,
         # a definitions list (e.g., "DEFINITIONS", "NEGATIVE DEFINITIONS").
         # Each defined term becomes its own chunk, no matter how short.
         if _is_definitions_section(section):
-            split_pieces = chunk_fns_definitions(section)
+            split_pieces = chunk_fns_definitions(section, body_max=body_max)
             if not split_pieces:
                 # Defensive fallback: no definitions detected, treat as prose
                 split_pieces = split_text_by_breaks(
                     body,
-                    max_size=MAX_CHUNK_SIZE - PREFIX_BUDGET,
+                    max_size=body_max,
                     min_size=MIN_CHUNK_SIZE,
                 )
         else:
-            # Split using break-priority logic. Reserve PREFIX_BUDGET so the
-            # final chunk_text (prefix + body) stays within MAX_CHUNK_SIZE.
+            # Split using break-priority logic. Reserve actual prefix length
+            # so the final chunk_text (prefix + body) stays within MAX_CHUNK_SIZE.
             split_pieces = split_text_by_breaks(
                 body,
-                max_size=MAX_CHUNK_SIZE - PREFIX_BUDGET,
+                max_size=body_max,
                 min_size=MIN_CHUNK_SIZE,
             )
         total = len(split_pieces)
 
         for i, piece in enumerate(split_pieces):
-            prefix = build_context_prefix(
-                chapter_num, chapter_title, sec_num, sec_title,
-            )
 
             # Hierarchy path: section number + title (no part-of-N suffix
             # — position info lives in chunk_n / chunk_total metadata,
@@ -954,6 +1078,11 @@ def process_all_sections() -> tuple[list[dict], list[dict]]:
     if not by_chapter:
         return [], []
 
+    section_title_lookup: dict[str, str] = {}
+    for sections in by_chapter.values():
+        for s in sections:
+            section_title_lookup[s["section_number"]] = s.get("section_title", "") or ""
+
     chapter_chunks = []
     section_chunks = []
 
@@ -964,7 +1093,9 @@ def process_all_sections() -> tuple[list[dict], list[dict]]:
         chapter_doc = create_chapter_document(chapter_num, chapter_title, sections)
         chapter_chunks.append(chapter_doc)
 
-        sec_chunks = create_section_chunks(chapter_num, chapter_title, sections)
+        sec_chunks = create_section_chunks(
+            chapter_num, chapter_title, sections, section_title_lookup,
+        )
         section_chunks.extend(sec_chunks)
 
     return chapter_chunks, section_chunks
