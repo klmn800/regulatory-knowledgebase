@@ -19,9 +19,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | Source | Parse | Chunk | Embed | Query | Comparator |
 |--------|-------|-------|-------|-------|------------|
-| OLG | COMPLETE (1,202 pages) | COMPLETE (1,202 + 6,785) | COMPLETE | COMPLETE | N/A |
-| FNS | COMPLETE (482 sections) | COMPLETE (14 + 722) | COMPLETE | COMPLETE | ALL 5 CHAPTERS COMPLETE (270 sections) |
-| CMR | COMPLETE (592 sections) | COMPLETE (18 + 1,275) | COMPLETE | COMPLETE | Used in L3 cross-check |
+| OLG | COMPLETE (1,164 pages) | COMPLETE (1,164 + 6,511) | COMPLETE | COMPLETE | N/A |
+| FNS | COMPLETE (482 sections) | COMPLETE (14 + 860) | COMPLETE | COMPLETE | ALL 5 CHAPTERS COMPLETE (270 sections) |
+| CMR | COMPLETE (592 sections) | COMPLETE (18 + 1,415) | COMPLETE | COMPLETE | Used in L3 cross-check |
 | CFR | COMPLETE (118 sections) | COMPLETE (7 + 1,623) | COMPLETE | COMPLETE | Used in L3 cross-check (alongside CMR) |
 
 | Component | Status |
@@ -39,7 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Each source follows the same pipeline pattern: **Parse → Chunk → Embed → Query**
 
 ### Shared Infrastructure
-- **Embedding model**: Voyage AI `voyage-3` (1,024 dimensions). Single unified `config.ini` at project root.
+- **Embedding models**: Voyage AI. Production runs `voyage-4-large` (broad tier: pages/chapters/parts) + `voyage-context-3` mode A (section tier, with chunker context prefix retained). All collections re-embedded 2026-05-04 — no `voyage-3` vectors remain. `config.ini [embedding] model = voyage-context-3` governs query embedding. See `docs/retrieval_quality_plan.md` for the journey.
 - **Vector store**: ChromaDB (persistent, embedded mode — no server). All sources share a single instance at `index/chroma_db/`.
 - **LLM**: Claude via Anthropic API (synthesis, comparator L0/L1/L3) and Claude Code CLI (comparator L2, authoring drafts).
 - **Multi-source CLI**: Both `rag/embedder.py` and `rag/query.py` accept `--source olg|fns|cmr|cfr` to target any source.
@@ -53,9 +53,9 @@ Fully complete. Source is a MadCap Flare WebHelp site scraped via HTTP.
 | `rag/olg/extractor.py` | HAR file → `policy_urls.txt` + `policy_manifest.json` + `policy_toc.json` |
 | `rag/olg/parser.py` | Pure HTML parser (no I/O). Called by scraper. Extracts sections at H2/H3 boundaries, tables, internal links, last-updated dates. |
 | `rag/olg/scraper.py` | Orchestrates fetching, calls parser, saves one JSON per page to `index/olg/scraped_pages/`. Resumable with progress tracking. |
-| `rag/olg/chunker.py` | Two-tier output: page-level docs (1,202) + section-level chunks (~6,785). Smart merge (<200 chars) and split (>1,500 chars). Tables inlined at `[Table]` placeholders. Context prefix prepended. |
+| `rag/olg/chunker.py` | Two-tier output: page-level docs (1,164) + section-level chunks (6,511). Smart merge (<200 chars) and split (>1,500 chars). Tables inlined at `[Table]` placeholders. Context prefix prepended. |
 
-**ChromaDB collections**: `pages` (1,202 docs), `sections` (6,785 chunks)
+**ChromaDB collections**: `pages` (1,164 docs, voyage-4-large), `sections` (6,511 chunks, voyage-context-3)
 
 **Key data flow**: The chunker prepends a context prefix like `"SNAP > Application Processing > Expedited Benefits > Step One"` to every chunk before embedding, so the embedding captures hierarchical context.
 
@@ -66,9 +66,9 @@ Fully complete (parse, chunk, embed, query).
 | Module | Role |
 |--------|------|
 | `rag/fns/parser.py` | PDF → structured JSON sections via pdfplumber. Handles side-by-side example boxes (47 pages) with column-aware extraction, cross-reference extraction, section hierarchy. |
-| `rag/fns/chunker.py` | Two-tier output: chapter-level docs (14) + section-level chunks (722). Same merge/split logic. Context prefix: `"FNS 310 > Chapter 10: Income > 1021.1 Positive Allegation"`. |
+| `rag/fns/chunker.py` | Two-tier output: chapter-level docs (14) + section-level chunks (860). Same merge/split logic. Context prefix: `"FNS 310 > Chapter 10: Income > 1021.1 Positive Allegation"`. |
 
-**ChromaDB collections**: `fns_chapters` (14 docs), `fns_sections` (722 chunks)
+**ChromaDB collections**: `fns_chapters` (14 docs, voyage-4-large), `fns_sections` (860 chunks, voyage-context-3)
 
 **Parsed output**: 482 JSON files in `index/fns/parsed_sections/`, one per handbook section.
 
@@ -79,9 +79,9 @@ Fully complete (parse, chunk, embed, query).
 | Module | Role |
 |--------|------|
 | `rag/cmr/parser.py` | 18 CMR PDFs → structured JSON sections via pdfplumber. Chapter-filtered section detection, TOC boundary detection, continuation page merging, character-level dedup for one doubled-font PDF (704), cross-reference and table extraction. |
-| `rag/cmr/chunker.py` | Two-tier output: chapter-level docs (18) + section-level chunks (1,275). Same merge/split logic. Context prefix: `"106 CMR 362 > SNAP Nonfinancial Eligibility > 362.330 Good Cause Criteria"`. |
+| `rag/cmr/chunker.py` | Two-tier output: chapter-level docs (18) + section-level chunks (1,415). Same merge/split logic. Context prefix: `"106 CMR 362 > SNAP Nonfinancial Eligibility > 362.330 Good Cause Criteria"`. |
 
-**ChromaDB collections**: `cmr_chapters` (18 docs), `cmr_sections` (1,275 chunks)
+**ChromaDB collections**: `cmr_chapters` (18 docs, voyage-4-large), `cmr_sections` (1,415 chunks, voyage-context-3)
 
 **Parsed output**: 592 JSON files in `index/cmr/parsed_sections/`, one per regulation section.
 
@@ -94,7 +94,7 @@ Fully complete (parse, chunk, embed, query). Used in comparator L3 cross-check a
 | `rag/cfr/parser.py` | 7 CFR PDFs → structured JSON sections via pdfplumber. 3-line header + 1-line footer stripping per page, TOC boundary via duplicate detection, subpart extraction from raw TOC, amendment-note stripping (`[Amdt. ...]`, `[NN FR ...]`), `[Reserved]` filtering. |
 | `rag/cfr/chunker.py` | Two-tier output: part-level docs (7) + section-level chunks (1,623). Hierarchy profile `(a)(1)(i)(A)`. Three section JSON variants (top-marker / fullpath / context-with-ancestor-intros). Top-level marker break is unconditional. Hierarchy-boundary splitting reduced mid-sentence breaks from 332 to 4. Dedicated definition chunker for 271.2 / 292.2. Section-level program labels (SNAP / Issuance / Administration / QC / Disaster / Summer-EBT). |
 
-**ChromaDB collections**: `cfr_parts` (7 docs), `cfr_sections` (1,623 chunks)
+**ChromaDB collections**: `cfr_parts` (7 docs, voyage-4-large), `cfr_sections` (1,623 chunks, voyage-context-3)
 
 **Parsed output**: 118 JSON files in `index/cfr/parsed_sections/`, one per regulation section. **Embedded variant**: `index/cfr/section_chunks_context.json` (chosen for parent-context preamble).
 
@@ -241,7 +241,7 @@ Single unified `config.ini` at project root (gitignored). Key sections:
 | Section | What it configures |
 |---------|--------------------|
 | `[api]` | Voyage AI and Anthropic API keys |
-| `[embedding]` | Model (`voyage-3`), batch size, rate limits |
+| `[embedding]` | Model (currently `voyage-3` for production parity; will flip to `voyage-4-large` on swap), batch size, rate limits |
 | `[chromadb]` | Persist directory, 6 collection names |
 | `[synthesis]` | Search engine model, token limits, search budget |
 | `[author]` | Research model, template .docx path, style guide path, Claude Code timeout |

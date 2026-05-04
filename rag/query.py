@@ -142,15 +142,30 @@ def embed_query(query_text: str, client: voyageai.Client,
     """
     Embed a query string using Voyage AI.
 
-    Note: We do NOT set input_type='query' because the document
-    embeddings were created without input_type='document'. Mixing
-    input_types would degrade retrieval quality.
+    For voyage-3 / voyage-4 family models: we do NOT set
+    input_type='query' because the document embeddings were created
+    without input_type='document'. Mixing input_types would degrade
+    retrieval quality.
+
+    For voyage-context-* models: we use contextualized_embed() with
+    input_type='query' because those collections were embedded with
+    input_type='document'. Symmetry is what matters.
     """
+    is_context_model = model.startswith("voyage-context")
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            result = client.embed([query_text], model=model)
-            return result.embeddings[0]
+            if is_context_model:
+                result = client.contextualized_embed(
+                    inputs=[[query_text]],
+                    model=model,
+                    input_type="query",
+                    output_dimension=1024,
+                )
+                return result.results[0].embeddings[0]
+            else:
+                result = client.embed([query_text], model=model)
+                return result.embeddings[0]
         except Exception as e:
             err_str = str(e)
             is_rate_limit = (
@@ -355,13 +370,27 @@ def fetch_parent_context(
 # PYTHON API
 # ============================================================
 
-def create_client(source: str = "olg") -> dict:
+def create_client(
+    source: str = "olg",
+    model_override: str | None = None,
+    collection_suffix: str | None = None,
+) -> dict:
     """
     Initialize Voyage AI and ChromaDB clients for repeated queries.
 
     Returns a dict with all the initialized objects needed by
     search_with_client(). Use this when making multiple queries
     to avoid re-initializing clients on every call.
+
+    Args:
+        source: Which source to search.
+        model_override: If set, use this Voyage model instead of the
+            one in config.ini. Must match the model the target
+            collections were embedded with.
+        collection_suffix: If set, append "_<suffix>" to the resolved
+            collection names so this client targets side-by-side
+            variant collections (e.g., "voyage4large") instead of
+            production.
 
     Example::
 
@@ -373,7 +402,9 @@ def create_client(source: str = "olg") -> dict:
     source_config = _resolve_source_config(source)
 
     api_key = config.get("api", "voyage_api_key")
-    model = config.get("embedding", "model", fallback="voyage-3")
+    model = model_override or config.get(
+        "embedding", "model", fallback="voyage-4-large"
+    )
     persist_dir = config.get("chromadb", "persist_dir", fallback="index/chroma_db")
     broad_coll_name = config.get(
         "chromadb", source_config["broad_collection_key"],
@@ -381,6 +412,10 @@ def create_client(source: str = "olg") -> dict:
     granular_coll_name = config.get(
         "chromadb", source_config["granular_collection_key"],
         fallback=source_config["granular_name"])
+
+    if collection_suffix:
+        broad_coll_name = f"{broad_coll_name}_{collection_suffix}"
+        granular_coll_name = f"{granular_coll_name}_{collection_suffix}"
 
     persist_path = (PROJECT_ROOT / persist_dir).resolve()
 
@@ -392,14 +427,23 @@ def create_client(source: str = "olg") -> dict:
     vo = voyageai.Client(api_key=api_key)
     chroma = chromadb.PersistentClient(path=str(persist_path))
 
+    # Granular is required (the workhorse collection); broad is
+    # tolerated as missing for evaluation runs that only build the
+    # granular tier.
+    granular_collection = chroma.get_collection(granular_coll_name)
+    try:
+        broad_collection = chroma.get_collection(broad_coll_name)
+    except Exception:
+        broad_collection = None
+
     return {
         "voyage_client": vo,
         "chroma_client": chroma,
         "model": model,
         "source": source,
         "source_config": source_config,
-        "broad_collection": chroma.get_collection(broad_coll_name),
-        "granular_collection": chroma.get_collection(granular_coll_name),
+        "broad_collection": broad_collection,
+        "granular_collection": granular_collection,
     }
 
 
