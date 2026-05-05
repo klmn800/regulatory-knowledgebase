@@ -211,6 +211,7 @@ def run_benchmark(
     label: str,
     model_override: str | None = None,
     collection_suffix: str | None = None,
+    mode: str = "dense",
 ) -> dict:
     benchmark = load_benchmark(source)
     section_field = _section_field(benchmark)
@@ -223,6 +224,7 @@ def run_benchmark(
         print(f"  Model override: {model_override}")
     if collection_suffix:
         print(f"  Collection suffix: _{collection_suffix}")
+    print(f"  Retrieval mode: {mode}")
     print(f"Initializing retrieval client...", flush=True)
     clients = create_client(
         source=source,
@@ -240,6 +242,7 @@ def run_benchmark(
                 q["question"], clients,
                 programs=program_filter,
                 top_n=top_n,
+                mode=mode,
             )
             results = response["results"]
         except Exception as e:
@@ -463,8 +466,10 @@ def render_markdown(report: dict) -> str:
             else:
                 badge = "IRRELEVANT"
 
-            lines.append(f"#### Rank {j['rank']} — {badge} "
-                         f"(sim {j['score']:.3f})")
+            sim_label = (f"sim {j['score']:.3f}"
+                         if j.get("score") is not None
+                         else "sparse-only")
+            lines.append(f"#### Rank {j['rank']} — {badge} ({sim_label})")
             lines.append("")
             lines.append(f"- **Chunk ID**: `{j['id']}`")
             lines.append(f"- **Section**: `{sec}` — {sec_title}")
@@ -533,6 +538,10 @@ def main():
              "side-by-side variant collections (e.g., voyage4large).",
     )
     parser.add_argument(
+        "--mode", choices=["dense", "sparse", "hybrid"], default="dense",
+        help="Retrieval mode (default: dense — preserves baseline comparability).",
+    )
+    parser.add_argument(
         "--no-write", action="store_true",
         help="Print results to stdout but don't write a report file.",
     )
@@ -542,6 +551,7 @@ def main():
         args.source, args.top_n, args.label,
         model_override=args.model,
         collection_suffix=args.collection_suffix,
+        mode=args.mode,
     )
 
     summary = report["summary"]

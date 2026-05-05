@@ -67,6 +67,18 @@ DEFAULT_COLLECTION = "sections"
 DEFAULT_MAX_TEXT_LENGTH = 300  # chars, for CLI display truncation
 DEFAULT_SIMILARITY_THRESHOLD = 0.0  # 0 = no filtering (show all)
 
+# Hybrid retrieval defaults
+RRF_K = 60                       # RRF constant; standard value
+HYBRID_DENSE_CANDIDATES = 30     # top-N from dense before fusion
+HYBRID_SPARSE_CANDIDATES = 30    # top-N from sparse before fusion
+HYBRID_DENSE_WEIGHT = 1.0        # RRF weight for dense retriever
+HYBRID_SPARSE_WEIGHT = 0.4       # RRF weight for sparse — dense is already
+                                 # strong (vctx3 mode A), so equal weighting
+                                 # regresses on natural-language queries.
+                                 # Sparse needs to be a "rescue" channel for
+                                 # adversarial cases, not equal voice.
+VALID_RETRIEVAL_MODES = ("dense", "sparse", "hybrid")
+
 
 def load_config() -> configparser.ConfigParser:
     """Load configuration from config.ini."""
@@ -180,6 +192,99 @@ def embed_query(query_text: str, client: voyageai.Client,
                 time.sleep(wait)
                 continue
             raise
+
+
+# ============================================================
+# SPARSE / HYBRID RETRIEVAL
+# ============================================================
+
+def _load_sparse_index(clients: dict):
+    """Load (and cache on the clients dict) the BM25 sparse index for the
+    current source. Returns None if no index file exists.
+    """
+    cached = clients.get("_sparse_index")
+    if cached is not None:
+        return cached
+    # Lazy import so dense-only paths don't pay rank_bm25 import cost.
+    from rag.sparse_index import index_path_for, load_index
+    path = index_path_for(PROJECT_ROOT, clients["source"])
+    if not path.exists():
+        clients["_sparse_index"] = False  # negative-cache
+        return None
+    idx = load_index(path)
+    clients["_sparse_index"] = idx
+    return idx
+
+
+def _sparse_search(query: str, clients: dict, top_n: int) -> list[tuple[str, float]]:
+    """Return up to top_n (chunk_id, bm25_score) pairs from the sparse index."""
+    idx = _load_sparse_index(clients)
+    if idx is None or idx is False:
+        return []
+    return idx.search(query, top_n=top_n)
+
+
+def _rrf_fuse(
+    dense_ranked: list[str],
+    sparse_ranked: list[str],
+    k: int = RRF_K,
+    dense_weight: float = HYBRID_DENSE_WEIGHT,
+    sparse_weight: float = HYBRID_SPARSE_WEIGHT,
+) -> list[tuple[str, float]]:
+    """Weighted Reciprocal Rank Fusion.
+
+    rrf_score = w_d * 1/(k + dense_rank) + w_s * 1/(k + sparse_rank)
+
+    Dense gets full weight (1.0); sparse is downweighted (default 0.4)
+    because vctx3 dense is already strong on natural-language queries.
+    Sparse contributes meaningfully on adversarial queries (acronyms,
+    section numbers) where dense ranks the right chunk poorly — there,
+    sparse's top hit becomes a "rescue" candidate that out-scores
+    semantically-near-but-wrong dense chunks.
+    """
+    scores: dict[str, float] = {}
+    for rank, cid in enumerate(dense_ranked):
+        scores[cid] = scores.get(cid, 0.0) + dense_weight / (k + rank + 1)
+    for rank, cid in enumerate(sparse_ranked):
+        scores[cid] = scores.get(cid, 0.0) + sparse_weight / (k + rank + 1)
+    return sorted(scores.items(), key=lambda x: x[1], reverse=True)
+
+
+def _fetch_chunks_by_ids(
+    chunk_ids: list[str],
+    coll,
+    where: dict | None = None,
+) -> list[dict]:
+    """Fetch chunk metadata + text for a list of chunk_ids, preserving input
+    order. If `where` is provided, drop chunks that don't satisfy the filter.
+
+    Returns dicts with the same shape as `query_collection` output:
+      {"id", "rank", "score", "text", "metadata"}.
+    `score` is None because there's no similarity to report — the caller can
+    overwrite with bm25_score or rrf_score as appropriate.
+    """
+    if not chunk_ids:
+        return []
+
+    # ChromaDB get() returns by ID with no order guarantee; build a map.
+    raw = coll.get(ids=chunk_ids, where=where)
+    by_id: dict[str, dict] = {}
+    for cid, doc, meta in zip(raw["ids"], raw["documents"], raw["metadatas"]):
+        by_id[cid] = {"document": doc, "metadata": meta}
+
+    out: list[dict] = []
+    for cid in chunk_ids:
+        if cid not in by_id:
+            continue
+        rec = by_id[cid]
+        out.append({
+            "rank": len(out) + 1,
+            "score": None,
+            "text": rec["document"],
+            "metadata": rec["metadata"],
+            "id": cid,
+        })
+    return out
 
 
 # ============================================================
@@ -457,6 +562,7 @@ def search_with_client(
     top_n: int = DEFAULT_TOP_N,
     threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
     include_context: bool = False,
+    mode: str = "dense",
 ) -> dict:
     """
     Search the knowledge base using pre-initialized clients.
@@ -478,12 +584,20 @@ def search_with_client(
         threshold: Minimum similarity score (0-1). 0 = no threshold.
         include_context: If True and searching sections, include the
             full parent document text for each result.
+        mode: Retrieval mode — "dense", "sparse", or "hybrid". Default
+            "hybrid" (dense + BM25 fused via RRF). Sparse-only modes
+            require the granular tier; broad-tier searches automatically
+            downgrade to dense.
 
     Returns:
-        Dict with query, source, collection, filters, result_count, results.
+        Dict with query, source, collection, filters, mode,
+        result_count, results.
     """
     source = clients["source"]
     source_config = clients["source_config"]
+
+    if mode not in VALID_RETRIEVAL_MODES:
+        raise ValueError(f"mode must be one of {VALID_RETRIEVAL_MODES}, got {mode!r}")
 
     # Resolve collection name to ChromaDB collection object
     broad_name = source_config["broad_name"]
@@ -491,13 +605,20 @@ def search_with_client(
 
     if collection == broad_name:
         coll = clients["broad_collection"]
+        is_granular = False
     elif collection == granular_name or collection == "sections":
         coll = clients["granular_collection"]
+        is_granular = True
     else:
         print(f"Warning: Collection '{collection}' not valid for source "
               f"'{source}'. Using '{granular_name}'.")
         coll = clients["granular_collection"]
         collection = granular_name
+        is_granular = True
+
+    # Sparse index is granular-tier only. Downgrade quietly if needed.
+    if not is_granular and mode != "dense":
+        mode = "dense"
 
     # Handle program filter — sources without program metadata skip it entirely
     resolved_programs = None
@@ -519,22 +640,79 @@ def search_with_client(
                 for p in exclude_programs
             ]
 
-    # Embed the query
-    query_embedding = embed_query(
-        query, clients["voyage_client"], clients["model"]
-    )
-
-    # Build filter and search
     where = _build_where_filter(
         programs=resolved_programs,
         program=resolved_program,
         exclude_programs=resolved_excludes,
     )
-    results = query_collection(
-        query_embedding, coll,
-        n_results=top_n, where=where,
-        similarity_threshold=threshold,
-    )
+
+    # Dispatch on mode
+    if mode == "dense":
+        query_embedding = embed_query(
+            query, clients["voyage_client"], clients["model"]
+        )
+        results = query_collection(
+            query_embedding, coll,
+            n_results=top_n, where=where,
+            similarity_threshold=threshold,
+        )
+    elif mode == "sparse":
+        sparse_hits = _sparse_search(query, clients, top_n=HYBRID_SPARSE_CANDIDATES)
+        if not sparse_hits:
+            results = []
+        else:
+            ids_only = [cid for cid, _ in sparse_hits]
+            fetched = _fetch_chunks_by_ids(ids_only, coll, where=where)
+            score_map = dict(sparse_hits)
+            for r in fetched:
+                r["bm25_score"] = score_map.get(r["id"])
+            results = fetched[:top_n]
+    else:  # hybrid
+        query_embedding = embed_query(
+            query, clients["voyage_client"], clients["model"]
+        )
+        dense_results = query_collection(
+            query_embedding, coll,
+            n_results=HYBRID_DENSE_CANDIDATES, where=where,
+            similarity_threshold=0.0,
+        )
+        dense_by_id = {r["id"]: r for r in dense_results}
+        dense_ids = [r["id"] for r in dense_results]
+
+        sparse_hits = _sparse_search(query, clients, top_n=HYBRID_SPARSE_CANDIDATES)
+        sparse_score_map = dict(sparse_hits)
+        sparse_ids = [cid for cid, _ in sparse_hits]
+
+        fused = _rrf_fuse(dense_ids, sparse_ids)
+
+        # Fetch metadata for sparse-only IDs (those not already in dense_results).
+        # Over-fetch in case `where` filtering drops some.
+        sparse_only_to_fetch = [
+            cid for cid, _ in fused if cid not in dense_by_id
+        ][: top_n * 3]
+        sparse_only_fetched = _fetch_chunks_by_ids(
+            sparse_only_to_fetch, coll, where=where
+        )
+        sparse_only_by_id = {r["id"]: r for r in sparse_only_fetched}
+
+        results = []
+        for cid, rrf_score in fused:
+            if cid in dense_by_id:
+                rec = dict(dense_by_id[cid])
+                rec["rrf_score"] = rrf_score
+                rec["bm25_score"] = sparse_score_map.get(cid)
+                results.append(rec)
+            elif cid in sparse_only_by_id:
+                rec = dict(sparse_only_by_id[cid])
+                rec["rrf_score"] = rrf_score
+                rec["bm25_score"] = sparse_score_map.get(cid)
+                results.append(rec)
+            if len(results) >= top_n:
+                break
+
+        # Re-rank: rewrite ranks 1..N in the final hybrid order
+        for i, r in enumerate(results, start=1):
+            r["rank"] = i
 
     # Optionally fetch parent context for section results
     if include_context and collection in ("sections", granular_name):
@@ -565,6 +743,7 @@ def search_with_client(
         "source": source,
         "collection": collection,
         "filters": filters,
+        "mode": mode,
         "result_count": len(results),
         "results": results,
     }
@@ -580,6 +759,7 @@ def search(
     top_n: int = DEFAULT_TOP_N,
     threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
     include_context: bool = False,
+    mode: str = "dense",
 ) -> dict:
     """
     Search the policy knowledge base (convenience wrapper).
@@ -598,6 +778,7 @@ def search(
         top_n=top_n,
         threshold=threshold,
         include_context=include_context,
+        mode=mode,
     )
 
 

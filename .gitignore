@@ -19,6 +19,7 @@ index/cfr/section_chunks.json
 index/cfr/section_chunks_fullpath.json
 index/cfr/section_chunks_context.json
 index/chroma_db/
+index/sparse/
 
 # Comparator outputs (session logs are large, lock files are temp)
 output/comparator/sessions/
