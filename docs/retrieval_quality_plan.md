@@ -1,6 +1,6 @@
 # Retrieval Quality Plan — Post-Chunk-Cleanup Work
 
-**Status**: Phase 1 + 2 + 2.5 COMPLETE (2026-05-04). Architecture deployed stack-wide: voyage-context-3 mode A (sections) + voyage-4-large (broad tier). All 4 production sources re-embedded; no voyage-3 vectors remain. Phase 3 (hybrid search) is next — needs design discussion before code.
+**Status (2026-05-04 EOD)**: Phase 1 + 2 + 2.5 COMPLETE — architecture deployed stack-wide (voyage-context-3 mode A sections + voyage-4-large broad tier). Phase 3 (hybrid search) BUILT and BENCHMARKED but **regressed vs dense vctx3 alone** (OLG 62→46% Rel@1, CMR 65→57%). Useful@5 unchanged in both, suggesting hybrid re-orders the top-5 rather than changing the chunk pool. Default mode stays `dense`; hybrid is opt-in. Open question for next session: was the deployment off, was the testing off, or was there no room for value? Reranking deferred per user.
 **Context**: All four sources (OLG, CMR, FNS, CFR) are now cleanly chunked and embedded. This document captures the next arc of work — measuring retrieval quality, evaluating architectural improvements, and protecting the cleanup work — *before* moving on to calibrating the consumers (synthesis, comparator, author, QC analyzer) of the RAG.
 **Cost**: Modest. Re-embeds are ~$0.30 each. Reranker and judge calls are pennies-per-query.
 
@@ -302,11 +302,18 @@ Phase 2.5 (validate on OLG, deploy stack-wide)  ← COMPLETE
   └→ Eval collections + artifact JSON dropped
   └→ Smoke-tested on all 4 sources
 
-Phase 3 (hybrid search)                        ← NEXT (design discussion first)
-  └→ user wants extended discussion on practical implementation before code
-  └→ targets the 9/24 OLG questions still at rel@5=0 (acronyms, section numbers, terse adversarial)
+Phase 3 (hybrid search)                        ← BUILT + BENCHMARKED + NOT DEPLOYED
+  └→ BM25 sparse + weighted RRF fusion implemented (rag/sparse_tokenizer.py,
+     rag/sparse_index.py, mode= dispatch, --mode harness flag)
+  └→ Tokenizer locked at 2 rules (R1 dotted numerics, R3 hyphenated codes)
+     after audit (R2/R4 dropped — audit showed false positives)
+  └→ Hybrid REGRESSED: OLG 62→46% Rel@1, CMR 65→57%. Useful@5 unchanged.
+     Sparse alone retrieves correct chunks (smoke tested), but RRF fusion
+     either dilutes (equal weight) or fails to rescue (low sparse weight).
+  └→ Default mode stays dense; hybrid opt-in via mode="hybrid"
+  └→ Next-session question: deployment, testing, or no-room-for-value?
 
-Phase 4 (reranking)                            ← deferred to last; per-query cost
+Phase 4 (reranking)                            ← deferred per user 2026-05-04
 
 Phase 5 (decide & commit)
   └→ already partially done (architecture committed, CLAUDE.md updated, experimentation cruft killed)
