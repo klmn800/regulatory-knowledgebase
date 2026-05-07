@@ -5,26 +5,47 @@ Compares FNS Handbook 310 (federal SNAP standard) against the
 Massachusetts DTA Online Guide (OLG) to identify gaps, differences,
 and missing procedures. Four-layer architecture:
 
-  Layer 0 (Haiku):  Pre-classification — filter out non-policy FNS
-                    sections (QC procedures, overviews, glossaries).
-  Layer 1 (Haiku):  Bulk triage — classify each FNS section against
-                    pre-fetched OLG matches. Fast, cheap.
-  Layer 2 (Sonnet): Deep investigation — agentic search of OLG for
-                    escalated items. Uses search tool iteratively.
-  Layer 3 (Sonnet): CMR cross-check — regulatory context for confirmed
-                    gaps. Checks if state regulation requires it.
+  Layer 0  Pre-classification — filter out non-policy FNS sections
+           (QC procedures, overviews, glossaries) so the comparison
+           pipeline only runs on policy-bearing content. Model from
+           [comparator] layer0_model.
+
+  Layer 1  Bulk triage — classify each FNS section against pre-fetched
+           OLG matches. Fast, cheap, stateless. Model from
+           [comparator] layer1_model.
+
+  Layer 2  Deep investigation — agentic search of OLG for escalated
+           items. Two engines share a per-section result-file cache
+           under output/comparator/results/{section_number}.json:
+             - api: Anthropic API tool-use loop. Search budget capped
+               at [comparator] max_searches (default 10) via
+               search_olg; lookup_fns_section is uncapped. Total turns
+               = max_searches + 5 to leave a buffer for final
+               reasoning. Model from [comparator] layer2_model.
+             - claude-code: subprocess via the Claude Code CLI. Model
+               is whatever the user's CLI is configured to use
+               (typically Sonnet/Opus on subscription). Resumable.
+
+  Layer 3  Source cross-check for confirmed gaps. One parameterized
+           function (see LAYER3_CONFIG) runs against either CMR or
+           CFR; the orchestrator calls it once per source per
+           escalated section. Model from [comparator] layer3_model.
 
 Output: CSV report with classifications, notes, and action items.
 
 Usage:
     python comparator.py                          # Full run, chapters 7-11
     python comparator.py --chapter 10             # One chapter only
+    python comparator.py --sections "913,980"     # Specific sections
     python comparator.py --classify               # Run Layer 0 classification only
     python comparator.py --classify --force       # Re-classify all sections
     python comparator.py --sync                   # Rebuild JSON from edited CSV
     python comparator.py --layer1-only            # Triage only, skip layers 2-3
     python comparator.py --dry-run                # Show what would be processed
     python comparator.py --resume                 # Resume from last checkpoint
+    python comparator.py --engine claude-code     # L2 via Claude Code CLI
+    python comparator.py --parallel 5             # Parallel L2 workers
+    python comparator.py --compile                # Rebuild CSV from cached results
 """
 
 import argparse
@@ -122,6 +143,27 @@ def load_fns_sections(chapters: list[int]) -> list[dict]:
         if section["chapter"] in chapters:
             sections.append(section)
     return sections
+
+
+def _resolve_chapters(args, config) -> list[int]:
+    """Resolve the FNS chapter list for this run from CLI + config.
+
+    Single source of truth for chapter resolution; main() calls this once
+    before branching so the rest of the pipeline takes chapters as a
+    plain argument."""
+    if args.chapter:
+        return [args.chapter]
+    chapters_str = config.get("comparator", "fns_chapters_to_compare",
+                              fallback="7,8,9,10,11")
+    return [int(c.strip()) for c in chapters_str.split(",")]
+
+
+def _make_anthropic_client(config) -> anthropic.Anthropic:
+    """Build an Anthropic client from `[api] anthropic_api_key`.
+
+    Single literal site for the config key; used by both classify_sections
+    and run_comparison so the key string isn't duplicated."""
+    return anthropic.Anthropic(api_key=config.get("api", "anthropic_api_key"))
 
 
 # ============================================================
@@ -267,8 +309,7 @@ def classify_sections(chapters: list[int], dry_run: bool = False,
         print("\nAll sections already classified. Use --force to re-classify.")
         return
 
-    api_key = config.get("api", "anthropic_api_key")
-    claude = anthropic.Anthropic(api_key=api_key)
+    claude = _make_anthropic_client(config)
     layer0_prompt = load_prompt("layer0_classify")
 
     by_number, children_map = _build_section_families(fns_sections)
@@ -912,7 +953,6 @@ def run_layer3(source: str, fns_section: dict, layer2_result: dict,
     text = response.content[0].text.strip()
     fallback = {
         "classification": "no_match",
-        "confidence": "LOW",
         "note": text[:300],
         **cfg["fallback_extras"],
     }
@@ -1068,7 +1108,7 @@ def write_csv(rows: list[dict], filepath: Path) -> None:
 # COMPILE RESULTS FROM RESULT JSONs
 # ============================================================
 
-def compile_results(chapters: list[int] = None) -> None:
+def compile_results(chapters: list[int]) -> None:
     """
     Compile individual result JSONs into a CSV.
 
@@ -1084,12 +1124,6 @@ def compile_results(chapters: list[int] = None) -> None:
     if not result_files:
         print(f"No result files found in {RESULTS_DIR}")
         return
-
-    config = load_config()
-    if chapters is None:
-        chapters_str = config.get("comparator", "fns_chapters_to_compare",
-                                  fallback="7,8,9,10,11")
-        chapters = [int(c.strip()) for c in chapters_str.split(",")]
 
     fns_sections = load_fns_sections(chapters)
     fns_by_number = {s["section_number"]: s for s in fns_sections}
@@ -1274,8 +1308,7 @@ def run_comparison(
     if processed_ids:
         print(f"Resuming — {len(processed_ids)} sections already processed")
 
-    api_key = config.get("api", "anthropic_api_key")
-    claude = anthropic.Anthropic(api_key=api_key)
+    claude = _make_anthropic_client(config)
 
     print("Initializing RAG clients...")
     olg_clients = create_client(source="olg")
@@ -1632,29 +1665,16 @@ Examples:
     )
     args = parser.parse_args()
 
-    if args.compile:
-        config = load_config()
-        if args.chapter:
-            chapters = [args.chapter]
-        else:
-            chapters_str = config.get("comparator", "fns_chapters_to_compare",
-                                      fallback="7,8,9,10,11")
-            chapters = [int(c.strip()) for c in chapters_str.split(",")]
-        compile_results(chapters)
-        return
-
     if args.sync:
         sync_csv_to_json()
         return
 
     config = load_config()
+    chapters = _resolve_chapters(args, config)
 
-    if args.chapter:
-        chapters = [args.chapter]
-    else:
-        chapters_str = config.get("comparator", "fns_chapters_to_compare",
-                                  fallback="7,8,9,10,11")
-        chapters = [int(c.strip()) for c in chapters_str.split(",")]
+    if args.compile:
+        compile_results(chapters)
+        return
 
     section_filter = None
     if args.sections:
