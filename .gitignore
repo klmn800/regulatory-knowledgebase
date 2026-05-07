@@ -48,6 +48,7 @@ raw/
 
 # QC inputs (CSV data files)
 programs/qc/inputs/
+Deprecated/qc_cli_artifacts/inputs/
 
 # Reference materials (copyrighted DTA documents, not ours to redistribute)
 programs/author/references/*.docx
