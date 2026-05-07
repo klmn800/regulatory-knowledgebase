@@ -1,14 +1,32 @@
 """
-QC Gap Analyzer — Identify OLG guidance gaps from QC error findings.
+QC Gap Analyzer — phased pipeline for assessing OLG coverage of QC errors.
 
-Reads QC error report CSVs and analyzes each finding against the DTA
-Online Guide (OLG) to determine whether adequate policy and procedure
-guidance exists. Extractor (Haiku) distills the policy/procedure issue;
-Judge (Sonnet) does an agentic OLG search and rates coverage as
-Adequate / Partial / Gap. Optional CMR / FNS / CFR cross-checks then
-locate the underlying regulation for findings the OLG didn't cover.
+Driven by the FastAPI UI (ui/app.py); no CLI entry point. Each analysis
+lives in its own directory under output/qc_analysis/{name}_{timestamp}/
+with one JSON per finding plus a meta.json.
 
-Driven by the FastAPI UI (ui/app.py) — no CLI entry point.
+Phases (UI buttons):
+  1. extract — Haiku distills each QC finding into a policy issue +
+     seed search queries. Cheap; covers all rows.
+  2. investigate — Sonnet judges whether the OLG covers the policy issue.
+     Runs a seed OLG search from the extractor's queries, then an
+     agentic loop with iterative search_olg calls. Per-row; output
+     includes a judge_trace array of per-turn reasoning + tool calls.
+  3. cmr_check / fns_check / cfr_check — Haiku cross-checks each
+     Partial/Gap finding against the relevant regulation source. These
+     three are independent and can run in any order (or be skipped).
+
+Per-source program filters are read from [qc_analyzer] in config.ini
+({source}_include / {source}_exclude). The active filter is captured
+into each analysis's meta.json as filter_snapshot at upload time.
+
+Output shape:
+  results/row_NNN.json — one per finding; carries phase, extracted policy
+                         issue, judge result + trace, and per-source
+                         _check blocks.
+  meta.json           — name, timestamps, phase flags, cost per stage,
+                         filter_snapshot.
+  summary.csv         — flattened view, generated on demand.
 """
 
 import configparser
@@ -39,16 +57,6 @@ CONFIG_FILE = PROJECT_ROOT / "config.ini"
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 OUTPUT_DIR = PROJECT_ROOT / "output" / "qc_analysis"
 ANALYSIS_DIR = OUTPUT_DIR  # alias for UI imports
-CHECKPOINT_FILE = OUTPUT_DIR / "qc_checkpoint.json"
-
-APPENDED_COLUMNS = [
-    "Policy_Issues",
-    "OLG_Coverage",
-    "OLG_References",
-    "Gap_Description",
-    "Search_Queries_Used",
-    "Searches_Performed",
-]
 
 
 def load_config() -> configparser.ConfigParser:
@@ -92,9 +100,11 @@ def _load_filters(config: configparser.ConfigParser) -> dict:
 # UTILITIES
 # ============================================================
 
-def extract_json(text: str, fallback_classification: str = "Partial") -> dict:
+def extract_json(text: str, fallback: dict | None = None) -> dict:
     """Extract a JSON object from a response that may contain surrounding
-    prose or markdown. Tries multiple strategies."""
+    prose or markdown. Tries fenced-code, raw, and inline-object patterns.
+    On parse failure returns a copy of `fallback` (or {} if no fallback).
+    Callers handle missing keys via .get() defaults — no implicit shape."""
     text = text.strip()
     try:
         return json.loads(text)
@@ -116,11 +126,7 @@ def extract_json(text: str, fallback_classification: str = "Partial") -> dict:
         except json.JSONDecodeError:
             pass
 
-    return {
-        "coverage": fallback_classification,
-        "confidence": "LOW",
-        "reasoning": text[:300],
-    }
+    return dict(fallback) if fallback is not None else {}
 
 
 # ============================================================
@@ -140,16 +146,6 @@ def load_csv(filepath: Path) -> tuple[list[str], list[dict]]:
         except UnicodeDecodeError:
             continue
     raise ValueError(f"Could not decode {filepath.name} as UTF-8 or CP1252")
-
-
-def select_rows(rows: list[dict], sample: int = None,
-                row_indices: list[int] = None) -> list[tuple[int, dict]]:
-    """Select which rows to process. Returns list of (1-based-index, row)."""
-    if row_indices:
-        return [(i, rows[i - 1]) for i in row_indices if 1 <= i <= len(rows)]
-    if sample:
-        return [(i + 1, row) for i, row in enumerate(rows[:sample])]
-    return [(i + 1, row) for i, row in enumerate(rows)]
 
 
 # ============================================================
@@ -321,7 +317,7 @@ def run_extractor(user_message: str, client: anthropic.Anthropic,
     if cost_tracker:
         cost_tracker.record("extractor", model, response.usage)
     text = response.content[0].text.strip()
-    return extract_json(text, fallback_classification="Partial")
+    return extract_json(text)
 
 
 # ============================================================
@@ -395,6 +391,9 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
 
     searches_performed = 0
     all_search_queries = list(extractor_queries)
+    # Budget = max_searches tool-use turns + 1 final-reasoning turn + a
+    # 4-turn buffer for cases where the model loops or re-plans before
+    # settling on the final answer.
     max_turns = max_searches + 5
     judge_trace: list[dict] = []
 
@@ -405,6 +404,7 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
             "gap_description": f"Judge API error: {error}",
             "confidence": "LOW",
             "reasoning": "Analysis incomplete due to API error.",
+            "error": str(error),
             "searches_performed": searches_performed,
             "all_search_queries": all_search_queries,
         }
@@ -519,7 +519,11 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
             "tool_results": [],
         })
 
-        result = extract_json(reasoning_text, fallback_classification="Partial")
+        result = extract_json(reasoning_text, fallback={
+            "coverage": "Partial",
+            "confidence": "LOW",
+            "reasoning": reasoning_text[:300],
+        })
         result["searches_performed"] = searches_performed
         result["all_search_queries"] = all_search_queries
         return result, judge_trace
@@ -530,6 +534,7 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
         "gap_description": "Judge exhausted maximum turns without conclusion.",
         "confidence": "LOW",
         "reasoning": "Maximum conversation turns reached.",
+        "error": "max_turns_exhausted",
         "searches_performed": searches_performed,
         "all_search_queries": all_search_queries,
     }, judge_trace
@@ -554,36 +559,6 @@ def _summarize_search_results(results: list[dict]) -> list[dict]:
 # ============================================================
 # OUTPUT ROW BUILDING
 # ============================================================
-
-def build_output_row(original_row: dict, extractor_result: dict,
-                     judge_result: dict) -> dict:
-    """Merge original CSV row with analysis columns."""
-    output = dict(original_row)
-
-    output["Policy_Issues"] = extractor_result.get("policy_issues", "")
-    output["OLG_Coverage"] = judge_result.get("coverage", "Unknown")
-
-    refs = judge_result.get("olg_references", [])
-    if isinstance(refs, list):
-        output["OLG_References"] = "; ".join(str(r) for r in refs)
-    else:
-        output["OLG_References"] = str(refs)
-
-    gap_desc = judge_result.get("gap_description", "")
-    reasoning = judge_result.get("reasoning", "")
-    if gap_desc and reasoning:
-        output["Gap_Description"] = f"{gap_desc} || Reasoning: {reasoning}"
-    elif reasoning:
-        output["Gap_Description"] = reasoning
-    else:
-        output["Gap_Description"] = gap_desc
-
-    queries = judge_result.get("all_search_queries", [])
-    output["Search_Queries_Used"] = " | ".join(str(q) for q in queries)
-    output["Searches_Performed"] = str(judge_result.get("searches_performed", 0))
-
-    return output
-
 
 # ============================================================
 # UI-FACING PIPELINE FUNCTIONS
@@ -808,48 +783,12 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
 
 
 # ============================================================
-# CROSS-CHECK FUNCTIONS (CMR / FNS)
+# CROSS-CHECK FUNCTIONS (CMR / FNS / CFR)
 # ============================================================
-
-def _format_source_results_for_prompt(results: list[dict], source: str) -> str:
-    """Format CMR / FNS / CFR search results for inclusion in a cross-check prompt."""
-    if not results:
-        return f"No {source.upper()} matches found."
-
-    parts = []
-    for i, result in enumerate(results):
-        meta = result["metadata"]
-        if source == "cmr":
-            sec_num = meta.get("section_number", "")
-            sec_title = meta.get("section_title", "")
-            label = f"{sec_num} {sec_title}".strip()
-        elif source == "cfr":
-            sec_num = meta.get("section_number", "")
-            sec_title = meta.get("section_title", "")
-            hierarchy = meta.get("hierarchy_full_path") or meta.get("hierarchy_path", "")
-            label = f"§ {sec_num} {sec_title}".strip()
-            if hierarchy:
-                label = f"{label} {hierarchy}"
-        else:
-            sec_num = meta.get("section_number", meta.get("title", ""))
-            sec_title = meta.get("section_title", "")
-            label = f"{sec_num} {sec_title}".strip()
-
-        score = result["score"]
-        text = result["text"][:1000]
-
-        header = f"[{source.upper()} Match {i+1}] Score: {score:.2f} | {label}"
-        parts.append(f"{header}\n{text}")
-        if len(result["text"]) > 1000:
-            parts.append("... (truncated)")
-        parts.append("")
-
-    return "\n".join(parts)
-
 
 def _build_crosscheck_user_message(finding: dict, source_results_formatted: str,
                                    source: str) -> str:
-    """Build the user message for a CMR or FNS cross-check call."""
+    """Build the user message for a CMR / FNS / CFR cross-check call."""
     parts = [
         f"## QC Error\n",
         f"Review #{finding.get('review_number', '?')} ({finding.get('tao', '?')})",
@@ -1010,9 +949,9 @@ def run_source_check(source: str, analysis_dir: Path,
         cost_tracker.record(cost_stage, model, response.usage)
 
         text = response.content[0].text.strip()
-        check_result = extract_json(
-            text, fallback_classification=spec["fallback_classification"]
-        )
+        check_result = extract_json(text, fallback={
+            "classification": spec["fallback_classification"],
+        })
 
         check_block = {
             "classification": check_result.get(
