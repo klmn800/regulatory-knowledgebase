@@ -61,9 +61,8 @@ from programs.qc.qc_analyzer import (
     load_csv as load_qc_csv,
     run_extract,
     run_investigate,
-    run_cmr_check,
-    run_fns_check,
-    run_cfr_check,
+    run_source_check,
+    SOURCE_CHECK_CONFIG,
     load_all_findings,
     load_meta,
     save_meta,
@@ -1013,23 +1012,30 @@ async def qc_investigate(
     )
 
 
-@app.post("/qc/cmr_check", response_class=HTMLResponse)
-async def qc_cmr_check(
+@app.post("/qc/source_check/{source}", response_class=HTMLResponse)
+async def qc_source_check(
     request: Request,
+    source: str,
     name: str = Form(...),
     rerun: str = Form(""),
 ):
-    """Run CMR cross-check on Partial/Gap findings, or show existing results."""
+    """Run a CMR / FNS / CFR cross-check on Partial/Gap findings, or show existing results."""
+    if source not in SOURCE_CHECK_CONFIG:
+        return HTMLResponse(
+            f"<p>Unknown source: {source}</p>", status_code=400,
+        )
+
     name = name.strip()
     if not name:
         return HTMLResponse("<p>Analysis name is required.</p>")
 
     analysis_dir = get_analysis_dir(name)
+    phase_name = SOURCE_CHECK_CONFIG[source]["phase_name"]
 
-    # View-before-run: if CMR checks exist and not a rerun, show them
+    # View-before-run: if checks exist and not a rerun, show them
     if rerun != "1":
         meta = load_meta(analysis_dir) or {}
-        if meta.get("phases", {}).get("cmr_checked"):
+        if meta.get("phases", {}).get(phase_name):
             all_findings = load_all_findings(analysis_dir)
             return templates.TemplateResponse(
                 request, "partials/qc_results_table.html",
@@ -1037,74 +1043,7 @@ async def qc_cmr_check(
             )
 
     config = load_qc_config()
-    await asyncio.to_thread(run_cmr_check, analysis_dir, None, config)
-
-    all_findings = load_all_findings(analysis_dir)
-    meta = load_meta(analysis_dir)
-    return templates.TemplateResponse(
-        request, "partials/qc_results_table.html",
-        {"findings": all_findings, "name": name, "meta": meta},
-    )
-
-
-@app.post("/qc/fns_check", response_class=HTMLResponse)
-async def qc_fns_check(
-    request: Request,
-    name: str = Form(...),
-    rerun: str = Form(""),
-):
-    """Run FNS cross-check on Partial/Gap findings, or show existing results."""
-    name = name.strip()
-    if not name:
-        return HTMLResponse("<p>Analysis name is required.</p>")
-
-    analysis_dir = get_analysis_dir(name)
-
-    # View-before-run: if FNS checks exist and not a rerun, show them
-    if rerun != "1":
-        meta = load_meta(analysis_dir) or {}
-        if meta.get("phases", {}).get("fns_checked"):
-            all_findings = load_all_findings(analysis_dir)
-            return templates.TemplateResponse(
-                request, "partials/qc_results_table.html",
-                {"findings": all_findings, "name": name, "meta": meta},
-            )
-
-    config = load_qc_config()
-    await asyncio.to_thread(run_fns_check, analysis_dir, None, config)
-
-    all_findings = load_all_findings(analysis_dir)
-    meta = load_meta(analysis_dir)
-    return templates.TemplateResponse(
-        request, "partials/qc_results_table.html",
-        {"findings": all_findings, "name": name, "meta": meta},
-    )
-
-
-@app.post("/qc/cfr_check", response_class=HTMLResponse)
-async def qc_cfr_check(
-    request: Request,
-    name: str = Form(...),
-    rerun: str = Form(""),
-):
-    """Run 7 CFR cross-check on Partial/Gap findings, or show existing results."""
-    name = name.strip()
-    if not name:
-        return HTMLResponse("<p>Analysis name is required.</p>")
-
-    analysis_dir = get_analysis_dir(name)
-
-    if rerun != "1":
-        meta = load_meta(analysis_dir) or {}
-        if meta.get("phases", {}).get("cfr_checked"):
-            all_findings = load_all_findings(analysis_dir)
-            return templates.TemplateResponse(
-                request, "partials/qc_results_table.html",
-                {"findings": all_findings, "name": name, "meta": meta},
-            )
-
-    config = load_qc_config()
-    await asyncio.to_thread(run_cfr_check, analysis_dir, None, config)
+    await asyncio.to_thread(run_source_check, source, analysis_dir, None, config)
 
     all_findings = load_all_findings(analysis_dir)
     meta = load_meta(analysis_dir)

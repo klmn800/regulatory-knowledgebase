@@ -602,7 +602,7 @@ function qcRerun(action) {
     var buttons = document.querySelectorAll('.qc-actions .btn');
     buttons.forEach(function(b) { b.disabled = true; });
 
-    fetch('/qc/' + action, { method: 'POST', body: formData })
+    fetch(qcActionUrl(action), { method: 'POST', body: formData })
         .then(function(resp) { return resp.text(); })
         .then(function(html) {
             qcHideProgress();
@@ -619,12 +619,20 @@ function qcRerun(action) {
         });
 }
 
+function qcActionUrl(action) {
+    /* Cross-check actions route through /qc/source_check/{source};
+       extract / investigate / upload keep their direct routes. */
+    var m = /^(cmr|fns|cfr)_check$/.exec(action);
+    if (m) return '/qc/source_check/' + m[1];
+    return '/qc/' + action;
+}
+
 function qcRun(action) {
     var nameEl = document.getElementById('qc-name');
     var name = nameEl ? nameEl.value.trim() : '';
 
     var resultsArea = document.getElementById('qc-results');
-    var url = '/qc/' + action;
+    var url = qcActionUrl(action);
 
     if (action === 'upload') {
         var fileEl = document.getElementById('qc-file');

@@ -25,6 +25,8 @@ import anthropic
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from rag.query import create_client, search_with_client
+from tools.result_formatters import format_results_for_prompt
+from tools.retry import with_rate_limit_retry
 
 
 # ============================================================
@@ -1086,29 +1088,97 @@ def _build_crosscheck_user_message(finding: dict, source_results_formatted: str,
     return "\n".join(parts)
 
 
-def run_cmr_check(analysis_dir: Path, row_indices: list[int] = None,
-                  config: configparser.ConfigParser = None) -> list[dict]:
-    """Run CMR cross-check on investigated findings.
+# SOURCE_CHECK_CONFIG drives run_source_check. Each entry collapses what
+# was once a near-duplicate run_X_check function into a single row in this
+# table. CFR's program="SNAP" filter is preserved here as a transitional
+# placeholder; sub-step 5 replaces it with the per-source filter system
+# (see docs/apps_cleanup/execution_plan.md decision #9).
+SOURCE_CHECK_CONFIG = {
+    "cmr": {
+        "prompt_name": "qc_cmr_check",
+        "model_config_key": "cmr_check_model",
+        "fallback_classification": "cmr_silent",
+        "result_key": "_cmr_check",
+        "sections_key": "cmr_sections",
+        "phase_name": "cmr_checked",
+        "program": None,
+    },
+    "fns": {
+        "prompt_name": "qc_fns_check",
+        "model_config_key": "fns_check_model",
+        "fallback_classification": "fns_silent",
+        "result_key": "_fns_check",
+        "sections_key": "fns_sections",
+        "phase_name": "fns_checked",
+        "program": None,
+    },
+    "cfr": {
+        "prompt_name": "qc_cfr_check",
+        "model_config_key": "cfr_check_model",
+        "fallback_classification": "cfr_silent",
+        "result_key": "_cfr_check",
+        "sections_key": "cfr_sections",
+        "phase_name": "cfr_checked",
+        "program": "SNAP",
+    },
+}
+
+
+@with_rate_limit_retry()
+def _do_crosscheck_call(claude, model: str, system_prompt: str,
+                        user_message: str):
+    """Single Anthropic message call for a cross-check row.
+
+    Wrapped with retry so transient rate-limit / overload errors don't kill
+    a multi-row check. Per QC F7 — cross-checks previously had zero retry
+    coverage.
+    """
+    return claude.messages.create(
+        model=model,
+        max_tokens=500,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_message}],
+    )
+
+
+def run_source_check(source: str, analysis_dir: Path,
+                     row_indices: list[int] = None,
+                     config: configparser.ConfigParser = None) -> list[dict]:
+    """Run a CMR / FNS / CFR cross-check on investigated findings.
+
+    For each Partial/Gap finding (or row in `row_indices`), searches the
+    chosen source for the policy topic and asks Haiku to classify whether
+    the source addresses it (`{source}_covers_topic` / `{source}_silent` /
+    `{source}_differs`). Result is attached to the finding under the
+    source-specific key (`_cmr_check`, `_fns_check`, `_cfr_check`).
 
     Args:
+        source: One of "cmr", "fns", "cfr".
         analysis_dir: Path to the analysis directory.
         row_indices: Optional list of 1-based row indices. Defaults to
                      all Partial/Gap findings.
         config: Optional config; loaded from config.ini if not provided.
 
     Returns:
-        List of updated finding dicts with _cmr_check added.
+        List of updated finding dicts with the source-specific key added.
     """
+    if source not in SOURCE_CHECK_CONFIG:
+        raise ValueError(
+            f"Unknown source {source!r}; valid sources are "
+            f"{list(SOURCE_CHECK_CONFIG)}"
+        )
+    spec = SOURCE_CHECK_CONFIG[source]
+
     if config is None:
         config = load_config()
 
-    model = config.get("qc_analyzer", "cmr_check_model",
+    model = config.get("qc_analyzer", spec["model_config_key"],
                        fallback="claude-haiku-4-5-20251001")
-    prompt = load_prompt("qc_cmr_check", with_preamble=True)
+    prompt = load_prompt(spec["prompt_name"], with_preamble=True)
 
     api_key = config.get("api", "anthropic_api_key")
     claude = anthropic.Anthropic(api_key=api_key)
-    cmr_clients = create_client(source="cmr")
+    clients = create_client(source=source)
 
     # Default to Partial/Gap findings if no indices given
     if row_indices is None:
@@ -1118,47 +1188,49 @@ def run_cmr_check(analysis_dir: Path, row_indices: list[int] = None,
             if f.get("coverage") in ("Partial", "Gap")
         ]
 
+    search_kwargs = {
+        "collection": "sections",
+        "top_n": 5,
+        "threshold": 0.0,
+    }
+    if spec["program"]:
+        search_kwargs["program"] = spec["program"]
+
     results = []
     for row_idx in row_indices:
         finding = load_finding(analysis_dir, row_idx)
         if not finding:
             continue
 
-        # Search CMR using the finding's policy issues
         query = finding.get("policy_issues", "")
         if not query:
             continue
 
-        search_response = search_with_client(
-            query, cmr_clients,
-            collection="sections",
-            top_n=5,
-            threshold=0.0,
+        search_response = search_with_client(query, clients, **search_kwargs)
+
+        formatted = format_results_for_prompt(
+            search_response["results"], source
+        )
+        user_message = _build_crosscheck_user_message(
+            finding, formatted, source.upper()
         )
 
-        formatted = _format_source_results_for_prompt(
-            search_response["results"], "cmr"
-        )
-        user_message = _build_crosscheck_user_message(finding, formatted, "CMR")
-
-        response = claude.messages.create(
-            model=model,
-            max_tokens=500,
-            system=prompt,
-            messages=[{"role": "user", "content": user_message}],
-        )
+        response = _do_crosscheck_call(claude, model, prompt, user_message)
 
         text = response.content[0].text.strip()
-        check_result = extract_json(text, fallback_classification="cmr_silent")
+        check_result = extract_json(
+            text, fallback_classification=spec["fallback_classification"]
+        )
 
-        # Normalize the result
-        cmr_check = {
-            "classification": check_result.get("classification", "cmr_silent"),
-            "cmr_sections": check_result.get("cmr_sections", []),
+        check_block = {
+            "classification": check_result.get(
+                "classification", spec["fallback_classification"]
+            ),
+            spec["sections_key"]: check_result.get(spec["sections_key"], []),
             "note": check_result.get("note", ""),
         }
 
-        finding["_cmr_check"] = cmr_check
+        finding[spec["result_key"]] = check_block
         save_finding(analysis_dir, row_idx, finding)
         results.append(finding)
 
@@ -1166,179 +1238,7 @@ def run_cmr_check(analysis_dir: Path, row_indices: list[int] = None,
     meta = load_meta(analysis_dir) or {}
     if "phases" not in meta:
         meta["phases"] = {}
-    meta["phases"]["cmr_checked"] = True
-    save_meta(analysis_dir, meta)
-
-    return results
-
-
-def run_fns_check(analysis_dir: Path, row_indices: list[int] = None,
-                  config: configparser.ConfigParser = None) -> list[dict]:
-    """Run FNS cross-check on investigated findings.
-
-    Args:
-        analysis_dir: Path to the analysis directory.
-        row_indices: Optional list of 1-based row indices. Defaults to
-                     all Partial/Gap findings.
-        config: Optional config; loaded from config.ini if not provided.
-
-    Returns:
-        List of updated finding dicts with _fns_check added.
-    """
-    if config is None:
-        config = load_config()
-
-    model = config.get("qc_analyzer", "fns_check_model",
-                       fallback="claude-haiku-4-5-20251001")
-    prompt = load_prompt("qc_fns_check", with_preamble=True)
-
-    api_key = config.get("api", "anthropic_api_key")
-    claude = anthropic.Anthropic(api_key=api_key)
-    fns_clients = create_client(source="fns")
-
-    # Default to Partial/Gap findings if no indices given
-    if row_indices is None:
-        all_findings = load_all_findings(analysis_dir)
-        row_indices = [
-            f["row_index"] for f in all_findings
-            if f.get("coverage") in ("Partial", "Gap")
-        ]
-
-    results = []
-    for row_idx in row_indices:
-        finding = load_finding(analysis_dir, row_idx)
-        if not finding:
-            continue
-
-        query = finding.get("policy_issues", "")
-        if not query:
-            continue
-
-        search_response = search_with_client(
-            query, fns_clients,
-            collection="sections",
-            top_n=5,
-            threshold=0.0,
-        )
-
-        formatted = _format_source_results_for_prompt(
-            search_response["results"], "fns"
-        )
-        user_message = _build_crosscheck_user_message(finding, formatted, "FNS")
-
-        response = claude.messages.create(
-            model=model,
-            max_tokens=500,
-            system=prompt,
-            messages=[{"role": "user", "content": user_message}],
-        )
-
-        text = response.content[0].text.strip()
-        check_result = extract_json(text, fallback_classification="fns_silent")
-
-        fns_check = {
-            "classification": check_result.get("classification", "fns_silent"),
-            "fns_sections": check_result.get("fns_sections", []),
-            "note": check_result.get("note", ""),
-        }
-
-        finding["_fns_check"] = fns_check
-        save_finding(analysis_dir, row_idx, finding)
-        results.append(finding)
-
-    # Update meta
-    meta = load_meta(analysis_dir) or {}
-    if "phases" not in meta:
-        meta["phases"] = {}
-    meta["phases"]["fns_checked"] = True
-    save_meta(analysis_dir, meta)
-
-    return results
-
-
-def run_cfr_check(analysis_dir: Path, row_indices: list[int] = None,
-                  config: configparser.ConfigParser = None) -> list[dict]:
-    """Run 7 CFR cross-check on investigated findings.
-
-    Mirrors run_cmr_check / run_fns_check. For each Partial/Gap finding,
-    searches 7 CFR for the policy topic and asks Haiku to classify whether
-    the federal regulations address it (cfr_covers_topic / cfr_silent /
-    cfr_differs).
-
-    Args:
-        analysis_dir: Path to the analysis directory.
-        row_indices: Optional list of 1-based row indices. Defaults to
-                     all Partial/Gap findings.
-        config: Optional config; loaded from config.ini if not provided.
-
-    Returns:
-        List of updated finding dicts with _cfr_check added.
-    """
-    if config is None:
-        config = load_config()
-
-    model = config.get("qc_analyzer", "cfr_check_model",
-                       fallback="claude-haiku-4-5-20251001")
-    prompt = load_prompt("qc_cfr_check", with_preamble=True)
-
-    api_key = config.get("api", "anthropic_api_key")
-    claude = anthropic.Anthropic(api_key=api_key)
-    cfr_clients = create_client(source="cfr")
-
-    if row_indices is None:
-        all_findings = load_all_findings(analysis_dir)
-        row_indices = [
-            f["row_index"] for f in all_findings
-            if f.get("coverage") in ("Partial", "Gap")
-        ]
-
-    results = []
-    for row_idx in row_indices:
-        finding = load_finding(analysis_dir, row_idx)
-        if not finding:
-            continue
-
-        query = finding.get("policy_issues", "")
-        if not query:
-            continue
-
-        search_response = search_with_client(
-            query, cfr_clients,
-            collection="sections",
-            program="SNAP",
-            top_n=5,
-            threshold=0.0,
-        )
-
-        formatted = _format_source_results_for_prompt(
-            search_response["results"], "cfr"
-        )
-        user_message = _build_crosscheck_user_message(finding, formatted, "CFR")
-
-        response = claude.messages.create(
-            model=model,
-            max_tokens=500,
-            system=prompt,
-            messages=[{"role": "user", "content": user_message}],
-        )
-
-        text = response.content[0].text.strip()
-        check_result = extract_json(text, fallback_classification="cfr_silent")
-
-        cfr_check = {
-            "classification": check_result.get("classification", "cfr_silent"),
-            "cfr_sections": check_result.get("cfr_sections", []),
-            "note": check_result.get("note", ""),
-        }
-
-        finding["_cfr_check"] = cfr_check
-        save_finding(analysis_dir, row_idx, finding)
-        results.append(finding)
-
-    meta = load_meta(analysis_dir) or {}
-    if "phases" not in meta:
-        meta["phases"] = {}
-    meta["phases"]["cfr_checked"] = True
+    meta["phases"][spec["phase_name"]] = True
     save_meta(analysis_dir, meta)
 
     return results
