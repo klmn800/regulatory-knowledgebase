@@ -39,6 +39,37 @@
             {% endif %}
         </div>
 
+        <details class="qc-legend">
+            <summary>What do these verdicts mean?</summary>
+            <dl>
+                <dt><strong>Adequate</strong></dt>
+                <dd>OLG provides clear, actionable guidance for this scenario. The error happened despite the policy being documented.</dd>
+                <dt><strong>Partial</strong></dt>
+                <dd>OLG addresses the topic but is missing something material — typically a specific threshold, exception, BEACON procedure, or guidance on how two policies interact. <em>Partial does not mean the OLG is silent</em>; it usually means a worker would need to synthesize across multiple pages to get the full answer.</dd>
+                <dt><strong>Gap</strong></dt>
+                <dd>OLG does not address this policy or procedure at all. A worker would have no written guidance to consult.</dd>
+            </dl>
+        </details>
+
+        {% if recurring_gaps %}
+        <details class="qc-recurring-gaps" open>
+            <summary>Recurring gap signal: {{ recurring_gaps | length }} OLG page{{ '' if recurring_gaps | length == 1 else 's' }} flagged across multiple findings</summary>
+            <p class="qc-recurring-aux">
+                These pages are cited in the Partial findings of multiple rows. May indicate a systemic OLG hole worth surfacing to the policy team — clearer than reading each Partial in isolation.
+            </p>
+            <ul>
+                {% for grp in recurring_gaps %}
+                <li>
+                    <strong>{{ grp.page_title }}</strong>
+                    — flagged in {{ grp.findings | length }} findings
+                    ({% for ref in grp.findings %}{{ ref.display_index }}{% if not loop.last %}, {% endif %}{% endfor %})
+                    {% if grp.url %}<br><a href="{{ grp.url }}" target="_blank" rel="noopener" style="font-size:0.78rem;">{{ grp.url }}</a>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% endif %}
+
         <div class="qc-filter-bar">
             <button class="qc-filter-btn active" onclick="qcFilter('all', this)">All ({{ findings|length }})</button>
             <button class="qc-filter-btn" onclick="qcFilter('Adequate', this)">Adequate ({{ adequate_count }})</button>

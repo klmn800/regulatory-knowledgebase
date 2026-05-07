@@ -66,6 +66,7 @@ from programs.qc.qc_analyzer import (
     SOURCE_CHECK_CONFIG,
     load_all_findings,
     flatten_findings,
+    find_recurring_gaps,
     load_meta,
     make_forked_name,
     downstream_summary,
@@ -77,6 +78,19 @@ from programs.qc.qc_analyzer import (
     _load_filters as load_qc_filters,
     ANALYSIS_DIR as QC_DIR,
 )
+
+
+def _qc_results_context(name: str, rows: list, meta: dict) -> dict:
+    """Build the template context for qc_results_table.html, including the
+    recurring-gaps panel data. Centralized so every route renders the
+    table the same way."""
+    flat = flatten_findings(rows)
+    return {
+        "findings": flat,
+        "name": name,
+        "meta": meta,
+        "recurring_gaps": find_recurring_gaps(flat),
+    }
 
 
 @asynccontextmanager
@@ -880,7 +894,7 @@ async def qc_view(request: Request, name: str, phase: str):
             return HTMLResponse("<p>No results found.</p>")
         return templates.TemplateResponse(
             request, "partials/qc_results_table.html",
-            {"findings": flatten_findings(rows), "name": name, "meta": meta},
+            _qc_results_context(name, rows, meta),
         )
 
     return HTMLResponse(f"<p>Unknown phase: {phase}</p>", status_code=400)
@@ -1087,7 +1101,7 @@ async def qc_investigate(
             meta = load_meta(analysis_dir)
             return templates.TemplateResponse(
                 request, "partials/qc_results_table.html",
-                {"findings": flatten_findings(rows), "name": name, "meta": meta},
+                _qc_results_context(name, rows, meta),
             )
 
     # Parse row indices from comma-separated string
@@ -1161,7 +1175,7 @@ async def qc_investigate_status(request: Request, name: str):
             meta = load_meta(analysis_dir)
             return templates.TemplateResponse(
                 request, "partials/qc_results_table.html",
-                {"findings": flatten_findings(rows), "name": name, "meta": meta},
+                _qc_results_context(name, rows, meta),
             )
         return HTMLResponse("<p>No investigation in progress.</p>")
 
@@ -1173,7 +1187,7 @@ async def qc_investigate_status(request: Request, name: str):
         # don't blank the UI; clean up on the next idle poll instead.
         return templates.TemplateResponse(
             request, "partials/qc_results_table.html",
-            {"findings": flatten_findings(rows), "name": name, "meta": meta},
+            _qc_results_context(name, rows, meta),
         )
 
     return templates.TemplateResponse(
@@ -1213,7 +1227,7 @@ async def qc_source_check(
             all_rows = load_all_findings(analysis_dir)
             return templates.TemplateResponse(
                 request, "partials/qc_results_table.html",
-                {"findings": flatten_findings(all_rows), "name": name, "meta": meta},
+                _qc_results_context(name, all_rows, meta),
             )
 
     config = load_qc_config()
@@ -1223,7 +1237,7 @@ async def qc_source_check(
     meta = load_meta(analysis_dir)
     return templates.TemplateResponse(
         request, "partials/qc_results_table.html",
-        {"findings": flatten_findings(all_rows), "name": name, "meta": meta},
+        _qc_results_context(name, all_rows, meta),
     )
 
 

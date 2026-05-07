@@ -339,6 +339,80 @@ def flatten_findings(rows: list[dict]) -> list[dict]:
     return out
 
 
+_REF_URL_RE = re.compile(r"\((https?://[^)\s]+)\)\s*$")
+
+
+def _parse_olg_ref(ref: str) -> tuple[str, str]:
+    """Parse an olg_references entry into (page_title, url).
+
+    Refs are stored as 'Page Title > Section Heading (https://...)'.
+    Returns ('', '') if the format doesn't match.
+    """
+    m = _REF_URL_RE.search(ref)
+    if not m:
+        return ("", "")
+    url = m.group(1)
+    title_part = ref[:m.start()].strip()
+    page_title = title_part.split(" > ")[0] if title_part else ""
+    return page_title, url
+
+
+def find_recurring_gaps(flat_findings: list[dict],
+                        min_rows: int = 2) -> list[dict]:
+    """Detect OLG pages cited as gap evidence across multiple ROWS.
+
+    Heuristic: group Partial findings by the URLs in their olg_references.
+    A URL is surfaced when it shows up in Partial findings from at least
+    `min_rows` distinct rows — that's a *systemic* OLG hole rather than
+    a per-row issue. Multiple findings within the same row often share
+    citations naturally (different facets of the same case) so within-row
+    repetition is not signal.
+
+    Returns a list of {url, page_title, findings: [...]} dicts ordered by
+    distinct row count (highest first), tie-broken by total finding count.
+    `findings` entries carry display_index so the UI can link them.
+    """
+    by_url: dict[str, dict] = {}
+    for entry in flat_findings:
+        if entry.get("coverage") != "Partial":
+            continue
+        seen_urls_for_entry = set()
+        for ref in entry.get("olg_references", []) or []:
+            if not isinstance(ref, str):
+                continue
+            page_title, url = _parse_olg_ref(ref)
+            if not url or url in seen_urls_for_entry:
+                continue
+            seen_urls_for_entry.add(url)
+            grp = by_url.setdefault(url, {
+                "url": url,
+                "page_title": page_title,
+                "findings": [],
+                "rows": set(),
+            })
+            grp["findings"].append({
+                "display_index": entry.get("display_index"),
+                "row_index": entry.get("row_index"),
+                "finding_index": entry.get("finding_index"),
+            })
+            grp["rows"].add(entry.get("row_index"))
+
+    recurring = []
+    for grp in by_url.values():
+        if len(grp["rows"]) < min_rows:
+            continue
+        out = {
+            "url": grp["url"],
+            "page_title": grp["page_title"],
+            "findings": grp["findings"],
+            "row_count": len(grp["rows"]),
+        }
+        recurring.append(out)
+    recurring.sort(key=lambda g: (-g["row_count"], -len(g["findings"]),
+                                  g["page_title"]))
+    return recurring
+
+
 def save_meta(analysis_dir: Path, meta: dict) -> None:
     """Write meta.json for an analysis."""
     path = analysis_dir / "meta.json"
