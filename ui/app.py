@@ -871,12 +871,16 @@ async def qc_upload(
     name: str = Form(""),
     file: UploadFile = File(...),
 ):
-    """Upload a QC CSV and show a preview."""
+    """Upload a QC CSV and show a preview. New uploads land in a
+    timestamped folder ({name}_{YYYY-MM-DD_HHMM}) so re-uploads of the
+    same name don't silently overwrite earlier runs."""
     # Auto-populate name from filename if empty
     name = name.strip()
     if not name:
         name = Path(file.filename).stem
 
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
+    name = f"{name}_{timestamp}"
     analysis_dir = get_analysis_dir(name)
 
     # Save uploaded file

@@ -686,6 +686,12 @@ function qcRun(action) {
             qcHideProgress();
             resultsArea.innerHTML = html;
             htmx.process(resultsArea);
+            if (action === 'upload') {
+                var container = resultsArea.querySelector('[data-analysis-name]');
+                if (container && nameEl) {
+                    nameEl.value = container.dataset.analysisName;
+                }
+            }
             htmx.ajax('GET', '/qc/analyses', '#qc-analyses-list');
         })
         .catch(function(err) {
