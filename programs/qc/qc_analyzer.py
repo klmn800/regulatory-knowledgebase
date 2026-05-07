@@ -24,6 +24,8 @@ import anthropic
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from rag.query import create_client, search_with_client
+from tools.cost_tracker import Tracker
+from tools.policy_tools import SEARCH_OLG_TOOL
 from tools.result_formatters import format_results_for_prompt
 from tools.retry import with_rate_limit_retry
 
@@ -69,79 +71,6 @@ def load_prompt(name: str, with_preamble: bool = False) -> str:
 
 
 # ============================================================
-# COST TRACKING
-# ============================================================
-
-# Per-million-token rates (USD)
-MODEL_PRICING = {
-    "claude-haiku-4-5-20251001": {"input": 1.00, "output": 5.00},
-    "claude-sonnet-4-5-20250929": {"input": 3.00, "output": 15.00},
-    "claude-opus-4-20250805": {"input": 5.00, "output": 25.00},
-}
-
-
-class CostTracker:
-    """Accumulate API token usage and calculate costs."""
-
-    def __init__(self):
-        self.extractor_input = 0
-        self.extractor_output = 0
-        self.judge_input = 0
-        self.judge_output = 0
-        self.extractor_model = None
-        self.judge_model = None
-
-    def add_extractor(self, response):
-        self.extractor_input += response.usage.input_tokens
-        self.extractor_output += response.usage.output_tokens
-
-    def add_judge(self, response):
-        self.judge_input += response.usage.input_tokens
-        self.judge_output += response.usage.output_tokens
-
-    def _cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
-        rates = MODEL_PRICING.get(model, {"input": 3.00, "output": 15.00})
-        return (input_tokens * rates["input"] + output_tokens * rates["output"]) / 1_000_000
-
-    def extractor_cost(self) -> float:
-        return self._cost(self.extractor_model, self.extractor_input, self.extractor_output)
-
-    def judge_cost(self) -> float:
-        return self._cost(self.judge_model, self.judge_input, self.judge_output)
-
-    def total_cost(self) -> float:
-        return self.extractor_cost() + self.judge_cost()
-
-    def total_input(self) -> int:
-        return self.extractor_input + self.judge_input
-
-    def total_output(self) -> int:
-        return self.extractor_output + self.judge_output
-
-    def summary(self) -> str:
-        lines = [
-            f"  Cost breakdown:",
-            f"    Extractor ({self.extractor_model}):",
-            f"      Input:  {self.extractor_input:>10,} tokens",
-            f"      Output: {self.extractor_output:>10,} tokens",
-            f"      Cost:   ${self.extractor_cost():>8.4f}",
-            f"    Judge ({self.judge_model}):",
-            f"      Input:  {self.judge_input:>10,} tokens",
-            f"      Output: {self.judge_output:>10,} tokens",
-            f"      Cost:   ${self.judge_cost():>8.4f}",
-            f"    Total:",
-            f"      Input:  {self.total_input():>10,} tokens",
-            f"      Output: {self.total_output():>10,} tokens",
-            f"      Cost:   ${self.total_cost():>8.4f}",
-        ]
-        return "\n".join(lines)
-
-
-# ============================================================
-# TRACE LOGGING
-# ============================================================
-
-# ============================================================
 # UTILITIES
 # ============================================================
 
@@ -174,39 +103,6 @@ def extract_json(text: str, fallback_classification: str = "Partial") -> dict:
         "confidence": "LOW",
         "reasoning": text[:300],
     }
-
-
-def format_olg_results_for_prompt(results: list[dict]) -> str:
-    """Format OLG search results for inclusion in a prompt."""
-    if not results:
-        return "No OLG matches found."
-
-    parts = []
-    for i, result in enumerate(results):
-        meta = result["metadata"]
-        page_title = meta.get("page_title", meta.get("title", ""))
-        heading = meta.get("section_heading", "")
-        breadcrumb = meta.get("breadcrumb", "")
-        url = meta.get("url", "")
-        score = result["score"]
-        text = result["text"][:1000]
-
-        header = f"[OLG Match {i+1}] Score: {score:.2f}"
-        if page_title:
-            header += f" | Page: {page_title}"
-        if heading:
-            header += f" | Section: {heading}"
-        if breadcrumb:
-            header += f"\n  Path: {breadcrumb}"
-        if url:
-            header += f"\n  URL: {url}"
-
-        parts.append(f"{header}\n{text}")
-        if len(result["text"]) > 1000:
-            parts.append("... (truncated)")
-        parts.append("")
-
-    return "\n".join(parts)
 
 
 # ============================================================
@@ -384,35 +280,30 @@ def build_extractor_input(row: dict) -> str:
 
 def run_extractor(user_message: str, client: anthropic.Anthropic,
                   model: str, system_prompt: str,
-                  cost_tracker: CostTracker = None) -> dict:
+                  cost_tracker: Tracker | None = None) -> dict:
     """Call 1: Extract policy issues and search queries from a QC finding."""
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            response = client.messages.create(
-                model=model,
-                max_tokens=400,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_message}],
-            )
-            if cost_tracker:
-                cost_tracker.add_extractor(response)
-            text = response.content[0].text.strip()
-            parsed = extract_json(text, fallback_classification="Partial")
-            return parsed
-        except anthropic.RateLimitError:
-            wait = 30 * (attempt + 1)
-            print(f"\n    Rate limited, waiting {wait}s...")
-            time.sleep(wait)
-        except anthropic.APIError as e:
-            if attempt < max_retries - 1:
-                print(f"\n    API error: {e}, retrying...")
-                time.sleep(5)
-            else:
-                return {
-                    "policy_issues": "Extraction failed due to API error.",
-                    "search_queries": [user_message[:200]],
-                }
+
+    @with_rate_limit_retry()
+    def _do_extractor_call():
+        return client.messages.create(
+            model=model,
+            max_tokens=400,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+
+    try:
+        response = _do_extractor_call()
+    except anthropic.APIError:
+        return {
+            "policy_issues": "Extraction failed due to API error.",
+            "search_queries": [user_message[:200]],
+        }
+
+    if cost_tracker:
+        cost_tracker.record("extractor", model, response.usage)
+    text = response.content[0].text.strip()
+    return extract_json(text, fallback_classification="Partial")
 
 
 # ============================================================
@@ -447,33 +338,12 @@ def run_seed_searches(queries: list[str], olg_clients: dict,
 # CALL 2: JUDGE (AGENTIC)
 # ============================================================
 
-SEARCH_OLG_TOOL = {
-    "name": "search_olg",
-    "description": (
-        "Search the Massachusetts DTA Online Guide (OLG) for policy content. "
-        "Returns the most relevant sections matching your query. "
-        "Try different queries to search from different angles: specific policy "
-        "terms, BEACON procedures, broader topic areas, synonyms, related topics."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "query": {
-                "type": "string",
-                "description": "Natural language search query for OLG content",
-            },
-        },
-        "required": ["query"],
-    },
-}
-
-
 def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
               olg_clients: dict, client: anthropic.Anthropic,
               model: str, system_prompt: str,
               max_searches: int = 10,
               results_per_search: int = 5,
-              cost_tracker: CostTracker = None) -> tuple[dict, list[dict]]:
+              cost_tracker: Tracker | None = None) -> tuple[dict, list[dict]]:
     """Call 2: Agentic OLG coverage assessment with iterative search.
 
     Returns (result, judge_trace) — the final classification dict plus an
@@ -482,7 +352,7 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
     JSON so prompt-tuning consumers can see how the judge reasoned.
     """
 
-    seed_formatted = format_olg_results_for_prompt(seed_results)
+    seed_formatted = format_results_for_prompt(seed_results, "olg")
     extractor_queries = extractor_result.get("search_queries", [])
 
     user_message = (
@@ -518,34 +388,24 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
             "all_search_queries": all_search_queries,
         }
 
+    @with_rate_limit_retry()
+    def _do_judge_call():
+        return client.messages.create(
+            model=model,
+            max_tokens=2000,
+            system=system_prompt,
+            messages=messages,
+            tools=[SEARCH_OLG_TOOL],
+        )
+
     for turn in range(max_turns):
         try:
-            response = client.messages.create(
-                model=model,
-                max_tokens=2000,
-                system=system_prompt,
-                messages=messages,
-                tools=[SEARCH_OLG_TOOL],
-            )
-            if cost_tracker:
-                cost_tracker.add_judge(response)
-        except anthropic.RateLimitError:
-            print(f"\n    Rate limited, waiting 60s...")
-            time.sleep(60)
-            try:
-                response = client.messages.create(
-                    model=model,
-                    max_tokens=2000,
-                    system=system_prompt,
-                    messages=messages,
-                    tools=[SEARCH_OLG_TOOL],
-                )
-                if cost_tracker:
-                    cost_tracker.add_judge(response)
-            except anthropic.APIError as e:
-                return _api_error_result(e), judge_trace
+            response = _do_judge_call()
         except anthropic.APIError as e:
             return _api_error_result(e), judge_trace
+
+        if cost_tracker:
+            cost_tracker.record("judge", model, response.usage)
 
         reasoning_text = ""
         for block in response.content:
@@ -588,8 +448,8 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
                         threshold=0.0,
                     )
 
-                    formatted = format_olg_results_for_prompt(
-                        search_response["results"]
+                    formatted = format_results_for_prompt(
+                        search_response["results"], "olg"
                     )
                     remaining = max_searches - searches_performed
                     formatted += f"\n\n[{remaining} searches remaining]"
@@ -728,8 +588,9 @@ def run_extract(analysis_dir: Path, rows: list[dict],
     api_key = config.get("api", "anthropic_api_key")
     claude = anthropic.Anthropic(api_key=api_key)
 
-    cost_tracker = CostTracker()
-    cost_tracker.extractor_model = extractor_model
+    cost_tracker = Tracker(
+        stages=["extractor", "judge", "cmr_check", "fns_check", "cfr_check"]
+    )
 
     start_time = time.time()
     findings = []
@@ -781,15 +642,16 @@ def run_extract(analysis_dir: Path, rows: list[dict],
     meta["phases"]["extracted"] = True
     if "cost" not in meta:
         meta["cost"] = {}
-    meta["cost"]["extractor"] = round(cost_tracker.extractor_cost(), 4)
+    extractor_data = cost_tracker.by_stage()["extractor"]
+    meta["cost"]["extractor"] = round(extractor_data["cost"], 4)
     meta["extract_stats"] = {
         "timestamp": datetime.now().isoformat(),
         "duration_sec": elapsed,
         "rows_processed": len(findings),
         "model": extractor_model,
-        "tokens_in": cost_tracker.extractor_input,
-        "tokens_out": cost_tracker.extractor_output,
-        "cost": round(cost_tracker.extractor_cost(), 4),
+        "tokens_in": extractor_data["input_tokens"],
+        "tokens_out": extractor_data["output_tokens"],
+        "cost": round(extractor_data["cost"], 4),
     }
     save_meta(analysis_dir, meta)
 
@@ -840,8 +702,9 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
         row_indices = [f["row_index"] for f in all_findings
                        if f.get("phase") == "extracted"]
 
-    cost_tracker = CostTracker()
-    cost_tracker.judge_model = judge_model
+    cost_tracker = Tracker(
+        stages=["extractor", "judge", "cmr_check", "fns_check", "cfr_check"]
+    )
 
     start_time = time.time()
     results = []
@@ -900,15 +763,16 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
     meta["investigated_rows"] = row_indices
     if "cost" not in meta:
         meta["cost"] = {}
-    meta["cost"]["judge"] = round(cost_tracker.judge_cost(), 4)
+    judge_data = cost_tracker.by_stage()["judge"]
+    meta["cost"]["judge"] = round(judge_data["cost"], 4)
     meta["investigate_stats"] = {
         "timestamp": datetime.now().isoformat(),
         "duration_sec": elapsed,
         "rows_processed": len(results),
         "model": judge_model,
-        "tokens_in": cost_tracker.judge_input,
-        "tokens_out": cost_tracker.judge_output,
-        "cost": round(cost_tracker.judge_cost(), 4),
+        "tokens_in": judge_data["input_tokens"],
+        "tokens_out": judge_data["output_tokens"],
+        "cost": round(judge_data["cost"], 4),
     }
     save_meta(analysis_dir, meta)
 
@@ -1094,6 +958,10 @@ def run_source_check(source: str, analysis_dir: Path,
     if spec["program"]:
         search_kwargs["program"] = spec["program"]
 
+    cost_stage = f"{source}_check"
+    cost_tracker = Tracker(stages=[cost_stage])
+
+    start_time = time.time()
     results = []
     for row_idx in row_indices:
         finding = load_finding(analysis_dir, row_idx)
@@ -1114,6 +982,7 @@ def run_source_check(source: str, analysis_dir: Path,
         )
 
         response = _do_crosscheck_call(claude, model, prompt, user_message)
+        cost_tracker.record(cost_stage, model, response.usage)
 
         text = response.content[0].text.strip()
         check_result = extract_json(
@@ -1132,11 +1001,26 @@ def run_source_check(source: str, analysis_dir: Path,
         save_finding(analysis_dir, row_idx, finding)
         results.append(finding)
 
+    elapsed = round(time.time() - start_time, 1)
+
     # Update meta
     meta = load_meta(analysis_dir) or {}
     if "phases" not in meta:
         meta["phases"] = {}
     meta["phases"][spec["phase_name"]] = True
+    if "cost" not in meta:
+        meta["cost"] = {}
+    stage_data = cost_tracker.by_stage()[cost_stage]
+    meta["cost"][cost_stage] = round(stage_data["cost"], 4)
+    meta[f"{cost_stage}_stats"] = {
+        "timestamp": datetime.now().isoformat(),
+        "duration_sec": elapsed,
+        "rows_processed": len(results),
+        "model": model,
+        "tokens_in": stage_data["input_tokens"],
+        "tokens_out": stage_data["output_tokens"],
+        "cost": round(stage_data["cost"], 4),
+    }
     save_meta(analysis_dir, meta)
 
     return results
