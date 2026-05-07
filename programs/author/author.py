@@ -136,6 +136,9 @@ def run_research(
         },
     )
 
+    if result.error:
+        raise RuntimeError(f"Research synthesis failed: {result.error}")
+
     # Save task instructions used (empty string if none)
     (version_dir / "prompt.md").write_text(task_instructions, encoding="utf-8")
 

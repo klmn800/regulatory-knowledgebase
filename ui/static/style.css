@@ -290,6 +290,11 @@ main {
     margin-bottom: 1rem;
 }
 
+.answer-card-error {
+    border-left: 4px solid #c0392b;
+    background: rgba(192, 57, 43, 0.06);
+}
+
 .answer-body {
     font-size: 0.95rem;
     line-height: 1.7;

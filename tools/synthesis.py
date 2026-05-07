@@ -27,17 +27,15 @@ CONFIG_FILE = PROJECT_ROOT / "config.ini"
 
 sys.path.insert(0, str(PROJECT_ROOT))
 from rag.query import create_client, search_with_client
+from tools.cost_tracker import MODEL_PRICING, calculate_cost
+from tools.policy_tools import SEARCH_POLICY_TOOL, make_search_tool
+from tools.result_formatters import SOURCE_LABELS, format_results_for_prompt
+from tools.retry import with_rate_limit_retry
 
 
 # ============================================================
 # CONFIGURATION
 # ============================================================
-
-MODEL_PRICING = {
-    "claude-haiku-4-5-20251001": {"input": 1.00, "output": 5.00},
-    "claude-sonnet-4-5-20250929": {"input": 3.00, "output": 15.00},
-    "claude-opus-4-20250805": {"input": 5.00, "output": 25.00},
-}
 
 
 def load_config() -> configparser.ConfigParser:
@@ -73,150 +71,10 @@ class SynthesisResult:
     cost: float = 0.0
     duration_seconds: float = 0.0
     model: str = ""
-
-
-# ============================================================
-# TOOL DEFINITION
-# ============================================================
-
-SEARCH_POLICY_TOOL = {
-    "name": "search_policy",
-    "description": (
-        "Search Massachusetts DTA policy sources for relevant content. "
-        "Available sources:\n"
-        "- olg: DTA Online Guide (staff procedures and policy)\n"
-        "- cmr: Code of Massachusetts Regulations, Title 106 (state law)\n"
-        "- fns: FNS Handbook 310 (federal SNAP QC standard)\n"
-        "- cfr: 7 CFR Parts 271-275, 280, 292 (federal SNAP regulations)\n\n"
-        "Try different query angles: specific policy terms, BEACON procedures, "
-        "broader topic areas, synonyms, related topics."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "source": {
-                "type": "string",
-                "enum": ["olg", "cmr", "fns", "cfr"],
-                "description": "Which source to search",
-            },
-            "query": {
-                "type": "string",
-                "description": "Natural language search query",
-            },
-        },
-        "required": ["source", "query"],
-    },
-}
-
-
-# ============================================================
-# RESULT FORMATTING FOR PROMPTS
-# ============================================================
-
-SOURCE_LABELS = {
-    "olg": "OLG",
-    "cmr": "CMR",
-    "fns": "FNS",
-    "cfr": "CFR",
-}
-
-
-def format_results_for_prompt(results: list[dict], source: str) -> str:
-    """Format search results for inclusion in a Claude prompt."""
-    label = SOURCE_LABELS.get(source, source.upper())
-    if not results:
-        return f"No {label} matches found."
-
-    parts = []
-    for i, result in enumerate(results):
-        meta = result["metadata"]
-        score = result["score"]
-        text = result["text"][:1000]
-
-        if source == "olg":
-            page_title = meta.get("page_title", meta.get("title", ""))
-            heading = meta.get("section_heading", "")
-            parent_heading = meta.get("parent_heading", "")
-            breadcrumb = meta.get("breadcrumb", "")
-            url = meta.get("url", "")
-            chunk_n = meta.get("chunk_n")
-            chunk_total = meta.get("chunk_total")
-            header = f"[{label} Match {i+1}] Score: {score:.2f}"
-            if page_title:
-                header += f" | Page: {page_title}"
-            if heading:
-                header += f" | Section: {heading}"
-            if chunk_total is not None and chunk_total > 1:
-                header += f" (part {chunk_n} of {chunk_total})"
-            if parent_heading:
-                header += f"\n  Within: {parent_heading}"
-            if breadcrumb:
-                header += f"\n  Path: {breadcrumb}"
-            if url:
-                header += f"\n  URL: {url}"
-
-        elif source == "fns":
-            chapter = meta.get("chapter", "")
-            chapter_title = meta.get("chapter_title", "")
-            sec_num = meta.get("section_number", "")
-            sec_title = meta.get("section_title", "")
-            header = f"[{label} Match {i+1}] Score: {score:.2f}"
-            header += f" | Chapter {chapter}: {chapter_title}"
-            if sec_num:
-                header += f" | Section: {sec_num} {sec_title}"
-
-        elif source == "cmr":
-            chapter = meta.get("chapter", "")
-            program = meta.get("program", "")
-            sec_num = meta.get("section_number", "")
-            sec_title = meta.get("section_title", "")
-            hierarchy_path = meta.get("hierarchy_path", "")
-            chunk_n = meta.get("chunk_n")
-            chunk_total = meta.get("chunk_total")
-            header = f"[{label} Match {i+1}] Score: {score:.2f}"
-            header += f" | 106 CMR {chapter} ({program})"
-            if sec_num:
-                header += f" | Section: {sec_num} {sec_title}"
-            if hierarchy_path:
-                header += f"\n  Subsection: {hierarchy_path}"
-            if chunk_total is not None and chunk_total > 1:
-                header += f" (part {chunk_n} of {chunk_total})"
-
-        elif source == "cfr":
-            part = meta.get("part", "")
-            program = meta.get("program", "")
-            sec_num = meta.get("section_number", "")
-            sec_title = meta.get("section_title", "")
-            hierarchy_path = meta.get("hierarchy_full_path") or meta.get("hierarchy_path", "")
-            chunk_n = meta.get("chunk_n")
-            chunk_total = meta.get("chunk_total")
-            header = f"[{label} Match {i+1}] Score: {score:.2f}"
-            header += f" | 7 CFR {part} ({program})"
-            if sec_num:
-                header += f" | Section: § {sec_num} {sec_title}"
-            if hierarchy_path:
-                header += f"\n  Subsection: {hierarchy_path}"
-            if chunk_total is not None and chunk_total > 1:
-                header += f" (part {chunk_n} of {chunk_total})"
-
-        else:
-            header = f"[{label} Match {i+1}] Score: {score:.2f}"
-
-        parts.append(f"{header}\n{text}")
-        if len(result["text"]) > 1000:
-            parts.append("... (truncated)")
-        parts.append("")
-
-    return "\n".join(parts)
-
-
-# ============================================================
-# COST TRACKING
-# ============================================================
-
-def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
-    rates = MODEL_PRICING.get(model, {"input": 3.00, "output": 15.00})
-    return (input_tokens * rates["input"] + output_tokens * rates["output"]) / 1_000_000
+    # On API failure: human-readable message. On success: None.
+    # `answer` still carries the same "Synthesis failed due to ..." text for
+    # backwards compat, but new callers should branch on `error` first.
+    error: str | None = None
 
 
 # ============================================================
@@ -302,12 +160,31 @@ def run_standard(
     )
 
     print("  Synthesizing...", end="", flush=True)
-    response = client.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_message}],
-    )
+
+    @with_rate_limit_retry()
+    def _do_synthesis_call():
+        return client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+
+    try:
+        response = _do_synthesis_call()
+    except anthropic.APIError as e:
+        print(f" [API error: {e}]")
+        return SynthesisResult(
+            answer=f"Synthesis failed due to API error: {e}",
+            evidence=all_evidence,
+            search_queries=search_queries,
+            input_tokens=0,
+            output_tokens=0,
+            cost=0.0,
+            duration_seconds=time.time() - start,
+            model=model,
+            error=str(e),
+        )
     print(" done")
 
     answer = response.content[0].text.strip()
@@ -374,14 +251,7 @@ def run_deep(
     context = "\n\n".join(context_parts)
 
     # Restrict the tool's source enum to only the requested sources
-    tool = dict(SEARCH_POLICY_TOOL)
-    tool["input_schema"] = dict(tool["input_schema"])
-    tool["input_schema"]["properties"] = dict(tool["input_schema"]["properties"])
-    tool["input_schema"]["properties"]["source"] = {
-        "type": "string",
-        "enum": sources,
-        "description": "Which source to search",
-    }
+    tool = make_search_tool(sources)
 
     user_message = (
         f"## Question\n{question}\n\n"
@@ -398,42 +268,19 @@ def run_deep(
 
     print("  Deep analysis", end="", flush=True)
 
+    @with_rate_limit_retry()
+    def _do_turn_call():
+        return client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            system=system_prompt,
+            messages=messages,
+            tools=[tool],
+        )
+
     for turn in range(max_turns):
         try:
-            resp = client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                system=system_prompt,
-                messages=messages,
-                tools=[tool],
-            )
-            total_input += resp.usage.input_tokens
-            total_output += resp.usage.output_tokens
-        except anthropic.RateLimitError:
-            print(" [rate limited, waiting 60s]", end="", flush=True)
-            time.sleep(60)
-            try:
-                resp = client.messages.create(
-                    model=model,
-                    max_tokens=max_tokens,
-                    system=system_prompt,
-                    messages=messages,
-                    tools=[tool],
-                )
-                total_input += resp.usage.input_tokens
-                total_output += resp.usage.output_tokens
-            except anthropic.APIError as e:
-                print(f" [API error: {e}]")
-                return SynthesisResult(
-                    answer=f"Synthesis failed due to API error: {e}",
-                    evidence=all_evidence,
-                    search_queries=search_queries,
-                    input_tokens=total_input,
-                    output_tokens=total_output,
-                    cost=calculate_cost(model, total_input, total_output),
-                    duration_seconds=time.time() - start,
-                    model=model,
-                )
+            resp = _do_turn_call()
         except anthropic.APIError as e:
             print(f" [API error: {e}]")
             return SynthesisResult(
@@ -445,7 +292,10 @@ def run_deep(
                 cost=calculate_cost(model, total_input, total_output),
                 duration_seconds=time.time() - start,
                 model=model,
+                error=str(e),
             )
+        total_input += resp.usage.input_tokens
+        total_output += resp.usage.output_tokens
 
         # Extract any text from the response
         answer_text = ""

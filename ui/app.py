@@ -146,6 +146,24 @@ async def ask(request: Request):
         deep=deep,
     )
 
+    if result.error:
+        # Errored runs are still persisted to history with the failure message
+        # in `answer` (current behavior). Skip-on-error and an `error` column
+        # are bundled with CA-14 in the search-cleanup phase.
+        await asyncio.to_thread(
+            save_search,
+            question=question,
+            sources=sources,
+            programs_by_source=programs_by_source,
+            deep=deep,
+            result=result,
+        )
+        return templates.TemplateResponse(
+            request,
+            "partials/answer_error.html",
+            {"error": result.error},
+        )
+
     # Save to history
     search_id = await asyncio.to_thread(
         save_search,
