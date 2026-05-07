@@ -25,7 +25,7 @@ These terms have specific meanings in SNAP policy. Do not interpret them as plai
 - **Recertification** — Renewal of SNAP benefits at the end of a certification period. Requires a new application and eligibility determination.
 - **Interim Report** - A mandatory check in point in the middle of a certification period. Basically a lite recertification.
 - **Initial Month** — The first month of SNAP participation. Benefits are prorated from the application date.
-- **Eligibility Worker (EW)** — The state employee who makes the eligibility decision on a case. At DTA, these are the workers processing applications and changes in BEACON and are referred to as "First Available Workers (FAWs)", "Case Managers", "Case Workers", "Workers", or "Staff" interchangeably.
+- **Eligibility Worker (EW)** — The state employee who makes the eligibility decision on a case. At DTA, these are the workers processing applications and changes in BEACON and are referred to as "First Available Workers (FAWs)", "Case Managers", "Assistance Unit Managers (AUMs)", "Case Workers", "Workers", or "Staff" interchangeably.
 
 ### Income & Budgeting
 
@@ -37,6 +37,7 @@ These terms have specific meanings in SNAP policy. Do not interpret them as plai
 - **Annualized Income** — Income earned in a period shorter than a year divided across 12 months. Used for self-employment and contract income.
 - **Interim Change** — A recalculation of SNAP benefits mid-certification due to a reported change. Not the same as recertification, not to be confused with "Interim Report (IR)", which is a required lite recertification that occurs in the middle of a client's approved certification period.
 - **Overissuance / Underissuance** — The household received more / fewer benefits than they were entitled to.
+- **SMD (Standard Medical Deduction)** — A $155 flat-rate medical deduction available to SNAP households with elderly (age 60+) or disabled members who incur unreimbursed medical expenses greater than $35/month. Used in lieu of itemizing actual costs. Only the elderly/disabled member's own medical expenses qualify — children's or other non-elderly/non-disabled members' costs do not. Households with verified expenses above $190/month may itemize "actuals" instead.
 
 ### Verification & Evidence
 
@@ -47,12 +48,15 @@ These terms have specific meanings in SNAP policy. Do not interpret them as plai
 - **IEVS (Income and Eligibility Verification System)** — Mandatory data matching system that cross-checks income and benefit information across government databases.
 - **SAVE (Systematic Alien Verification for Entitlements)** — Federal system for verifying immigration status. Mandatory for non-citizen household members.
 - **SVES (State Verification Eligibility System)** - Federal system used to verify SSA benefits, such as SSI and RSDI.
+- **RSDI (Retirement, Survivors, and Disability Insurance)** — Social Security Administration benefits paid to retirees, surviving spouses/children, and disabled workers. Counts as unearned income for SNAP. Verified through SVES.
 
 ### Reporting Systems
 
 - **Change Reporting** — Households must report specific changes (income source changes, $125+ unearned income changes, household composition, address). Most common system.
 - **Simplified Reporting** — Households only required to report when gross income exceeds 130% FPL. Must file a periodic report mid-certification if certified for more than 6 months.
 - **ABAWD (Able-Bodied Adult Without Dependents)** — Adults age 18-49 with no dependents who must meet work requirements to receive SNAP beyond 3 months in a 36-month period.
+- **GWR (General Work Rules)** — DTA's term for the federal SNAP general work requirements (7 CFR 273.7), separate from and broader than ABAWD. Most adult SNAP recipients are subject to GWR unless an exemption applies; ABAWD is a stricter overlay on top.
+- **WPR (Work Program Requirements)** — Umbrella DTA term covering both GWR and ABAWD obligations. A client described as "WPR" in case notes is subject to one or both — context determines which. Exemptions are tracked separately for each.
 
 ### QC-Specific Terms (appear in FNS text)
 
@@ -77,5 +81,6 @@ These terms have specific meanings in SNAP policy. Do not interpret them as plai
 - **ABAWD** - Able Bodied Adults Without Dependents, a work program required by certain clients to receive benefits.
 - **HH** - Household. The unit of people for which benefits are being assessed. May include individuals not eligible for benefits.
 - **AU** - Assistance Unit. Similar to HH but technically only includes those members that are included in grant calculation.
-- **VC-1** - Verification Checklist. Required to be sent to clients to inform them of what items are needed to verify elements in their case before a decision can be made. 
+- **VC-1** - Verification Checklist. Required to be sent to clients to inform them of what items are needed to verify elements in their case before a decision can be made.
+- **EDSAP (Elderly Disabled Simplified Application Project)** — DTA's simplified-reporting category for households where every adult member is elderly or disabled. Allows extended certification periods and minimal mid-cert reporting. Massachusetts's implementation of the federal ESAP option.
 
