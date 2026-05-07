@@ -19,19 +19,31 @@ Created 2026-05-06. Cleanup audits complete (QC, comparator, search, author, syn
 | Doc hygiene | ✅ Complete |
 | Build shared modules | ✅ **Complete (2026-05-06)** — `tools/retry.py`, `tools/cost_tracker.py`, `tools/result_formatters.py`, `tools/policy_tools.py` |
 | Synthesis migration | ✅ **Complete (2026-05-06)** — all four shared modules wired in. SynthesisResult `error: str | None` field added. Resolved synthesis F3 (run_standard retry), F6 (duplicated APIError handler), F11 (no error signal), F15 (manual deepcopy), F22 (FNS chunk_n/total). |
-| **Next: QC migration** | **Sequenced into 5 sub-steps (see "QC migration sub-steps" below). Sub-step 1 = delete CLI pipeline.** |
+| QC architecture pass | ✅ **Complete (2026-05-07)** — three additional decisions resolved (#9 program filters, #10 folder layout, #11 trace storage). Sub-steps refined; specific filter lists locked in. |
+| **Next: QC migration** | **Sequenced into 5 sub-steps (see "QC migration sub-steps" below). Sub-step 1 = delete CLI pipeline + legacy artifact cleanup.** |
 | Migrate comparator → search → author | After QC validates the shapes |
 
-## QC migration sub-steps (added 2026-05-06)
+## QC migration sub-steps (added 2026-05-06, refined 2026-05-07)
 
 Unlike the shared-module commits (which were small, isolated units), QC migration is a multi-commit effort. Sequence:
 
-1. **Delete CLI pipeline** — `analyze_csv` (L1396-1594), `save_checkpoint` / `load_checkpoint` (L358-375), `--resume` flag, `if __name__ == "__main__"` block. ~200 lines gone. Isolated; no shared-module imports yet. Per decision #6 (delete the CLI entirely).
+1. **Delete CLI pipeline + legacy artifact cleanup** — `analyze_csv` (L1396-1594), `save_checkpoint` / `load_checkpoint` (L358-375), `--resume` flag, `if __name__ == "__main__"` block. ~200 lines gone. Isolated; no shared-module imports yet. Per decision #6 (delete the CLI entirely). **Also**: move legacy CLI output artifacts at top of `output/qc_analysis/` (`*_analyzed.csv`, `*_trace_*.jsonl`, etc.) into `Deprecated/`.
 2. **Parameterize cross-checks** — three near-identical `run_cmr_check` / `run_fns_check` / `run_cfr_check` functions → one `run_source_check(source, ...)`. UI route consolidation: `/qc/cmr_check`, `/qc/fns_check`, `/qc/cfr_check` → `/qc/source_check/{source}`. Apply the four shared modules during this rewrite (don't import three times then delete two-thirds).
-3. **Move TraceLogger to phased pipeline** — currently CLI-only; with CLI deleted, traces need to fire during UI Investigate runs. Per decision #8.
+3. **Move TraceLogger into per-finding JSON** — currently CLI-only and writes separate `*_trace.jsonl` files. Refined 2026-05-07: instead of moving the JSONL writer, **fold `judge_trace` into the existing `row_NNN.json`**. Single file per finding holds extractor + seed_results + judge_result + `judge_trace` + cross_checks. No separate trace files. Per decision #8 + decision #11 (2026-05-07 refinement).
 4. **Apply shared modules to extractor + judge** — what step 2 didn't cover. Imports `tools/retry.py`, `tools/cost_tracker.py`, `tools/result_formatters.py`, `tools/policy_tools.py`.
 5. **QC-specific finishing**:
-   - Drop CFR cross-check's `program="SNAP"` filter (decision #4 — no silent filtering principle)
+   - **Per-source program filters** (decision #9, 2026-05-07) — replace dropped CFR `program="SNAP"` with explicit per-source `include`/`exclude` config in `[qc_analyzer]`. Specific lists locked in:
+     - **OLG include**: SNAP, Cross-Program, BP, Pathways, Harper, Self-Service, Domestic Violence, Policies & Procedures, SUN Bucks, General
+     - **OLG exclude**: TAFDC, EAEDC, COVID, Notices/Forms, Scheduled Mailings, Forms, microcontent
+     - **FNS include**: SNAP, QC_Process — all programs (FNS keeps everything per user)
+     - **FNS exclude**: (none)
+     - **CMR include**: SNAP, Hearings, Program Integrity, SSP
+     - **CMR exclude**: EA
+     - **CFR include**: SNAP, QC, Issuance, Disaster, Summer-EBT
+     - **CFR exclude**: Administration
+   - **UI filter panel** — read-only summary at top of QC tab, collapsed by default, expandable to show full include/exclude lists. Format: "OLG: 10 of 16 programs · CMR: 4 of 5 · CFR: 5 of 6 · FNS: all (2)".
+   - **Folder layout migration** (decision #10, 2026-05-07) — analysis dirs become `output/qc_analysis/{analysis_name}_{YYYY-MM-DD_HHMM}/`. Each upload spawns a new dir; reruns of phases stay in-place. Files inside simply named (`upload.csv`, `meta.json`, `summary.csv`, `results/row_NNN.json`). Existing analyses left as-is; new convention applies to new uploads.
+   - **`meta.json` gains `filter_snapshot`** — record which programs were active for that run, so future audit can answer "what scope was this run?"
    - Fix QC F5/B1 (`extract_json` fallback misshapen for cross-checks)
    - Update QC's judge result shape to mirror synthesis's error pattern
    - Docstring sweep (F4) + max_turns formula comment (F11)
@@ -186,15 +198,15 @@ SEARCH_POLICY_TOOL = make_search_tool(["olg", "cmr", "fns", "cfr"])
 
 Already-decided actions (from QC notes):
 
-1. **Delete CLI pipeline** (`analyze_csv` L1396-1594, `save_checkpoint`/`load_checkpoint` L358-375, `--resume` flag, `if __name__` CLI). Phased pipeline is canonical (decided 2026-05-05).
+1. **Delete CLI pipeline** (`analyze_csv` L1396-1594, `save_checkpoint`/`load_checkpoint` L358-375, `--resume` flag, `if __name__` CLI). Phased pipeline is canonical (decided 2026-05-05). **Plus**: move legacy CLI artifacts at top of `output/qc_analysis/` to `Deprecated/`.
 2. **Parameterize cross-checks** — F2 sketch already in QC notes. Three `run_X_check` functions → one `run_source_check(source, ...)`. UI route `/qc/source_check/{source}` replaces three routes (F16).
-3. **Move TraceLogger into the phased pipeline (decision #8)**. Currently CLI-only; with the CLI gone, wire TraceLogger into the UI Investigate run. Per-finding JSONL written under `analysis_dir/traces/row_NNN.jsonl`. Useful for "why did the judge classify this Gap?" debugging.
+3. **Fold judge trace into per-finding JSON** (decisions #8 + #11). Single `row_NNN.json` holds extractor / seed_results / judge_result / `judge_trace` array / cross_checks. No separate JSONL files. User reads these to tune prompts — trace and result belong together.
 4. **Cross-check query benchmark (F10)** — small experiment, deferred to after structural cleanup.
 5. **CSV output redesign (F15 / CA-7)** — out of scope, separate work item.
 
 New actions from cross-app extractions:
 
-6. Import `tools/retry.py`; wrap extractor + judge + three cross-checks. Drop handcrafted retries.
+6. Import `tools/retry.py`; wrap extractor + judge + parameterized cross-check. Drop handcrafted retries.
 7. Import `tools/cost_tracker.py`; replace MODEL_PRICING + CostTracker with parameterized Tracker.
 8. Import `tools/result_formatters.py`; drop `format_olg_results_for_prompt` and `_format_source_results_for_prompt`.
 9. Import `tools/policy_tools.py`; drop inline `SEARCH_OLG_TOOL`.
@@ -202,7 +214,12 @@ New actions from cross-app extractions:
 11. Docstring sweep (F4) — replace "Two-call architecture" with the actual phased shape.
 12. Document max_turns = max_searches + 5 formula (F11) in a one-line comment.
 
-**QC F6 (program filter inconsistency, decision #4)**: drop CFR's `program="SNAP"` default; all three cross-checks pass no filter. Cross-cutting principle: no silent program filtering anywhere. If a future filter is wanted, it's explicit (e.g., user-selected via UI) and visible in the result metadata.
+QC-specific architecture refinements (decisions #9, #10, #11 — added 2026-05-07):
+
+13. **Per-source program filters via config** (decision #9). Replaces the original "drop CFR program=SNAP filter" framing. `[qc_analyzer]` gains explicit `{source}_include` / `{source}_exclude` keys for OLG/CMR/CFR/FNS. Both lists in config so all available programs are visible without guessing. Cross-checks AND seed-search AND judge tool calls all honor these filters. Cross-cutting principle reframed: *filtering is allowed; what's banned is silent filtering*. Explicit visible filters honor the principle.
+14. **UI filter panel** — collapsed-by-default summary at top of QC tab ("OLG: 10 of 16 programs · CMR: 4 of 5 · CFR: 5 of 6 · FNS: all (2)"), expandable to show full include/exclude lists. Visibility without clutter.
+15. **Per-run analysis folders** (decision #10). `output/qc_analysis/{analysis_name}_{YYYY-MM-DD_HHMM}/` — new folder per upload, reruns within stay in-place. Files inside simply named.
+16. **`meta.json` gains `filter_snapshot`** — captures which programs were active at run time, so future audit can answer "what scope was this analysis?"
 
 ### Comparator
 
@@ -242,24 +259,27 @@ After QC, comparator, search. **Author warrants a focused 1-2 day cleanup pass**
 - F5/F6 (partial consolidation) — feature-shaped, not pure cleanup
 - F11 (JSON data endpoints replacing HTML-parsing JS) — feature-shaped
 
-## Decisions resolved (2026-05-06)
+## Decisions resolved
 
-All 8 open decisions answered by user. Build phase has no remaining design ambiguity.
+8 decisions resolved 2026-05-06; 3 more 2026-05-07 (refinements during the QC architecture pass). Build phase has no remaining design ambiguity.
 
-| # | Decision | Resolution |
-|---|---|---|
-| 1 | `init_clients()` startup failure policy | **Degrade gracefully**. UI starts with a banner explaining limited functionality; user can use whatever services initialized successfully. |
-| 2 | Failure signal on `SynthesisResult` | **Add `error: str \| None`**. On success: `error=None`. On failure: `error` holds message, `answer` empty. Caller checks `if result.error:` to branch. |
-| 3 | Unknown-model pricing fallback (F30) | **Warn loudly + use Sonnet rates + flag as estimated**. Don't halt work. Warning includes file path + Anthropic pricing URL to guide manual update. Follow-up: `python tools/cost_tracker.py --check` CLI helper that scans config and reports models missing from `MODEL_PRICING`. |
-| 4 | QC F6 cross-check program filter | **No silent filtering anywhere — cross-cutting principle**. Drop CFR's `program="SNAP"` default. All three QC cross-checks pass no filter. Reasoning: OLG programs that aren't EAEDC/TAFDC are largely SNAP-adjacent; silent SNAP filter would exclude relevant policy. Filtering, when it happens, is *explicit and visible*. Inherits to author F2 (research phase) and the deferred per-source program filter UI. |
-| 5 | Kill search F2 vestigial endpoint? | **Yes, kill**. Delete `/search` route, `ui/search.py:do_search`, `ui/search.py:_clients` eager cache, `init_clients()` eager wiring. Synthesis's lazy cache becomes the only cache. F3 vestigial result_card partial also goes. CA-11 collapses to nothing. |
-| 6 | Author CLI/UI parity | **Delete the CLI entirely**. No headless usage in practice; UI is the only user path. Removes the source of CLI/UI drift. If a batch-run need ever surfaces, rebuild a thin shim against whatever the code looks like then. |
-| 7 | Shared OLG tool description wording (CA-9) | **Tool description stays neutral**; per-app intent lives in prompts. Tool description: factual ("Search the DTA Online Guide for policy and procedures relevant to SNAP, TAFDC, and EAEDC"). QC's prompt emphasizes procedures (where the user specializes); comparator's emphasizes policy gaps. Decoupling tool description from caller intent. |
-| 8 | TraceLogger disposition | **Move to phased pipeline**. With CLI deleted, TraceLogger fires during UI Investigate runs. Useful for debugging "why did the judge classify this finding as Gap?" JSONL files written under `analysis_dir/traces/`. |
+| # | Date | Decision | Resolution |
+|---|---|---|---|
+| 1 | 2026-05-06 | `init_clients()` startup failure policy | **Degrade gracefully**. UI starts with a banner explaining limited functionality; user can use whatever services initialized successfully. |
+| 2 | 2026-05-06 | Failure signal on `SynthesisResult` | **Add `error: str \| None`**. On success: `error=None`. On failure: `error` holds message, `answer` empty. Caller checks `if result.error:` to branch. |
+| 3 | 2026-05-06 | Unknown-model pricing fallback (F30) | **Warn loudly + use Sonnet rates + flag as estimated**. Don't halt work. Warning includes file path + Anthropic pricing URL to guide manual update. Follow-up: `python tools/cost_tracker.py --check` CLI helper that scans config and reports models missing from `MODEL_PRICING`. |
+| 4 | 2026-05-06 | QC F6 cross-check program filter | **No silent filtering anywhere — cross-cutting principle**. Filtering, when it happens, is *explicit and visible* — see decision #9 for the QC implementation. Original framing was "drop CFR program=SNAP filter"; superseded by decision #9 which adds explicit per-source filtering to *all* QC sources via config + UI panel. |
+| 5 | 2026-05-06 | Kill search F2 vestigial endpoint? | **Yes, kill**. Delete `/search` route, `ui/search.py:do_search`, `ui/search.py:_clients` eager cache, `init_clients()` eager wiring. Synthesis's lazy cache becomes the only cache. F3 vestigial result_card partial also goes. CA-11 collapses to nothing. |
+| 6 | 2026-05-06 | Author CLI/UI parity | **Delete the CLI entirely**. No headless usage in practice; UI is the only user path. Removes the source of CLI/UI drift. If a batch-run need ever surfaces, rebuild a thin shim against whatever the code looks like then. |
+| 7 | 2026-05-06 | Shared OLG tool description wording (CA-9) | **Tool description stays neutral**; per-app intent lives in prompts. Tool description: factual ("Search the DTA Online Guide for policy and procedures relevant to SNAP, TAFDC, and EAEDC"). QC's prompt emphasizes procedures (where the user specializes); comparator's emphasizes policy gaps. Decoupling tool description from caller intent. |
+| 8 | 2026-05-06 | TraceLogger disposition | **Move to phased pipeline** — refined by decision #11 to "fold into per-finding JSON instead of separate JSONL." With CLI deleted, judge trace fires during UI Investigate runs and is captured as the `judge_trace` field on `row_NNN.json`. |
+| 9 | 2026-05-07 | QC program filter implementation | **Explicit per-source filters via config**. `[qc_analyzer]` gains `olg_include`/`olg_exclude`/`cmr_include`/`cmr_exclude`/`cfr_include`/`cfr_exclude`/`fns_include`/`fns_exclude` keys. Both included AND excluded lists shown so all available programs are visible at the config layer (no guessing). UI surfaces a collapsible "Active filters" panel at the top of the QC tab — collapsed by default, expandable. Reasoning: QC is a SNAP-only application by design. Hard-coded scoping is *opinionated, not silent* — visible in config + UI = principle honored. Specific lists locked in (see "QC migration sub-steps" sub-step 5). |
+| 10 | 2026-05-07 | QC analysis folder layout | **Per-run timestamped folders**. `output/qc_analysis/{analysis_name}_{YYYY-MM-DD_HHMM}/`. Each upload spawns a new folder; reruns of phases stay in-place within that folder. Files inside simply named (`upload.csv`, `meta.json`, `summary.csv`, `results/row_NNN.json`) — folder name carries the context. ISO-style timestamp because it sorts chronologically by default. New folder per upload prevents silent overwrites; `meta.json` gains `filter_snapshot` field so future audit can reconstruct what scope a run used. |
+| 11 | 2026-05-07 | Judge trace storage | **Fold `judge_trace` into `row_NNN.json`** as an array of turn entries. No separate `traces/*.jsonl` files. Single file per finding holds extractor / seed_results / judge_result / judge_trace / cross_checks. Reasoning: user actively reads finding JSONs to tune prompts; trace and result belong together. Downstream consumers (cross-checks, summary CSV) read named keys, so the new field doesn't disturb them. |
 
 ## Cross-cutting principles surfaced during decisions
 
-- **No silent program filtering** (from decision #4). Anywhere we filter by program, the filter is explicit and visible. Defaults that quietly narrow scope are out. Applies to QC cross-checks, author research, future per-source filter UI.
+- **Filtering is allowed; silent filtering is not** (from decisions #4 and #9). Refined 2026-05-07: opinionated scoping is fine when it matches an app's purpose (e.g., QC is a SNAP-only analyzer, so excluding TAFDC/EAEDC content is intentional, not negligence). What's banned is *invisible* filtering. Filters must be visible at the config layer (both included and excluded lists shown — no guessing) AND surfaced in the UI (read-only panel showing active scope). Apps with broader scope (search, author) keep user-controlled per-source filter UI in their futures.
 - **Tool descriptions are neutral; intent lives in prompts** (from decision #7). Shared tool definitions describe what the tool DOES, not what each caller wants from it.
 - **Don't halt on cost-tracking gaps** (from decision #3). Cost reporting is informational; pricing-dict drift shouldn't break runs. Make drift visible and fixable, not blocking.
 
