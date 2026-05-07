@@ -578,8 +578,13 @@ var QC_PHASE_LABELS = {
 };
 
 function qcRerun(action) {
-    var label = QC_PHASE_LABELS[action] || action;
-    if (!confirm('Run ' + label + ' again? This will overwrite existing results.')) return;
+    /* For extract, skip the JS confirm dialog — the server returns a
+       richer in-page modal when downstream phases are populated, and
+       extracts with no downstream data are safe to run without prompting. */
+    if (action !== 'extract') {
+        var label = QC_PHASE_LABELS[action] || action;
+        if (!confirm('Run ' + label + ' again? This will overwrite existing results.')) return;
+    }
 
     var nameEl = document.getElementById('qc-name');
     var name = nameEl ? nameEl.value.trim() : '';
@@ -625,6 +630,70 @@ function qcActionUrl(action) {
     var m = /^(cmr|fns|cfr)_check$/.exec(action);
     if (m) return '/qc/source_check/' + m[1];
     return '/qc/' + action;
+}
+
+function qcConfirmExtract(mode) {
+    /* User picked a path on the qc_extract_confirm modal: 'overwrite'
+       wipes downstream phases and re-extracts in place; 'fork' creates
+       a new timestamped analysis from the same upload.csv and runs
+       extract there. Server returns the triage view either way; on
+       fork, response carries data-analysis-name with the new name so
+       we sync the qc-name input. */
+    var nameEl = document.getElementById('qc-name');
+    var name = nameEl ? nameEl.value.trim() : '';
+    if (!name) return;
+
+    var resultsArea = document.getElementById('qc-results');
+    var formData = new FormData();
+    formData.append('name', name);
+    formData.append('rerun', '1');
+    formData.append('confirm', mode);
+
+    qcShowProgress(EXTRACT_STEPS);
+    var buttons = document.querySelectorAll('.qc-actions .btn');
+    buttons.forEach(function(b) { b.disabled = true; });
+
+    fetch('/qc/extract', { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            qcHideProgress();
+            resultsArea.innerHTML = html;
+            htmx.process(resultsArea);
+            var named = resultsArea.querySelector('[data-analysis-name]');
+            if (named) {
+                var newName = named.getAttribute('data-analysis-name');
+                if (newName && newName !== name && nameEl) {
+                    nameEl.value = newName;
+                }
+            }
+            htmx.ajax('GET', '/qc/analyses', '#qc-analyses-list');
+        })
+        .catch(function(err) {
+            qcHideProgress();
+            resultsArea.innerHTML = '<p>Error: ' + err.message + '</p>';
+        })
+        .finally(function() {
+            buttons.forEach(function(b) { b.disabled = false; });
+        });
+}
+
+function qcCancelExtractConfirm() {
+    /* User dismissed the extract-rerun modal. Re-render the existing
+       extract view by sending a GET-style POST without rerun=1. */
+    var nameEl = document.getElementById('qc-name');
+    var name = nameEl ? nameEl.value.trim() : '';
+    if (!name) return;
+
+    var resultsArea = document.getElementById('qc-results');
+    var formData = new FormData();
+    formData.append('name', name);
+
+    fetch('/qc/extract', { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            resultsArea.innerHTML = html;
+            htmx.process(resultsArea);
+        });
 }
 
 function qcRun(action) {

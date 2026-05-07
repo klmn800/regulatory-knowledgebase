@@ -1,0 +1,32 @@
+<div class="answer-card qc-confirm-card">
+    <h3 style="margin-top:0;">Re-extract will overwrite downstream results</h3>
+    <p>This analysis has data from later phases that will be lost if you re-extract in place:</p>
+    <ul style="margin:0.5rem 0 1rem 1.25rem;">
+        {% if summary.investigated %}
+        <li><strong>{{ summary.investigated }}</strong> investigated finding{{ '' if summary.investigated == 1 else 's' }} (judge verdicts, OLG references, reasoning)</li>
+        {% endif %}
+        {% if summary.cmr %}
+        <li><strong>{{ summary.cmr }}</strong> CMR cross-check{{ '' if summary.cmr == 1 else 's' }}</li>
+        {% endif %}
+        {% if summary.fns %}
+        <li><strong>{{ summary.fns }}</strong> FNS cross-check{{ '' if summary.fns == 1 else 's' }}</li>
+        {% endif %}
+        {% if summary.cfr %}
+        <li><strong>{{ summary.cfr }}</strong> CFR cross-check{{ '' if summary.cfr == 1 else 's' }}</li>
+        {% endif %}
+    </ul>
+    <p style="font-size:0.88rem; color:var(--color-text-muted);">
+        Forking copies the same source CSV into a new timestamped analysis and runs extract there. The current analysis stays untouched.
+    </p>
+    <div style="display:flex; gap:0.5rem; margin-top:1rem; flex-wrap:wrap;">
+        <button class="btn btn-sm btn-primary" onclick="qcConfirmExtract('fork')">
+            Fork to new analysis
+        </button>
+        <button class="btn btn-sm btn-outline" onclick="qcConfirmExtract('overwrite')" style="border-color:#dc2626; color:#dc2626;">
+            Re-extract here (destructive)
+        </button>
+        <button class="btn btn-sm btn-outline" onclick="qcCancelExtractConfirm()">
+            Cancel
+        </button>
+    </div>
+</div>

@@ -4,11 +4,24 @@ You extract the abstract policy and procedure issues from SNAP quality control f
 
 ## Your Task
 
-Read the QC finding narrative and any auxiliary information provided. Extract:
+Read the QC finding narrative and any auxiliary information provided. Extract **one or more distinct findings**. A single QC narrative often surfaces multiple unrelated policy issues — for example, an income-coding error AND a household-composition error AND a shelter-deduction error in the same case write-up. Each distinct policy/procedure topic becomes its own finding so the OLG can be evaluated separately on each.
 
-1. **The policy/procedure issue(s)** at the core of this error. What abstract policy question does this error reveal? Strip away all case-specific noise: client names, dollar amounts, dates, phone numbers, addresses, employer names, APID numbers. Focus on the TYPE of policy or procedure that was misapplied, unknown, or not followed.
+For each distinct finding, extract:
 
-2. **Search queries** (2-3) optimized for finding relevant content in the DTA Online Guide (OLG). The OLG is organized by topic (income, deductions, verification, household composition, reporting requirements, etc.) and contains both policy rules and BEACON system procedures.
+1. **The policy/procedure issue** at the core of that thread of the error. What abstract policy question does this thread reveal? Strip away all case-specific noise: client names, dollar amounts, dates, phone numbers, addresses, employer names, APID numbers. Focus on the TYPE of policy or procedure that was misapplied, unknown, or not followed.
+
+2. **Search queries** (2-3) optimized for finding relevant content in the DTA Online Guide (OLG) for *that specific finding*. The OLG is organized by topic (income, deductions, verification, household composition, reporting requirements, etc.) and contains both policy rules and BEACON system procedures.
+
+## When to split into multiple findings
+
+Split when the narrative describes errors that would map to **different OLG pages** or **unrelated policy topics**. Examples:
+
+- "Worker missed new employment AND failed to add a newborn" → 2 findings (income reporting; household composition)
+- "Worker incorrectly coded SSI income AND applied the wrong shelter deduction" → 2 findings (income verification/coding; shelter deduction verification)
+- "Worker misapplied a single policy across two time periods (recert and interim report)" → 1 finding (the underlying policy is one topic; the timeline is just context)
+- "Multiple verifications were missing for the same income source" → 1 finding (one income, one verification topic)
+
+When in doubt, ask: would a reviewer searching the OLG type the same query for both, or different queries? Same query → one finding. Different queries → split.
 
 ## Query Strategy
 
@@ -48,10 +61,14 @@ Pay special attention to QC Comments and Disagree Reason columns when present. T
 
 Respond with ONLY a JSON object (no markdown, no code fences, no explanation):
 
-{"policy_issues": "Short Topic Heading: 1-3 sentences describing the abstract policy/procedure question(s) this error reveals. No client names, no dollar amounts, no dates. Focus on what type of guidance a worker would need.", "search_queries": ["query 1", "query 2", "query 3"]}
+{"findings": [{"policy_issues": "Short Topic Heading: 1-3 sentences...", "search_queries": ["q1", "q2", "q3"]}, {"policy_issues": "Different Topic: ...", "search_queries": [...]}]}
 
-The policy_issues field MUST start with a short topic heading (2-5 words) followed by a colon and space, then the description. The heading should name the primary policy area so a reviewer can scan a list of issues without reading the full text. Examples:
+The `findings` array MUST contain at least one entry. Most narratives have 1-3 findings; some have more. Do not artificially split a single coherent topic into multiple findings, and do not artificially merge unrelated topics into one.
+
+Each finding's `policy_issues` field MUST start with a short topic heading (2-5 words) followed by a colon and space, then the description. The heading should name the primary policy area so a reviewer can scan findings without reading the full text. Examples:
 - "Interim Report and Earned Income: Failure to process..."
 - "Shelter Deduction Verification: Worker did not..."
 - "Disability Status Coding: Procedures for verifying..."
 - "Change Reporting Requirements: Whether a client must..."
+
+Each finding's `search_queries` field MUST be a list of 2-3 query strings tailored to *that finding*, not the row as a whole.

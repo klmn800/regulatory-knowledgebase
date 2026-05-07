@@ -1,4 +1,4 @@
-<div class="author-result-container">
+<div class="author-result-container" data-analysis-name="{{ name }}">
     <div class="author-version-bar">
         <div class="version-nav">
             <span class="version-phase">Extract</span>
@@ -9,8 +9,9 @@
     <div class="answer-card">
         <h3 style="margin-bottom:0.5rem;">Extraction Results: {{ name }}</h3>
 
+        {% set row_count = findings | selectattr('finding_index', 'equalto', 1) | list | length %}
         <div class="qc-selection-info">
-            <span id="qc-selection-count">{{ findings|length }} of {{ findings|length }} selected</span>
+            <span id="qc-selection-count">{{ row_count }} of {{ row_count }} selected</span>
             <label style="font-size:0.82rem; cursor:pointer;">
                 <input type="checkbox" checked onchange="qcToggleAll(this)"> Select All
             </label>
@@ -30,31 +31,35 @@
             </thead>
             <tbody>
                 {% for f in findings %}
-                <tr class="clickable-row" onclick="qcToggleDetail({{ f.row_index }})">
+                <tr class="clickable-row" onclick="qcToggleDetail('{{ f.detail_id }}')">
                     <td onclick="event.stopPropagation();">
+                        {% if f.finding_index == 1 %}
                         <input type="checkbox" class="qc-row-checkbox"
                                value="{{ f.row_index }}" checked
                                onchange="qcUpdateSelectionCount()">
+                        {% endif %}
                     </td>
-                    <td>{{ f.row_index }}</td>
-                    <td>{{ f.review_number }}</td>
-                    <td>{{ f.apid }}</td>
-                    <td>{{ f.determination }}</td>
-                    <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.error_type }}</td>
+                    <td>{{ f.display_index }}</td>
+                    <td>{% if f.finding_index == 1 %}{{ f.review_number }}{% endif %}</td>
+                    <td>{% if f.finding_index == 1 %}{{ f.apid }}{% endif %}</td>
+                    <td>{% if f.finding_index == 1 %}{{ f.determination }}{% endif %}</td>
+                    <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{% if f.finding_index == 1 %}{{ f.error_type }}{% endif %}</td>
                     <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.policy_issues }}</td>
                 </tr>
-                <tr id="qc-detail-{{ f.row_index }}" class="qc-detail-row" style="display:none;">
+                <tr id="qc-detail-{{ f.detail_id }}" class="qc-detail-row" style="display:none;">
                     <td colspan="7">
                         <div class="qc-detail-content">
-                            <h4>Policy Issues</h4>
+                            <h4>Policy Issue</h4>
                             <p>{{ f.policy_issues }}</p>
 
+                            {% if f.finding_index == 1 %}
                             <h4>Finding Narrative</h4>
                             <p>{{ f.finding_narrative }}</p>
 
                             {% if f.non_concur_reason %}
                             <h4>Case Manager Response</h4>
                             <p>{{ f.non_concur_reason }}</p>
+                            {% endif %}
                             {% endif %}
 
                             <h4>Search Queries</h4>

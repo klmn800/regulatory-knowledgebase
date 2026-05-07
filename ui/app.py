@@ -8,6 +8,7 @@ Run with: python ui/app.py
 
 import asyncio
 import json
+import shutil
 import sys
 import time
 import uuid
@@ -64,7 +65,11 @@ from programs.qc.qc_analyzer import (
     run_source_check,
     SOURCE_CHECK_CONFIG,
     load_all_findings,
+    flatten_findings,
     load_meta,
+    make_forked_name,
+    downstream_summary,
+    clear_downstream_meta,
     save_meta,
     generate_summary_csv,
     _load_filters as load_qc_filters,
@@ -779,7 +784,7 @@ async def qc_analyses(request: Request):
     """List existing analyses with their phase status."""
     analyses = []
     if QC_DIR.exists():
-        for d in sorted(QC_DIR.iterdir()):
+        for d in sorted(QC_DIR.iterdir(), reverse=True):
             if d.is_dir() and not d.name.startswith(".") and not d.name.startswith("_"):
                 meta = load_meta(d)
                 if meta:
@@ -842,24 +847,24 @@ async def qc_view(request: Request, name: str, phase: str):
         )
 
     elif phase == "extract":
-        findings = load_all_findings(analysis_dir)
-        extracted = [f for f in findings if f.get("phase") in ("extracted", "investigated")]
-        if not extracted:
+        rows = load_all_findings(analysis_dir)
+        extracted_rows = [r for r in rows if r.get("phase") in ("extracted", "investigated")]
+        if not extracted_rows:
             return HTMLResponse("<p>No extraction results found. Click Extract first.</p>")
         return templates.TemplateResponse(
             request, "partials/qc_triage_table.html",
-            {"findings": extracted, "name": name, "meta": meta},
+            {"findings": flatten_findings(extracted_rows), "name": name, "meta": meta},
         )
 
     elif phase in ("investigate", "cmr_check", "fns_check", "cfr_check"):
         # All three post-investigation views use the same results table,
         # which conditionally shows CMR/FNS columns when data is present
-        findings = load_all_findings(analysis_dir)
-        if not findings:
+        rows = load_all_findings(analysis_dir)
+        if not rows:
             return HTMLResponse("<p>No results found.</p>")
         return templates.TemplateResponse(
             request, "partials/qc_results_table.html",
-            {"findings": findings, "name": name, "meta": meta},
+            {"findings": flatten_findings(rows), "name": name, "meta": meta},
         )
 
     return HTMLResponse(f"<p>Unknown phase: {phase}</p>", status_code=400)
@@ -935,8 +940,14 @@ async def qc_extract(
     request: Request,
     name: str = Form(...),
     rerun: str = Form(""),
+    confirm: str = Form(""),
 ):
-    """Run the Extractor phase, or show existing results."""
+    """Run the Extractor phase, or show existing results.
+
+    On rerun, if downstream phases have data and `confirm` is unset, returns
+    a modal asking the user to choose: fork to a new analysis (preserve the
+    current run), re-extract in place (destructive), or cancel.
+    """
     name = name.strip()
     if not name:
         return HTMLResponse("<p>Analysis name is required.</p>")
@@ -945,14 +956,54 @@ async def qc_extract(
 
     # View-before-run: if extraction results exist and not a rerun, show them
     if rerun != "1":
-        findings = load_all_findings(analysis_dir)
-        extracted = [f for f in findings if f.get("phase") in ("extracted", "investigated")]
-        if extracted:
+        rows = load_all_findings(analysis_dir)
+        extracted_rows = [r for r in rows if r.get("phase") in ("extracted", "investigated")]
+        if extracted_rows:
             meta = load_meta(analysis_dir)
             return templates.TemplateResponse(
                 request, "partials/qc_triage_table.html",
-                {"findings": extracted, "name": name, "meta": meta},
+                {"findings": flatten_findings(extracted_rows), "name": name, "meta": meta},
             )
+
+    # Re-run safety: if downstream phases populated and user hasn't picked
+    # a confirm path, return the modal.
+    if rerun == "1" and confirm == "":
+        summary = downstream_summary(analysis_dir)
+        if summary["populated"]:
+            return templates.TemplateResponse(
+                request, "partials/qc_extract_confirm.html",
+                {"summary": summary, "name": name},
+            )
+
+    # Fork: create a fresh analysis dir, copy the source CSV, and proceed
+    # against the new dir. Original analysis is left untouched.
+    if rerun == "1" and confirm == "fork":
+        old_csv = analysis_dir / "upload.csv"
+        if not old_csv.exists():
+            return HTMLResponse("<p>No source CSV in the original analysis.</p>")
+        new_name = make_forked_name(name)
+        new_dir = get_analysis_dir(new_name)
+        shutil.copyfile(old_csv, new_dir / "upload.csv")
+        old_meta = load_meta(analysis_dir) or {}
+        new_meta = {
+            "name": new_name,
+            "created": datetime.now().isoformat(),
+            "source_file": old_meta.get("source_file", ""),
+            "forked_from": name,
+            "total_rows": old_meta.get("total_rows", 0),
+            "phases": {"uploaded": True},
+            "filter_snapshot": load_qc_filters(load_qc_config()),
+        }
+        save_meta(new_dir, new_meta)
+        # Switch context to the new analysis for the rest of this request
+        name = new_name
+        analysis_dir = new_dir
+
+    # Overwrite path: clear downstream meta so the analysis returns to
+    # extract-only state. The nested judge/cross-check data inside row
+    # findings is wiped automatically when run_extract rewrites them.
+    elif rerun == "1" and confirm == "overwrite":
+        clear_downstream_meta(analysis_dir)
 
     # Load CSV
     csv_path = analysis_dir / "upload.csv"
@@ -962,12 +1013,12 @@ async def qc_extract(
     _, rows = load_qc_csv(csv_path)
 
     config = load_qc_config()
-    findings = await asyncio.to_thread(run_extract, analysis_dir, rows, config)
+    extracted_rows = await asyncio.to_thread(run_extract, analysis_dir, rows, config)
 
     meta = load_meta(analysis_dir)
     return templates.TemplateResponse(
         request, "partials/qc_triage_table.html",
-        {"findings": findings, "name": name, "meta": meta},
+        {"findings": flatten_findings(extracted_rows), "name": name, "meta": meta},
     )
 
 
@@ -987,13 +1038,12 @@ async def qc_investigate(
 
     # View-before-run: if investigated findings exist and not a rerun, show them
     if rerun != "1":
-        findings = load_all_findings(analysis_dir)
-        investigated = [f for f in findings if f.get("phase") == "investigated"]
-        if investigated:
+        rows = load_all_findings(analysis_dir)
+        if any(r.get("phase") == "investigated" for r in rows):
             meta = load_meta(analysis_dir)
             return templates.TemplateResponse(
                 request, "partials/qc_results_table.html",
-                {"findings": findings, "name": name, "meta": meta},
+                {"findings": flatten_findings(rows), "name": name, "meta": meta},
             )
 
     # Parse row indices from comma-separated string
@@ -1002,23 +1052,23 @@ async def qc_investigate(
         indices = [int(x.strip()) for x in row_indices.split(",") if x.strip()]
 
     if not indices:
-        # Default to all findings (extracted or already investigated)
-        findings = load_all_findings(analysis_dir)
-        indices = [f["row_index"] for f in findings
-                   if f.get("phase") in ("extracted", "investigated")]
+        # Default to all rows (extracted or already investigated)
+        rows = load_all_findings(analysis_dir)
+        indices = [r["row_index"] for r in rows
+                   if r.get("phase") in ("extracted", "investigated")]
 
     if not indices:
         return HTMLResponse("<p>No rows selected for investigation.</p>")
 
     config = load_qc_config()
-    results = await asyncio.to_thread(run_investigate, analysis_dir, indices, config)
+    await asyncio.to_thread(run_investigate, analysis_dir, indices, config)
 
-    # Reload all findings for the results table
-    all_findings = load_all_findings(analysis_dir)
+    # Reload all rows for the results table
+    all_rows = load_all_findings(analysis_dir)
     meta = load_meta(analysis_dir)
     return templates.TemplateResponse(
         request, "partials/qc_results_table.html",
-        {"findings": all_findings, "name": name, "meta": meta},
+        {"findings": flatten_findings(all_rows), "name": name, "meta": meta},
     )
 
 
@@ -1046,20 +1096,20 @@ async def qc_source_check(
     if rerun != "1":
         meta = load_meta(analysis_dir) or {}
         if meta.get("phases", {}).get(phase_name):
-            all_findings = load_all_findings(analysis_dir)
+            all_rows = load_all_findings(analysis_dir)
             return templates.TemplateResponse(
                 request, "partials/qc_results_table.html",
-                {"findings": all_findings, "name": name, "meta": meta},
+                {"findings": flatten_findings(all_rows), "name": name, "meta": meta},
             )
 
     config = load_qc_config()
     await asyncio.to_thread(run_source_check, source, analysis_dir, None, config)
 
-    all_findings = load_all_findings(analysis_dir)
+    all_rows = load_all_findings(analysis_dir)
     meta = load_meta(analysis_dir)
     return templates.TemplateResponse(
         request, "partials/qc_results_table.html",
-        {"findings": all_findings, "name": name, "meta": meta},
+        {"findings": flatten_findings(all_rows), "name": name, "meta": meta},
     )
 
 

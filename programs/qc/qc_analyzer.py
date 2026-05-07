@@ -160,6 +160,87 @@ def get_analysis_dir(name: str) -> Path:
     return d
 
 
+_TS_SUFFIX_RE = re.compile(r"_\d{4}-\d{2}-\d{2}_\d{4}$")
+
+
+def make_forked_name(old_name: str) -> str:
+    """Build a fresh timestamped name for a forked analysis.
+
+    Strips an existing `_YYYY-MM-DD_HHMM` suffix off the source name and
+    appends one based on the current minute. If a folder already exists
+    at that path (rare, same-minute collision), bumps a counter suffix.
+    """
+    base = _TS_SUFFIX_RE.sub("", old_name)
+    ts = datetime.now().strftime("%Y-%m-%d_%H%M")
+    candidate = f"{base}_{ts}"
+    counter = 2
+    while (ANALYSIS_DIR / candidate).exists():
+        candidate = f"{base}_{ts}_{counter}"
+        counter += 1
+    return candidate
+
+
+_DOWNSTREAM_PHASES = ("investigated", "cmr_checked", "fns_checked", "cfr_checked")
+_DOWNSTREAM_STAGES = ("judge", "cmr_check", "fns_check", "cfr_check")
+_DOWNSTREAM_STAT_KEYS = (
+    "investigate_stats", "cmr_check_stats", "fns_check_stats", "cfr_check_stats",
+)
+
+
+def downstream_summary(analysis_dir: Path) -> dict:
+    """Summarize what re-extracting in place would wipe.
+
+    Returns a dict with `populated: bool` and per-phase counts of findings
+    that would lose data. Counts are at finding granularity since the new
+    schema nests results inside `row["findings"][i]`.
+    """
+    rows = load_all_findings(analysis_dir)
+    investigated = 0
+    cmr = 0
+    fns = 0
+    cfr = 0
+    for row in rows:
+        for f in row.get("findings", []):
+            if f.get("coverage"):
+                investigated += 1
+            if "_cmr_check" in f:
+                cmr += 1
+            if "_fns_check" in f:
+                fns += 1
+            if "_cfr_check" in f:
+                cfr += 1
+    return {
+        "populated": any((investigated, cmr, fns, cfr)),
+        "investigated": investigated,
+        "cmr": cmr,
+        "fns": fns,
+        "cfr": cfr,
+    }
+
+
+def clear_downstream_meta(analysis_dir: Path) -> None:
+    """Strip downstream-phase flags, costs, and stat blocks from meta.json.
+
+    Called before an in-place re-extract so the analysis returns to an
+    extract-only state. The actual judge/cross-check data lives nested
+    inside row findings; that wipes automatically when run_extract
+    rewrites the findings list.
+    """
+    meta = load_meta(analysis_dir)
+    if not meta:
+        return
+    phases = meta.get("phases", {})
+    for p in _DOWNSTREAM_PHASES:
+        phases.pop(p, None)
+    costs = meta.get("cost", {})
+    for c in _DOWNSTREAM_STAGES:
+        costs.pop(c, None)
+    for k in _DOWNSTREAM_STAT_KEYS:
+        meta.pop(k, None)
+    meta.pop("investigated_rows", None)
+    save_meta(analysis_dir, meta)
+
+
 def save_finding(analysis_dir: Path, row_index: int, data: dict) -> Path:
     """Write a per-finding JSON to results/row_NNN.json."""
     path = analysis_dir / "results" / f"row_{row_index:03d}.json"
@@ -168,26 +249,92 @@ def save_finding(analysis_dir: Path, row_index: int, data: dict) -> Path:
     return path
 
 
+_PER_FINDING_KEYS = (
+    "policy_issues", "search_queries", "coverage", "confidence",
+    "olg_references", "gap_description", "reasoning",
+    "searches_performed", "all_search_queries", "judge_trace",
+    "_cmr_check", "_fns_check", "_cfr_check",
+)
+
+
+def _migrate_legacy_row(row: dict) -> dict:
+    """Wrap a legacy single-finding row into the multi-finding shape.
+
+    Pre-2026-05-07 row JSONs stored policy_issues, search_queries, and
+    judge/cross-check results at row level. New shape nests them inside
+    `row["findings"][i]`. This migration runs on read so legacy data
+    keeps loading; re-running any phase rewrites in the new shape.
+    """
+    if "findings" in row:
+        return row
+    finding = {"finding_index": 1}
+    for k in _PER_FINDING_KEYS:
+        if k in row:
+            finding[k] = row.pop(k)
+    if finding.get("policy_issues"):
+        row["findings"] = [finding]
+    else:
+        row["findings"] = []
+    return row
+
+
 def load_finding(analysis_dir: Path, row_index: int) -> dict | None:
-    """Read a single finding JSON. Returns None if not found."""
+    """Read a single row JSON (with nested findings). Returns None if not found."""
     path = analysis_dir / "results" / f"row_{row_index:03d}.json"
     if path.exists():
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            return _migrate_legacy_row(json.load(f))
     return None
 
 
 def load_all_findings(analysis_dir: Path) -> list[dict]:
-    """Read all finding JSONs, sorted by row_index."""
+    """Read all row JSONs (with nested findings), sorted by row_index.
+
+    Each entry is a row with `findings: [...]`. Use `flatten_findings`
+    when a per-finding view is needed (UI tables, summary CSV).
+    """
     results_dir = analysis_dir / "results"
     if not results_dir.exists():
         return []
-    findings = []
+    rows = []
     for path in sorted(results_dir.glob("row_*.json")):
         with open(path, "r", encoding="utf-8") as f:
-            findings.append(json.load(f))
-    findings.sort(key=lambda f: f.get("row_index", 0))
-    return findings
+            rows.append(_migrate_legacy_row(json.load(f)))
+    rows.sort(key=lambda r: r.get("row_index", 0))
+    return rows
+
+
+_ROW_LEVEL_KEYS = (
+    "row_index", "review_number", "apid", "tao", "error_amount",
+    "determination", "error_type", "finding_narrative",
+    "non_concur_reason", "phase",
+)
+
+
+def flatten_findings(rows: list[dict]) -> list[dict]:
+    """Flatten nested rows into one entry per (row, finding) for display.
+
+    Each output entry merges row-level identity fields with the per-finding
+    fields, plus `display_index` ("5" if row 5 has one finding,
+    "5.1"/"5.2"/"5.3" if it has multiple). Rows with no findings produce
+    no output entries.
+    """
+    out = []
+    for row in rows:
+        row_fields = {k: row.get(k, "") for k in _ROW_LEVEL_KEYS if k in row}
+        findings = row.get("findings", [])
+        multi = len(findings) > 1
+        for f in findings:
+            entry = {**row_fields, **f}
+            entry["row_index"] = row.get("row_index")
+            fi = f.get("finding_index", 1)
+            entry["finding_index"] = fi
+            entry["display_index"] = (
+                f"{row.get('row_index')}.{fi}" if multi else str(row.get("row_index"))
+            )
+            entry["detail_id"] = f"{row.get('row_index')}_{fi}"
+            out.append(entry)
+    return out
 
 
 def save_meta(analysis_dir: Path, meta: dict) -> None:
@@ -207,52 +354,63 @@ def load_meta(analysis_dir: Path) -> dict | None:
 
 
 def generate_summary_csv(analysis_dir: Path) -> Path:
-    """Build a summary CSV from all finding JSONs."""
-    findings = load_all_findings(analysis_dir)
-    if not findings:
+    """Build a summary CSV — one row per (row_index, finding_index)."""
+    rows = load_all_findings(analysis_dir)
+    if not rows:
+        return None
+
+    flat = flatten_findings(rows)
+    if not flat:
         return None
 
     csv_path = analysis_dir / "summary.csv"
 
     summary_columns = [
-        "row_index", "review_number", "tao", "error_amount",
+        "row_index", "finding_index", "review_number", "tao", "error_amount",
         "determination", "error_type", "policy_issues", "coverage",
         "confidence", "gap_description", "olg_references",
         "searches_performed",
     ]
-    # Add cross-check columns if present
-    if any("_cmr_check" in f for f in findings):
+    if any("_cmr_check" in f for f in flat):
         summary_columns.extend([
             "cmr_classification", "cmr_sections", "cmr_note",
         ])
-    if any("_fns_check" in f for f in findings):
+    if any("_fns_check" in f for f in flat):
         summary_columns.extend([
             "fns_classification", "fns_sections", "fns_note",
+        ])
+    if any("_cfr_check" in f for f in flat):
+        summary_columns.extend([
+            "cfr_classification", "cfr_sections", "cfr_note",
         ])
 
     with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=summary_columns,
                                 extrasaction="ignore")
         writer.writeheader()
-        for finding in findings:
-            row = {k: finding.get(k, "") for k in summary_columns}
-            # Flatten list fields
-            refs = finding.get("olg_references", [])
+        for entry in flat:
+            row = {k: entry.get(k, "") for k in summary_columns}
+            refs = entry.get("olg_references", [])
             if isinstance(refs, list):
                 row["olg_references"] = "; ".join(str(r) for r in refs)
-            # Flatten cross-check fields
-            cmr = finding.get("_cmr_check", {})
+            cmr = entry.get("_cmr_check") or {}
             if cmr:
                 row["cmr_classification"] = cmr.get("classification", "")
                 secs = cmr.get("cmr_sections", [])
                 row["cmr_sections"] = "; ".join(secs) if isinstance(secs, list) else str(secs)
                 row["cmr_note"] = cmr.get("note", "")
-            fns = finding.get("_fns_check", {})
+            fns = entry.get("_fns_check") or {}
             if fns:
                 row["fns_classification"] = fns.get("classification", "")
                 secs = fns.get("fns_sections", [])
                 row["fns_sections"] = "; ".join(secs) if isinstance(secs, list) else str(secs)
                 row["fns_note"] = fns.get("note", "")
+            cfr = entry.get("_cfr_check") or {}
+            if cfr:
+                row["cfr_classification"] = cfr.get("classification", "")
+                secs = cfr.get("cfr_sections", [])
+                row["cfr_sections"] = "; ".join(secs) if isinstance(secs, list) else str(secs)
+                row["cfr_note"] = cfr.get("note", "")
             writer.writerow(row)
 
     return csv_path
@@ -295,13 +453,18 @@ def build_extractor_input(row: dict) -> str:
 def run_extractor(user_message: str, client: anthropic.Anthropic,
                   model: str, system_prompt: str,
                   cost_tracker: Tracker | None = None) -> dict:
-    """Call 1: Extract policy issues and search queries from a QC finding."""
+    """Call 1: Extract policy issues and search queries from a QC finding.
+
+    Returns a dict with a `findings` list. Each finding has policy_issues
+    and search_queries. Multi-finding extraction is supported — see
+    qc_extractor.md for the split rule.
+    """
 
     @with_rate_limit_retry()
     def _do_extractor_call():
         return client.messages.create(
             model=model,
-            max_tokens=400,
+            max_tokens=1500,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
@@ -310,14 +473,26 @@ def run_extractor(user_message: str, client: anthropic.Anthropic,
         response = _do_extractor_call()
     except anthropic.APIError:
         return {
-            "policy_issues": "Extraction failed due to API error.",
-            "search_queries": [user_message[:200]],
+            "findings": [{
+                "policy_issues": "Extraction failed due to API error.",
+                "search_queries": [user_message[:200]],
+            }],
         }
 
     if cost_tracker:
         cost_tracker.record("extractor", model, response.usage)
     text = response.content[0].text.strip()
-    return extract_json(text)
+    parsed = extract_json(text, fallback={"findings": []})
+
+    # Backwards compat: handle legacy single-issue shape if a model
+    # ignores the new schema and emits the old one. Wraps into a
+    # 1-element findings list.
+    if "findings" not in parsed and "policy_issues" in parsed:
+        parsed = {"findings": [{
+            "policy_issues": parsed.get("policy_issues", ""),
+            "search_queries": parsed.get("search_queries", []),
+        }]}
+    return parsed
 
 
 # ============================================================
@@ -590,7 +765,7 @@ def run_extract(analysis_dir: Path, rows: list[dict],
     )
 
     start_time = time.time()
-    findings = []
+    rows_out = []
     for row_idx, row in enumerate(rows, start=1):
         findings_text = row.get("QC Findings", "").strip()
         if not findings_text:
@@ -602,9 +777,37 @@ def run_extract(analysis_dir: Path, rows: list[dict],
             cost_tracker=cost_tracker,
         )
 
-        queries = extractor_result.get("search_queries", [])
-        if not isinstance(queries, list):
-            queries = [str(queries)]
+        # Normalize findings list: ensure each has policy_issues +
+        # search_queries (list) + 1-based finding_index. Drop empty
+        # entries (no policy_issues) so we don't fabricate phantom rows.
+        raw_findings = extractor_result.get("findings", [])
+        if not isinstance(raw_findings, list):
+            raw_findings = []
+        findings_list = []
+        for fi, raw in enumerate(raw_findings, start=1):
+            if not isinstance(raw, dict):
+                continue
+            policy = (raw.get("policy_issues") or "").strip()
+            if not policy:
+                continue
+            queries = raw.get("search_queries", [])
+            if not isinstance(queries, list):
+                queries = [str(queries)] if queries else []
+            findings_list.append({
+                "finding_index": len(findings_list) + 1,
+                "policy_issues": policy,
+                "search_queries": queries,
+            })
+
+        # Defensive: if extractor returned no usable findings, write a
+        # placeholder so the row stays visible in the UI rather than
+        # disappearing silently.
+        if not findings_list:
+            findings_list.append({
+                "finding_index": 1,
+                "policy_issues": "Extraction returned no findings.",
+                "search_queries": [],
+            })
 
         # Clean parenthetical noise from determination
         det = row.get("Food Stamp Determination", "")
@@ -613,7 +816,7 @@ def run_extract(analysis_dir: Path, rows: list[dict],
         raw_error_type = row.get("Type Of Errors", "")
         error_type = " / ".join(p.strip() for p in raw_error_type.split(";") if p.strip())
 
-        finding = {
+        row_out = {
             "row_index": row_idx,
             "review_number": row.get("Review Number", ""),
             "apid": row.get("APID", ""),
@@ -623,14 +826,14 @@ def run_extract(analysis_dir: Path, rows: list[dict],
             "error_type": error_type,
             "finding_narrative": findings_text,
             "non_concur_reason": row.get("Non-Concur Reason", "").strip(),
-            "policy_issues": extractor_result.get("policy_issues", ""),
-            "search_queries": queries,
+            "findings": findings_list,
             "phase": "extracted",
         }
-        save_finding(analysis_dir, row_idx, finding)
-        findings.append(finding)
+        save_finding(analysis_dir, row_idx, row_out)
+        rows_out.append(row_out)
 
     elapsed = round(time.time() - start_time, 1)
+    findings = rows_out  # preserved for back-compat with callers expecting `findings`
 
     # Update meta
     meta = load_meta(analysis_dir) or {}
@@ -710,51 +913,74 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
     start_time = time.time()
     results = []
     for row_idx in row_indices:
-        finding = load_finding(analysis_dir, row_idx)
-        if not finding:
+        row = load_finding(analysis_dir, row_idx)
+        if not row:
             continue
 
         # Get original CSV row for the judge (provides full finding narrative)
         if 1 <= row_idx <= len(all_rows):
             original_row = all_rows[row_idx - 1]
         else:
-            original_row = {"QC Findings": finding.get("finding_narrative", "")}
+            original_row = {"QC Findings": row.get("finding_narrative", "")}
 
-        extractor_result = {
-            "policy_issues": finding.get("policy_issues", ""),
-            "search_queries": finding.get("search_queries", []),
-        }
+        for finding in row.get("findings", []):
+            queries = finding.get("search_queries") or []
 
-        # Seed search
-        seed_results = run_seed_searches(
-            extractor_result["search_queries"], olg_clients,
-            results_per_query=seed_results_per_query,
-            programs=olg_programs,
-        )
+            # Skip findings with no search queries — these are placeholders
+            # written when the extractor returned an empty findings list
+            # (typically a clean QC case with no policy error). Calling the
+            # judge with no queries wastes budget for no signal. Mark the
+            # finding as Skipped so it's visible in the UI but doesn't get
+            # cross-checked or counted as a coverage outcome.
+            if not queries:
+                finding["coverage"] = "Skipped"
+                finding["confidence"] = "N/A"
+                finding["reasoning"] = (
+                    "Skipped — extractor returned no actionable policy "
+                    "issue (narrative may indicate the case is correct)."
+                )
+                finding["olg_references"] = []
+                finding["gap_description"] = ""
+                finding["searches_performed"] = 0
+                finding["all_search_queries"] = []
+                finding["judge_trace"] = []
+                continue
 
-        # Judge
-        judge_result, judge_trace = run_judge(
-            original_row, extractor_result, seed_results, olg_clients,
-            claude, judge_model, judge_prompt,
-            max_searches=max_judge_searches,
-            results_per_search=olg_results_per_search,
-            cost_tracker=cost_tracker,
-            olg_programs=olg_programs,
-        )
+            extractor_result = {
+                "policy_issues": finding.get("policy_issues", ""),
+                "search_queries": queries,
+            }
 
-        # Update finding with judge results
-        finding["phase"] = "investigated"
-        finding["coverage"] = judge_result.get("coverage", "Unknown")
-        finding["confidence"] = judge_result.get("confidence", "LOW")
-        finding["olg_references"] = judge_result.get("olg_references", [])
-        finding["gap_description"] = judge_result.get("gap_description", "")
-        finding["reasoning"] = judge_result.get("reasoning", "")
-        finding["searches_performed"] = judge_result.get("searches_performed", 0)
-        finding["all_search_queries"] = judge_result.get("all_search_queries", [])
-        finding["judge_trace"] = judge_trace
+            # Seed search
+            seed_results = run_seed_searches(
+                extractor_result["search_queries"], olg_clients,
+                results_per_query=seed_results_per_query,
+                programs=olg_programs,
+            )
 
-        save_finding(analysis_dir, row_idx, finding)
-        results.append(finding)
+            # Judge
+            judge_result, judge_trace = run_judge(
+                original_row, extractor_result, seed_results, olg_clients,
+                claude, judge_model, judge_prompt,
+                max_searches=max_judge_searches,
+                results_per_search=olg_results_per_search,
+                cost_tracker=cost_tracker,
+                olg_programs=olg_programs,
+            )
+
+            # Update per-finding fields with judge results
+            finding["coverage"] = judge_result.get("coverage", "Unknown")
+            finding["confidence"] = judge_result.get("confidence", "LOW")
+            finding["olg_references"] = judge_result.get("olg_references", [])
+            finding["gap_description"] = judge_result.get("gap_description", "")
+            finding["reasoning"] = judge_result.get("reasoning", "")
+            finding["searches_performed"] = judge_result.get("searches_performed", 0)
+            finding["all_search_queries"] = judge_result.get("all_search_queries", [])
+            finding["judge_trace"] = judge_trace
+
+        row["phase"] = "investigated"
+        save_finding(analysis_dir, row_idx, row)
+        results.append(row)
 
     elapsed = round(time.time() - start_time, 1)
 
@@ -786,15 +1012,21 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
 # CROSS-CHECK FUNCTIONS (CMR / FNS / CFR)
 # ============================================================
 
-def _build_crosscheck_user_message(finding: dict, source_results_formatted: str,
+def _build_crosscheck_user_message(finding: dict, row: dict,
+                                   source_results_formatted: str,
                                    source: str) -> str:
-    """Build the user message for a CMR / FNS / CFR cross-check call."""
+    """Build the user message for a CMR / FNS / CFR cross-check call.
+
+    `row` carries case identity (review #, TAO, narrative) — those live at
+    the row level since multiple findings can share the same case. `finding`
+    carries the per-issue policy question and judge verdict.
+    """
     parts = [
         f"## QC Error\n",
-        f"Review #{finding.get('review_number', '?')} ({finding.get('tao', '?')})",
-        f"Determination: {finding.get('determination', '?')}",
-        f"Error Type: {finding.get('error_type', '?')}",
-        f"Narrative: {finding.get('finding_narrative', 'N/A')}",
+        f"Review #{row.get('review_number', '?')} ({row.get('tao', '?')})",
+        f"Determination: {row.get('determination', '?')}",
+        f"Error Type: {row.get('error_type', '?')}",
+        f"Narrative: {row.get('finding_narrative', 'N/A')}",
         f"",
         f"## Extracted Policy Issue\n",
         f"{finding.get('policy_issues', 'N/A')}",
@@ -905,12 +1137,17 @@ def run_source_check(source: str, analysis_dir: Path,
     claude = anthropic.Anthropic(api_key=api_key)
     clients = create_client(source=source)
 
-    # Default to Partial/Gap findings if no indices given
+    # Default: rows that contain any Partial/Gap finding. Cross-check
+    # then runs only on the qualifying findings inside those rows
+    # (not on Adequate findings that share the row).
     if row_indices is None:
-        all_findings = load_all_findings(analysis_dir)
+        all_rows = load_all_findings(analysis_dir)
         row_indices = [
-            f["row_index"] for f in all_findings
-            if f.get("coverage") in ("Partial", "Gap")
+            r["row_index"] for r in all_rows
+            if any(
+                f.get("coverage") in ("Partial", "Gap")
+                for f in r.get("findings", [])
+            )
         ]
 
     source_programs = _load_filters(config)[source]["include"] or None
@@ -928,42 +1165,52 @@ def run_source_check(source: str, analysis_dir: Path,
     start_time = time.time()
     results = []
     for row_idx in row_indices:
-        finding = load_finding(analysis_dir, row_idx)
-        if not finding:
+        row = load_finding(analysis_dir, row_idx)
+        if not row:
             continue
 
-        query = finding.get("policy_issues", "")
-        if not query:
-            continue
+        any_checked = False
+        for finding in row.get("findings", []):
+            # Only cross-check Partial/Gap findings; Adequate ones
+            # don't surface gaps to compare against.
+            if finding.get("coverage") not in ("Partial", "Gap"):
+                continue
 
-        search_response = search_with_client(query, clients, **search_kwargs)
+            query = finding.get("policy_issues", "")
+            if not query:
+                continue
 
-        formatted = format_results_for_prompt(
-            search_response["results"], source
-        )
-        user_message = _build_crosscheck_user_message(
-            finding, formatted, source.upper()
-        )
+            search_response = search_with_client(query, clients, **search_kwargs)
 
-        response = _do_crosscheck_call(claude, model, prompt, user_message)
-        cost_tracker.record(cost_stage, model, response.usage)
+            formatted = format_results_for_prompt(
+                search_response["results"], source
+            )
+            user_message = _build_crosscheck_user_message(
+                finding, row, formatted, source.upper()
+            )
 
-        text = response.content[0].text.strip()
-        check_result = extract_json(text, fallback={
-            "classification": spec["fallback_classification"],
-        })
+            response = _do_crosscheck_call(claude, model, prompt, user_message)
+            cost_tracker.record(cost_stage, model, response.usage)
 
-        check_block = {
-            "classification": check_result.get(
-                "classification", spec["fallback_classification"]
-            ),
-            spec["sections_key"]: check_result.get(spec["sections_key"], []),
-            "note": check_result.get("note", ""),
-        }
+            text = response.content[0].text.strip()
+            check_result = extract_json(text, fallback={
+                "classification": spec["fallback_classification"],
+            })
 
-        finding[spec["result_key"]] = check_block
-        save_finding(analysis_dir, row_idx, finding)
-        results.append(finding)
+            check_block = {
+                "classification": check_result.get(
+                    "classification", spec["fallback_classification"]
+                ),
+                spec["sections_key"]: check_result.get(spec["sections_key"], []),
+                "note": check_result.get("note", ""),
+            }
+
+            finding[spec["result_key"]] = check_block
+            any_checked = True
+
+        if any_checked:
+            save_finding(analysis_dir, row_idx, row)
+            results.append(row)
 
     elapsed = round(time.time() - start_time, 1)
 

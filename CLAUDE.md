@@ -166,6 +166,22 @@ Key supporting files:
 
 Both prompts include a self-improvement directive: agents suggest changes to style guide, tools, and references in Author's Notes.
 
+### QC Analyzer (`programs/qc/qc_analyzer.py`)
+
+Reads a QC reviewer's CSV of error findings, extracts the abstract policy issues, evaluates whether the OLG covers each one, and cross-checks CMR / FNS / 7 CFR for gaps. Phased pipeline driven by the QC tab in the web UI.
+
+| Phase | Engine | Role |
+|-------|--------|------|
+| Extract | Haiku API | Per CSV row, extract a list of distinct policy issues + 2-3 OLG search queries each. Multi-finding by default — a single QC narrative often spans unrelated topics (e.g., income coding + household composition + shelter deduction) and each becomes its own finding. |
+| Investigate | Sonnet API (agentic loop with `search_olg` tool) | Per finding: seed search + iterative judge that classifies OLG coverage as Adequate / Partial / Gap. `judge_trace` (per-turn reasoning + tool calls) is folded into the finding JSON. |
+| Cross-check (CMR / FNS / CFR) | Haiku API, single-turn | For Partial/Gap findings only: search the chosen source and classify whether it covers the same topic, is silent, or differs. |
+
+**Storage**: per-row JSONs at `output/qc_analysis/{name}_{YYYY-MM-DD_HHMM}/results/row_NNN.json`. Each row has case identity at the top level (review #, APID, narrative) and a nested `findings: [...]` array — judge results, cross-check results, and `judge_trace` nest inside each finding. `flatten_findings()` produces one entry per (row, finding) for UI display ("5.1", "5.2", "5.3" rendering). Legacy single-finding rows auto-migrate on read via `_migrate_legacy_row()`.
+
+**Per-source program filters**: `[qc_analyzer]` config has `{olg|cmr|fns|cfr}_include` / `_exclude` lists. The include list is the active whitelist; the exclude list is informational so a reader sees all known programs without grepping ChromaDB metadata. Filter scope is surfaced in the QC tab via a collapsible read-only panel (decision: filtering is allowed, silent filtering is not).
+
+**Re-extract safety**: re-running extract on an analysis with downstream phases populated (judge / cross-checks) returns an in-page modal listing what would be wiped, with three options: Fork to new analysis (copies `upload.csv` to a new timestamped dir, preserves the original), Re-extract here (destructive, wipes downstream phase flags), or Cancel.
+
 ### HTML Report (`programs/comparator/report.py`)
 
 Single-page HTML from comparator CSVs. Dark mode, favorites, expandable details, filter by chapter/classification/findings. Session ID click copies `claude --resume <UUID>`. Run: `python programs/comparator/report.py --open`.
