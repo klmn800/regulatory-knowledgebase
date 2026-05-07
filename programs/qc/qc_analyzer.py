@@ -34,7 +34,9 @@ import csv
 import json
 import re
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
@@ -860,9 +862,168 @@ def run_extract(analysis_dir: Path, rows: list[dict],
     return findings
 
 
+# ============================================================
+# INVESTIGATE PROGRESS STATE
+# ============================================================
+#
+# Module-level dict + lock. Single-process Uvicorn — fine. If we ever
+# scale to multi-worker, swap this for a file or shared store.
+
+_INVESTIGATE_PROGRESS: dict[str, dict] = {}
+_PROGRESS_LOCK = threading.Lock()
+
+
+def get_investigate_progress(name: str) -> dict | None:
+    """Return a copy of the current progress entry for an analysis, or None."""
+    with _PROGRESS_LOCK:
+        entry = _INVESTIGATE_PROGRESS.get(name)
+        if entry is None:
+            return None
+        snapshot = dict(entry)
+        snapshot["in_flight"] = list(entry.get("in_flight", []))
+        return snapshot
+
+
+def clear_investigate_progress(name: str) -> None:
+    """Drop the progress entry for an analysis."""
+    with _PROGRESS_LOCK:
+        _INVESTIGATE_PROGRESS.pop(name, None)
+
+
+def _progress_init(name: str, total: int, skipped: int) -> None:
+    with _PROGRESS_LOCK:
+        _INVESTIGATE_PROGRESS[name] = {
+            "state": "running",
+            "total": total,
+            "completed": 0,
+            "skipped": skipped,
+            "errors": 0,
+            "in_flight": [],
+            "started_at": datetime.now().isoformat(),
+            "last_update": datetime.now().isoformat(),
+        }
+
+
+def _progress_mark_in_flight(name: str, row_idx: int, finding_idx: int) -> None:
+    with _PROGRESS_LOCK:
+        entry = _INVESTIGATE_PROGRESS.get(name)
+        if entry is None:
+            return
+        entry["in_flight"].append([row_idx, finding_idx])
+        entry["last_update"] = datetime.now().isoformat()
+
+
+def _progress_mark_done(name: str, row_idx: int, finding_idx: int,
+                        error: bool = False) -> None:
+    with _PROGRESS_LOCK:
+        entry = _INVESTIGATE_PROGRESS.get(name)
+        if entry is None:
+            return
+        try:
+            entry["in_flight"].remove([row_idx, finding_idx])
+        except ValueError:
+            pass
+        entry["completed"] = entry.get("completed", 0) + 1
+        if error:
+            entry["errors"] = entry.get("errors", 0) + 1
+        entry["last_update"] = datetime.now().isoformat()
+
+
+def _progress_mark_state(name: str, state: str) -> None:
+    with _PROGRESS_LOCK:
+        entry = _INVESTIGATE_PROGRESS.get(name)
+        if entry is None:
+            return
+        entry["state"] = state
+        entry["last_update"] = datetime.now().isoformat()
+
+
+# ============================================================
+# THREAD-SAFE COST TRACKER WRAPPER
+# ============================================================
+
+class _LockedTracker:
+    """Thin lock around Tracker.record() so concurrent workers don't
+    race on stage counters. by_stage() / total() are read after all
+    workers complete, so no read-side locking needed."""
+
+    def __init__(self, tracker: Tracker, lock: threading.Lock):
+        self._tracker = tracker
+        self._lock = lock
+
+    def record(self, stage: str, model: str, usage) -> None:
+        with self._lock:
+            self._tracker.record(stage, model, usage)
+
+
+# ============================================================
+# SKIPPED-FINDING SHAPE
+# ============================================================
+
+_SKIPPED_FINDING_FIELDS = {
+    "coverage": "Skipped",
+    "confidence": "N/A",
+    "reasoning": (
+        "Skipped — extractor returned no actionable policy issue "
+        "(narrative may indicate the case is correct)."
+    ),
+    "olg_references": [],
+    "gap_description": "",
+    "searches_performed": 0,
+    "all_search_queries": [],
+    "judge_trace": [],
+}
+
+
+def _investigate_one_finding(
+    finding: dict, original_row: dict,
+    olg_clients, claude, judge_model: str, judge_prompt: str,
+    max_judge_searches: int, olg_results_per_search: int,
+    seed_results_per_query: int,
+    olg_programs, locked_tracker
+) -> dict:
+    """Run seed search + judge for one finding. Returns the field updates
+    to merge into the finding dict.
+
+    Pure function — does not mutate `finding`. Thread-safe given thread-safe
+    inputs (claude HTTP client is, ChromaDB clients are shared safely per
+    comparator pattern, locked_tracker wraps Tracker.record()).
+    """
+    extractor_result = {
+        "policy_issues": finding.get("policy_issues", ""),
+        "search_queries": finding.get("search_queries", []),
+    }
+
+    seed_results = run_seed_searches(
+        extractor_result["search_queries"], olg_clients,
+        results_per_query=seed_results_per_query,
+        programs=olg_programs,
+    )
+
+    judge_result, judge_trace = run_judge(
+        original_row, extractor_result, seed_results, olg_clients,
+        claude, judge_model, judge_prompt,
+        max_searches=max_judge_searches,
+        results_per_search=olg_results_per_search,
+        cost_tracker=locked_tracker,
+        olg_programs=olg_programs,
+    )
+
+    return {
+        "coverage": judge_result.get("coverage", "Unknown"),
+        "confidence": judge_result.get("confidence", "LOW"),
+        "olg_references": judge_result.get("olg_references", []),
+        "gap_description": judge_result.get("gap_description", ""),
+        "reasoning": judge_result.get("reasoning", ""),
+        "searches_performed": judge_result.get("searches_performed", 0),
+        "all_search_queries": judge_result.get("all_search_queries", []),
+        "judge_trace": judge_trace,
+    }
+
+
 def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
                     config: configparser.ConfigParser = None) -> list[dict]:
-    """Run Seed Search + Judge on extracted findings.
+    """Run Seed Search + Judge on extracted findings, in parallel.
 
     Args:
         analysis_dir: Path to the analysis directory.
@@ -871,7 +1032,14 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
         config: Optional config; loaded from config.ini if not provided.
 
     Returns:
-        List of updated finding dicts with investigation results.
+        List of updated row dicts (each with nested findings) with
+        investigation results.
+
+    Concurrency: parallelizes at the (row, finding) level via a
+    ThreadPoolExecutor with `investigate_parallel` workers (default 4).
+    Skipped findings (no search queries) are applied synchronously up
+    front so the parallel pool only handles real work, and the progress
+    counter reflects actual judge calls.
     """
     if config is None:
         config = load_config()
@@ -885,20 +1053,20 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
     seed_results_per_query = config.getint("qc_analyzer",
                                            "seed_results_per_query",
                                            fallback=5)
+    parallel = config.getint("qc_analyzer", "investigate_parallel",
+                             fallback=4)
     judge_prompt = load_prompt("qc_judge", with_preamble=True)
 
     api_key = config.get("api", "anthropic_api_key")
     claude = anthropic.Anthropic(api_key=api_key)
     olg_clients = create_client(source="olg")
 
-    # Load upload.csv to get full row data for the judge
     csv_path = analysis_dir / "upload.csv"
     if csv_path.exists():
         _, all_rows = load_csv(csv_path)
     else:
         all_rows = []
 
-    # Determine which findings to investigate
     if row_indices is None:
         all_findings = load_all_findings(analysis_dir)
         row_indices = [f["row_index"] for f in all_findings
@@ -907,103 +1075,132 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
     cost_tracker = Tracker(
         stages=["extractor", "judge", "cmr_check", "fns_check", "cfr_check"]
     )
+    tracker_lock = threading.Lock()
+    locked_tracker = _LockedTracker(cost_tracker, tracker_lock)
 
     olg_programs = _load_filters(config)["olg"]["include"] or None
 
-    start_time = time.time()
-    results = []
+    # Load all rows up front into a shared map; workers mutate finding
+    # entries inside `rows_by_idx[row_idx]["findings"][finding_idx]`,
+    # protected by per-row locks during the merge+save step.
+    rows_by_idx: dict[int, dict] = {}
+    original_rows: dict[int, dict] = {}
+    skipped_units: list[tuple[int, int]] = []
+    real_units: list[tuple[int, int]] = []
+
     for row_idx in row_indices:
         row = load_finding(analysis_dir, row_idx)
         if not row:
             continue
-
-        # Get original CSV row for the judge (provides full finding narrative)
+        rows_by_idx[row_idx] = row
         if 1 <= row_idx <= len(all_rows):
-            original_row = all_rows[row_idx - 1]
+            original_rows[row_idx] = all_rows[row_idx - 1]
         else:
-            original_row = {"QC Findings": row.get("finding_narrative", "")}
-
-        for finding in row.get("findings", []):
-            queries = finding.get("search_queries") or []
-
-            # Skip findings with no search queries — these are placeholders
-            # written when the extractor returned an empty findings list
-            # (typically a clean QC case with no policy error). Calling the
-            # judge with no queries wastes budget for no signal. Mark the
-            # finding as Skipped so it's visible in the UI but doesn't get
-            # cross-checked or counted as a coverage outcome.
-            if not queries:
-                finding["coverage"] = "Skipped"
-                finding["confidence"] = "N/A"
-                finding["reasoning"] = (
-                    "Skipped — extractor returned no actionable policy "
-                    "issue (narrative may indicate the case is correct)."
-                )
-                finding["olg_references"] = []
-                finding["gap_description"] = ""
-                finding["searches_performed"] = 0
-                finding["all_search_queries"] = []
-                finding["judge_trace"] = []
-                continue
-
-            extractor_result = {
-                "policy_issues": finding.get("policy_issues", ""),
-                "search_queries": queries,
+            original_rows[row_idx] = {
+                "QC Findings": row.get("finding_narrative", "")
             }
+        for fi, finding in enumerate(row.get("findings", [])):
+            queries = finding.get("search_queries") or []
+            if not queries:
+                # Skipped findings (placeholders for clean QC cases) bypass
+                # the judge entirely. Apply Skipped fields synchronously so
+                # the parallel pool only handles real work.
+                finding.update(_SKIPPED_FINDING_FIELDS)
+                skipped_units.append((row_idx, fi))
+            else:
+                real_units.append((row_idx, fi))
 
-            # Seed search
-            seed_results = run_seed_searches(
-                extractor_result["search_queries"], olg_clients,
-                results_per_query=seed_results_per_query,
-                programs=olg_programs,
-            )
+    analysis_name = analysis_dir.name
+    _progress_init(analysis_name, total=len(real_units),
+                   skipped=len(skipped_units))
 
-            # Judge
-            judge_result, judge_trace = run_judge(
-                original_row, extractor_result, seed_results, olg_clients,
-                claude, judge_model, judge_prompt,
-                max_searches=max_judge_searches,
-                results_per_search=olg_results_per_search,
-                cost_tracker=cost_tracker,
-                olg_programs=olg_programs,
-            )
+    # Save rows that have only skipped findings now so the UI sees them
+    # immediately if the user polls early. Rows with mixed skipped/real
+    # findings get re-saved as their real findings complete (per-row lock
+    # ensures no torn writes).
+    skipped_only_rows = (
+        {ri for (ri, _) in skipped_units}
+        - {ri for (ri, _) in real_units}
+    )
+    for row_idx in skipped_only_rows:
+        rows_by_idx[row_idx]["phase"] = "investigated"
+        save_finding(analysis_dir, row_idx, rows_by_idx[row_idx])
 
-            # Update per-finding fields with judge results
-            finding["coverage"] = judge_result.get("coverage", "Unknown")
-            finding["confidence"] = judge_result.get("confidence", "LOW")
-            finding["olg_references"] = judge_result.get("olg_references", [])
-            finding["gap_description"] = judge_result.get("gap_description", "")
-            finding["reasoning"] = judge_result.get("reasoning", "")
-            finding["searches_performed"] = judge_result.get("searches_performed", 0)
-            finding["all_search_queries"] = judge_result.get("all_search_queries", [])
-            finding["judge_trace"] = judge_trace
-
-        row["phase"] = "investigated"
-        save_finding(analysis_dir, row_idx, row)
-        results.append(row)
-
-    elapsed = round(time.time() - start_time, 1)
-
-    # Update meta
-    meta = load_meta(analysis_dir) or {}
-    if "phases" not in meta:
-        meta["phases"] = {}
-    meta["phases"]["investigated"] = True
-    meta["investigated_rows"] = row_indices
-    if "cost" not in meta:
-        meta["cost"] = {}
-    judge_data = cost_tracker.by_stage()["judge"]
-    meta["cost"]["judge"] = round(judge_data["cost"], 4)
-    meta["investigate_stats"] = {
-        "timestamp": datetime.now().isoformat(),
-        "duration_sec": elapsed,
-        "rows_processed": len(results),
-        "model": judge_model,
-        "tokens_in": judge_data["input_tokens"],
-        "tokens_out": judge_data["output_tokens"],
-        "cost": round(judge_data["cost"], 4),
+    row_locks: dict[int, threading.Lock] = {
+        ri: threading.Lock() for ri in rows_by_idx
     }
-    save_meta(analysis_dir, meta)
+
+    start_time = time.time()
+
+    def _process(row_idx: int, finding_idx: int):
+        finding = rows_by_idx[row_idx]["findings"][finding_idx]
+        original_row = original_rows[row_idx]
+        _progress_mark_in_flight(analysis_name, row_idx, finding_idx)
+        try:
+            updates = _investigate_one_finding(
+                finding, original_row,
+                olg_clients, claude, judge_model, judge_prompt,
+                max_judge_searches, olg_results_per_search,
+                seed_results_per_query,
+                olg_programs, locked_tracker,
+            )
+            return row_idx, finding_idx, updates, None
+        except Exception as e:  # noqa: BLE001 — surface error in result
+            return row_idx, finding_idx, None, e
+
+    workers = max(1, min(parallel, len(real_units))) if real_units else 1
+
+    try:
+        if real_units:
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futures = [pool.submit(_process, r, f) for (r, f) in real_units]
+                for future in as_completed(futures):
+                    row_idx, finding_idx, updates, error = future.result()
+                    with row_locks[row_idx]:
+                        finding = rows_by_idx[row_idx]["findings"][finding_idx]
+                        if error is not None:
+                            finding.update({
+                                "coverage": "Error",
+                                "confidence": "N/A",
+                                "reasoning": f"Investigate failed: {error}",
+                                "olg_references": [],
+                                "gap_description": str(error),
+                                "searches_performed": 0,
+                                "all_search_queries": [],
+                                "judge_trace": [],
+                            })
+                        else:
+                            finding.update(updates)
+                        rows_by_idx[row_idx]["phase"] = "investigated"
+                        save_finding(analysis_dir, row_idx,
+                                     rows_by_idx[row_idx])
+                    _progress_mark_done(analysis_name, row_idx, finding_idx,
+                                        error=error is not None)
+    finally:
+        elapsed = round(time.time() - start_time, 1)
+        results = list(rows_by_idx.values())
+
+        meta = load_meta(analysis_dir) or {}
+        if "phases" not in meta:
+            meta["phases"] = {}
+        meta["phases"]["investigated"] = True
+        meta["investigated_rows"] = row_indices
+        if "cost" not in meta:
+            meta["cost"] = {}
+        judge_data = cost_tracker.by_stage()["judge"]
+        meta["cost"]["judge"] = round(judge_data["cost"], 4)
+        meta["investigate_stats"] = {
+            "timestamp": datetime.now().isoformat(),
+            "duration_sec": elapsed,
+            "rows_processed": len(results),
+            "model": judge_model,
+            "tokens_in": judge_data["input_tokens"],
+            "tokens_out": judge_data["output_tokens"],
+            "cost": round(judge_data["cost"], 4),
+            "parallel": workers,
+        }
+        save_meta(analysis_dir, meta)
+        _progress_mark_state(analysis_name, "done")
 
     return results
 

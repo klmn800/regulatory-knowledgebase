@@ -1,0 +1,49 @@
+{# Polled by HTMX every 2s while investigate is in flight. The status
+   endpoint returns this same partial until state is "done", at which
+   point it returns qc_results_table.html and HTMX swaps it in. #}
+<div class="answer-card qc-running-card"
+     hx-get="/qc/investigate/status?name={{ name | urlencode }}"
+     hx-trigger="every 2s"
+     hx-swap="outerHTML"
+     data-analysis-name="{{ name }}">
+    <h3 style="margin-top:0;">Investigating findings…</h3>
+
+    {% set total = progress.total or 0 %}
+    {% set completed = progress.completed or 0 %}
+    {% set skipped = progress.skipped or 0 %}
+    {% set errors = progress.errors or 0 %}
+    {% set pct = (completed * 100 // total) if total > 0 else 0 %}
+
+    <div class="qc-progress-row">
+        <div class="qc-progress-bar-wrap">
+            <div class="qc-progress-bar" style="width: {{ pct }}%;"></div>
+        </div>
+        <div class="qc-progress-count">
+            <strong>{{ completed }}</strong> of <strong>{{ total }}</strong> findings
+            {% if eta is not none %}
+              · ETA ~{{ eta }} min
+            {% endif %}
+        </div>
+    </div>
+
+    {% if skipped or errors %}
+    <p class="qc-progress-aux">
+        {% if skipped %}{{ skipped }} skipped (no extracted issue){% endif %}
+        {% if skipped and errors %} · {% endif %}
+        {% if errors %}<span style="color:#dc2626;">{{ errors }} error{{ '' if errors == 1 else 's' }}</span>{% endif %}
+    </p>
+    {% endif %}
+
+    {% if progress.in_flight %}
+    <p class="qc-progress-aux">
+        Running:
+        {% for pair in progress.in_flight -%}
+            row {{ pair[0] }}.{{ pair[1] + 1 }}{% if not loop.last %}, {% endif %}
+        {%- endfor %}
+    </p>
+    {% endif %}
+
+    <p class="qc-progress-aux" style="font-size:0.78rem;">
+        Page can stay open or be revisited — progress survives navigation.
+    </p>
+</div>

@@ -72,6 +72,8 @@ from programs.qc.qc_analyzer import (
     clear_downstream_meta,
     save_meta,
     generate_summary_csv,
+    get_investigate_progress,
+    clear_investigate_progress,
     _load_filters as load_qc_filters,
     ANALYSIS_DIR as QC_DIR,
 )
@@ -857,6 +859,20 @@ async def qc_view(request: Request, name: str, phase: str):
         )
 
     elif phase in ("investigate", "cmr_check", "fns_check", "cfr_check"):
+        # If an investigate run is in flight for this analysis, show the
+        # running partial so a page reload re-attaches to the live job
+        # instead of showing stale (or empty) results.
+        if phase == "investigate":
+            progress = get_investigate_progress(name)
+            if progress and progress.get("state") == "running":
+                return templates.TemplateResponse(
+                    request, "partials/qc_investigate_running.html",
+                    {
+                        "name": name,
+                        "progress": progress,
+                        "eta": _eta_minutes(progress),
+                    },
+                )
         # All three post-investigation views use the same results table,
         # which conditionally shows CMR/FNS columns when data is present
         rows = load_all_findings(analysis_dir)
@@ -1022,6 +1038,32 @@ async def qc_extract(
     )
 
 
+def _eta_minutes(progress: dict) -> int | None:
+    """Estimate remaining minutes from started_at + completed/total.
+
+    Returns None if there's not enough data to estimate (no completes yet).
+    Rounds up so the indicator never undersells time remaining.
+    """
+    completed = progress.get("completed", 0)
+    total = progress.get("total", 0)
+    started = progress.get("started_at")
+    if completed <= 0 or total <= 0 or not started:
+        return None
+    try:
+        start_dt = datetime.fromisoformat(started)
+    except (ValueError, TypeError):
+        return None
+    elapsed = (datetime.now() - start_dt).total_seconds()
+    if elapsed <= 0:
+        return None
+    rate = completed / elapsed  # findings per second
+    remaining = total - completed
+    if remaining <= 0 or rate <= 0:
+        return 0
+    secs = remaining / rate
+    return max(1, int((secs + 59) // 60))  # ceil to whole minute
+
+
 @app.post("/qc/investigate", response_class=HTMLResponse)
 async def qc_investigate(
     request: Request,
@@ -1029,7 +1071,9 @@ async def qc_investigate(
     row_indices: str = Form(""),
     rerun: str = Form(""),
 ):
-    """Run the Judge on selected rows, or show existing results."""
+    """Kick off investigate as a background task and return the progress
+    partial. The browser then polls /qc/investigate/status until done.
+    """
     name = name.strip()
     if not name:
         return HTMLResponse("<p>Analysis name is required.</p>")
@@ -1060,15 +1104,85 @@ async def qc_investigate(
     if not indices:
         return HTMLResponse("<p>No rows selected for investigation.</p>")
 
-    config = load_qc_config()
-    await asyncio.to_thread(run_investigate, analysis_dir, indices, config)
+    # If a previous run for this name is still in flight, just return the
+    # progress partial without spawning a second task — first-writer wins.
+    existing = get_investigate_progress(name)
+    if existing and existing.get("state") == "running":
+        return templates.TemplateResponse(
+            request, "partials/qc_investigate_running.html",
+            {
+                "name": name,
+                "progress": existing,
+                "eta": _eta_minutes(existing),
+            },
+        )
 
-    # Reload all rows for the results table
-    all_rows = load_all_findings(analysis_dir)
-    meta = load_meta(analysis_dir)
+    # Clear any stale "done" entry from a prior run before starting fresh,
+    # so the polling endpoint doesn't immediately report "done".
+    clear_investigate_progress(name)
+
+    config = load_qc_config()
+    asyncio.create_task(
+        asyncio.to_thread(run_investigate, analysis_dir, indices, config)
+    )
+
+    # Return the running partial; HTMX will start polling status.
     return templates.TemplateResponse(
-        request, "partials/qc_results_table.html",
-        {"findings": flatten_findings(all_rows), "name": name, "meta": meta},
+        request, "partials/qc_investigate_running.html",
+        {
+            "name": name,
+            "progress": {
+                "state": "running",
+                "total": len(indices),  # approximation; status endpoint will correct
+                "completed": 0,
+                "skipped": 0,
+                "errors": 0,
+                "in_flight": [],
+            },
+            "eta": None,
+        },
+    )
+
+
+@app.get("/qc/investigate/status", response_class=HTMLResponse)
+async def qc_investigate_status(request: Request, name: str):
+    """Poll endpoint for the in-flight investigate task. Returns the
+    running partial while in progress, or the results table when done.
+    """
+    name = name.strip()
+    progress = get_investigate_progress(name)
+
+    if not progress:
+        # No record — either never ran, or already cleared. Try to show
+        # results if they exist; otherwise an idle message.
+        analysis_dir = get_analysis_dir(name)
+        rows = load_all_findings(analysis_dir)
+        if any(r.get("phase") == "investigated" for r in rows):
+            meta = load_meta(analysis_dir)
+            return templates.TemplateResponse(
+                request, "partials/qc_results_table.html",
+                {"findings": flatten_findings(rows), "name": name, "meta": meta},
+            )
+        return HTMLResponse("<p>No investigation in progress.</p>")
+
+    if progress.get("state") == "done":
+        analysis_dir = get_analysis_dir(name)
+        rows = load_all_findings(analysis_dir)
+        meta = load_meta(analysis_dir)
+        # Keep progress entry for one more poll so transient race conditions
+        # don't blank the UI; clean up on the next idle poll instead.
+        return templates.TemplateResponse(
+            request, "partials/qc_results_table.html",
+            {"findings": flatten_findings(rows), "name": name, "meta": meta},
+        )
+
+    return templates.TemplateResponse(
+        request, "partials/qc_investigate_running.html",
+        {
+            "name": name,
+            "progress": progress,
+            "eta": _eta_minutes(progress),
+        },
     )
 
 
