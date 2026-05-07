@@ -42,6 +42,10 @@ import anthropic
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from rag.query import create_client, search_with_client
 from tools.claude_code_runner import run_claude_task
+from tools.retry import with_rate_limit_retry
+from tools.cost_tracker import Tracker
+from tools.result_formatters import format_results_for_prompt
+from tools.policy_tools import SEARCH_OLG_TOOL, make_lookup_fns_section_tool
 
 
 def extract_json(text: str, fallback_classification: str = "no_match") -> dict:
@@ -89,50 +93,6 @@ OUTPUT_DIR = PROJECT_ROOT / "output" / "comparator"
 CHECKPOINT_FILE = OUTPUT_DIR / "checkpoint.json"
 CLASSIFY_CSV = OUTPUT_DIR / "layer0_classifications.csv"
 CLASSIFY_JSON = OUTPUT_DIR / "layer0_classifications.json"
-
-# Haiku pricing per million tokens (as of 2025)
-PRICING = {
-    "claude-haiku-4-5-20251001": {"input": 0.80, "output": 4.00},
-    "claude-sonnet-4-5-20250929": {"input": 3.00, "output": 15.00},
-}
-
-
-class TokenTracker:
-    """Tracks API token usage and estimated cost per section and overall."""
-
-    def __init__(self):
-        self.total_input = 0
-        self.total_output = 0
-        self.section_input = 0
-        self.section_output = 0
-
-    def record(self, response):
-        self.total_input += response.usage.input_tokens
-        self.total_output += response.usage.output_tokens
-        self.section_input += response.usage.input_tokens
-        self.section_output += response.usage.output_tokens
-
-    def reset_section(self):
-        self.section_input = 0
-        self.section_output = 0
-
-    def _estimate_cost(self, input_tokens, output_tokens, model=None):
-        rates = PRICING.get(model, {"input": 0.80, "output": 4.00})
-        return (input_tokens * rates["input"] + output_tokens * rates["output"]) / 1_000_000
-
-    def section_cost(self, model=None):
-        return self._estimate_cost(self.section_input, self.section_output, model)
-
-    def total_cost(self, model=None):
-        return self._estimate_cost(self.total_input, self.total_output, model)
-
-    def section_summary(self):
-        return f"{self.section_input:,} in / {self.section_output:,} out"
-
-    def total_summary(self, model=None):
-        cost = self.total_cost(model)
-        return (f"{self.total_input:,} in / {self.total_output:,} out "
-                f"(${cost:.4f})")
 
 
 def load_config() -> configparser.ConfigParser:
@@ -256,12 +216,15 @@ def run_layer0(fns_section: dict, client: anthropic.Anthropic,
         if len(fns_section["text"]) > 3000:
             user_message += "\n... (truncated)"
 
-    response = client.messages.create(
-        model=model,
-        max_tokens=200,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_message}],
-    )
+    @with_rate_limit_retry()
+    def _call():
+        return client.messages.create(
+            model=model,
+            max_tokens=200,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+    response = _call()
 
     text = response.content[0].text.strip()
     result = extract_json(text, fallback_classification="compare")
@@ -531,81 +494,6 @@ def format_fns_for_prompt(section: dict, fns_by_number: dict = None) -> str:
     return "\n".join(lines)
 
 
-def format_olg_results_for_prompt(results: list[dict]) -> str:
-    """Format OLG search results for inclusion in a prompt."""
-    if not results:
-        return "No OLG matches found."
-
-    parts = []
-    for i, result in enumerate(results):
-        meta = result["metadata"]
-        page_title = meta.get("page_title", meta.get("title", ""))
-        heading = meta.get("section_heading", "")
-        score = result["score"]
-        text = result["text"][:1000]
-
-        header = f"[OLG Match {i+1}] Score: {score:.2f}"
-        if page_title:
-            header += f" | Page: {page_title}"
-        if heading:
-            header += f" | Section: {heading}"
-
-        parts.append(f"{header}\n{text}")
-        if len(result["text"]) > 1000:
-            parts.append("... (truncated)")
-        parts.append("")
-
-    return "\n".join(parts)
-
-
-def format_cmr_results_for_prompt(results: list[dict]) -> str:
-    """Format CMR search results for inclusion in a prompt."""
-    if not results:
-        return "No CMR matches found."
-
-    parts = []
-    for i, result in enumerate(results):
-        meta = result["metadata"]
-        sec_num = meta.get("section_number", "")
-        sec_title = meta.get("section_title", "")
-        score = result["score"]
-        text = result["text"][:1000]
-
-        header = f"[CMR Match {i+1}] Score: {score:.2f} | {sec_num} {sec_title}"
-        parts.append(f"{header}\n{text}")
-        if len(result["text"]) > 1000:
-            parts.append("... (truncated)")
-        parts.append("")
-
-    return "\n".join(parts)
-
-
-def format_cfr_results_for_prompt(results: list[dict]) -> str:
-    """Format 7 CFR search results for inclusion in a prompt."""
-    if not results:
-        return "No 7 CFR matches found."
-
-    parts = []
-    for i, result in enumerate(results):
-        meta = result["metadata"]
-        sec_num = meta.get("section_number", "")
-        sec_title = meta.get("section_title", "")
-        part = meta.get("part", "")
-        hierarchy = meta.get("hierarchy_full_path") or meta.get("hierarchy_path", "")
-        score = result["score"]
-        text = result["text"][:1000]
-
-        header = f"[CFR Match {i+1}] Score: {score:.2f} | 7 CFR § {sec_num} {sec_title}"
-        if hierarchy:
-            header += f" {hierarchy}"
-        parts.append(f"{header}\n{text}")
-        if len(result["text"]) > 1000:
-            parts.append("... (truncated)")
-        parts.append("")
-
-    return "\n".join(parts)
-
-
 # ============================================================
 # LAYER 1: BULK TRIAGE
 # ============================================================
@@ -613,23 +501,26 @@ def format_cfr_results_for_prompt(results: list[dict]) -> str:
 def run_layer1(fns_section: dict, olg_results: list[dict],
                client: anthropic.Anthropic, model: str,
                system_prompt: str, fns_by_number: dict = None,
-               tracker: TokenTracker = None) -> dict:
+               tracker: Tracker | None = None) -> dict:
     """Run Layer 1 triage on a single FNS section."""
     user_message = (
         f"## FNS Requirement\n\n"
         f"{format_fns_for_prompt(fns_section, fns_by_number)}\n\n"
         f"## OLG Matches\n\n"
-        f"{format_olg_results_for_prompt(olg_results)}"
+        f"{format_results_for_prompt(olg_results, 'olg')}"
     )
 
-    response = client.messages.create(
-        model=model,
-        max_tokens=500,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_message}],
-    )
+    @with_rate_limit_retry()
+    def _call():
+        return client.messages.create(
+            model=model,
+            max_tokens=500,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+    response = _call()
     if tracker:
-        tracker.record(response)
+        tracker.record("session", model, response.usage)
 
     text = response.content[0].text.strip()
     return extract_json(text, fallback_classification="no_match")
@@ -649,45 +540,7 @@ def lookup_fns_section(section_number: str) -> dict | None:
         return json.load(f)
 
 
-LOOKUP_FNS_TOOL = {
-    "name": "lookup_fns_section",
-    "description": (
-        "Look up a specific FNS Handbook 310 section by its number. "
-        "Use this when the section you're analyzing cross-references "
-        "another FNS section (e.g., 'See Section 512'). Returns the "
-        "full text of that section."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "section_number": {
-                "type": "string",
-                "description": "The FNS section number to look up (e.g., '512', '1021.1')",
-            },
-        },
-        "required": ["section_number"],
-    },
-}
-
-SEARCH_OLG_TOOL = {
-    "name": "search_olg",
-    "description": (
-        "Search the Massachusetts DTA Online Guide (OLG) for SNAP policy content. "
-        "Returns the most relevant sections. Use different queries to search "
-        "from different angles — try synonyms, broader/narrower terms, "
-        "specific policy language, or BEACON system references."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "query": {
-                "type": "string",
-                "description": "Natural language search query for OLG content",
-            },
-        },
-        "required": ["query"],
-    },
-}
+LOOKUP_FNS_TOOL = make_lookup_fns_section_tool()
 
 
 def run_layer2(fns_section: dict, layer1_result: dict,
@@ -695,7 +548,7 @@ def run_layer2(fns_section: dict, layer1_result: dict,
                model: str, system_prompt: str,
                max_results: int = 10,
                fns_by_number: dict = None,
-               tracker: TokenTracker = None,
+               tracker: Tracker | None = None,
                olg_results: list[dict] = None) -> dict:
     """
     Run Layer 2 agentic investigation. Claude can use the search_olg
@@ -712,7 +565,7 @@ def run_layer2(fns_section: dict, layer1_result: dict,
     if olg_results:
         parts.append(
             f"\n\n## OLG Content Already Found\n\n"
-            f"{format_olg_results_for_prompt(olg_results)}\n\n"
+            f"{format_results_for_prompt(olg_results, 'olg')}\n\n"
             f"The above OLG matches were already retrieved. Use them as a "
             f"starting point — search for additional angles the initial "
             f"queries may have missed."
@@ -728,15 +581,18 @@ def run_layer2(fns_section: dict, layer1_result: dict,
 
     max_turns = 15
     for _ in range(max_turns):
-        response = client.messages.create(
-            model=model,
-            max_tokens=1500,
-            system=system_prompt,
-            messages=messages,
-            tools=tools,
-        )
+        @with_rate_limit_retry()
+        def _call():
+            return client.messages.create(
+                model=model,
+                max_tokens=1500,
+                system=system_prompt,
+                messages=messages,
+                tools=tools,
+            )
+        response = _call()
         if tracker:
-            tracker.record(response)
+            tracker.record("session", model, response.usage)
 
         if response.stop_reason == "tool_use":
             tool_results = []
@@ -754,8 +610,8 @@ def run_layer2(fns_section: dict, layer1_result: dict,
                         program="SNAP",
                         top_n=max_results,
                     )
-                    formatted = format_olg_results_for_prompt(
-                        search_response["results"]
+                    formatted = format_results_for_prompt(
+                        search_response["results"], "olg"
                     )
                     tool_results.append({
                         "type": "tool_result",
@@ -828,7 +684,7 @@ def run_layer2_claude_code(
     result_file = RESULTS_DIR / f"{sec_num}.json"
 
     fns_block = format_fns_for_prompt(fns_section, fns_by_number)
-    olg_block = format_olg_results_for_prompt(olg_results)
+    olg_block = format_results_for_prompt(olg_results, "olg")
 
     l1_summary = (
         f"Layer 1 Classification: {layer1_result['classification']}\n"
@@ -904,7 +760,7 @@ def investigate_section(
     system_prompt: str = None,
     max_results: int = 10,
     fns_by_number: dict = None,
-    tracker: TokenTracker = None,
+    tracker: Tracker | None = None,
     windowed: bool = False,
 ) -> dict:
     """
@@ -969,7 +825,7 @@ def run_layer3(fns_section: dict, layer2_result: dict,
                cmr_results: list[dict], client: anthropic.Anthropic,
                model: str, system_prompt: str,
                fns_by_number: dict = None,
-               tracker: TokenTracker = None) -> dict:
+               tracker: Tracker | None = None) -> dict:
     """Run Layer 3 CMR cross-check for a confirmed gap."""
     user_message = (
         f"## FNS Requirement\n\n"
@@ -978,17 +834,20 @@ def run_layer3(fns_section: dict, layer2_result: dict,
         f"Classification: {layer2_result['classification']}\n"
         f"Note: {layer2_result['note']}\n\n"
         f"## CMR Matches\n\n"
-        f"{format_cmr_results_for_prompt(cmr_results)}"
+        f"{format_results_for_prompt(cmr_results, 'cmr')}"
     )
 
-    response = client.messages.create(
-        model=model,
-        max_tokens=800,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_message}],
-    )
+    @with_rate_limit_retry()
+    def _call():
+        return client.messages.create(
+            model=model,
+            max_tokens=800,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+    response = _call()
     if tracker:
-        tracker.record(response)
+        tracker.record("session", model, response.usage)
 
     text = response.content[0].text.strip()
     return extract_json(text, fallback_classification="state_silent")
@@ -998,7 +857,7 @@ def run_layer3_cfr(fns_section: dict, layer2_result: dict,
                    cfr_results: list[dict], client: anthropic.Anthropic,
                    model: str, system_prompt: str,
                    fns_by_number: dict = None,
-                   tracker: TokenTracker = None) -> dict:
+                   tracker: Tracker | None = None) -> dict:
     """Run Layer 3 CFR cross-check for a confirmed gap.
 
     Mirrors run_layer3 but cross-checks against federal SNAP regulations
@@ -1011,17 +870,20 @@ def run_layer3_cfr(fns_section: dict, layer2_result: dict,
         f"Classification: {layer2_result['classification']}\n"
         f"Note: {layer2_result['note']}\n\n"
         f"## 7 CFR Matches\n\n"
-        f"{format_cfr_results_for_prompt(cfr_results)}"
+        f"{format_results_for_prompt(cfr_results, 'cfr')}"
     )
 
-    response = client.messages.create(
-        model=model,
-        max_tokens=800,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_message}],
-    )
+    @with_rate_limit_retry()
+    def _call():
+        return client.messages.create(
+            model=model,
+            max_tokens=800,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+    response = _call()
     if tracker:
-        tracker.record(response)
+        tracker.record("session", model, response.usage)
 
     text = response.content[0].text.strip()
     return extract_json(text, fallback_classification="cfr_silent")
@@ -1095,8 +957,7 @@ def build_csv_row(fns_section: dict, layer1: dict,
                   layer2: dict | None = None,
                   layer3: dict | None = None,
                   layer3_cfr: dict | None = None,
-                  fns_by_number: dict = None,
-                  tracker: TokenTracker = None) -> dict:
+                  fns_by_number: dict = None) -> dict:
     """Build a CSV row dict from layer results."""
     olg_titles = []
     olg_urls = []
@@ -1131,6 +992,15 @@ def build_csv_row(fns_section: dict, layer1: dict,
         action = "update_olg"
         priority = "MEDIUM"
 
+    section_in = layer1.get("_tokens_in", 0)
+    section_out = layer1.get("_tokens_out", 0)
+    section_cost = layer1.get("_cost", 0.0)
+    for layer in (layer2, layer3, layer3_cfr):
+        if layer:
+            section_in += layer.get("_tokens_in", 0)
+            section_out += layer.get("_tokens_out", 0)
+            section_cost += layer.get("_cost", 0.0)
+
     return {
         "fns_chapter": fns_section["chapter"],
         "fns_section": fns_section["section_number"],
@@ -1150,9 +1020,9 @@ def build_csv_row(fns_section: dict, layer1: dict,
         "action_needed": action,
         "priority": priority,
         "session_id": layer2.get("_session_id", "") if layer2 else "",
-        "tokens_in": tracker.section_input if tracker else "",
-        "tokens_out": tracker.section_output if tracker else "",
-        "est_cost": f"${tracker.section_cost():.4f}" if tracker else "",
+        "tokens_in": section_in,
+        "tokens_out": section_out,
+        "est_cost": f"${section_cost:.4f}",
     }
 
 
@@ -1388,7 +1258,7 @@ def run_comparison(
     layer2_count = 0
     layer3_count = 0
     layer3_cfr_count = 0
-    tracker = TokenTracker()
+    tracker = Tracker(stages=["session"])
 
     total = len(fns_sections)
     start_time = time.time()
@@ -1416,10 +1286,14 @@ def run_comparison(
         )
         print(f"  RAG: {len(olg_results)} OLG matches")
 
-        tracker.reset_section()
+        before = tracker.total()
         layer1 = run_layer1(fns_section, olg_results, claude,
                             layer1_model, layer1_prompt, fns_by_number,
                             tracker)
+        after = tracker.total()
+        layer1["_tokens_in"] = after["input_tokens"] - before["input_tokens"]
+        layer1["_tokens_out"] = after["output_tokens"] - before["output_tokens"]
+        layer1["_cost"] = after["cost"] - before["cost"]
         cls = layer1["classification"]
         conf = layer1["confidence"]
         layer1_counts[cls] = layer1_counts.get(cls, 0) + 1
@@ -1447,7 +1321,7 @@ def run_comparison(
         # Build rows from L1 results only
         for fns_section, layer1, olg_results, _ in l1_results:
             row = build_csv_row(fns_section, layer1, olg_results, None, None, None,
-                                fns_by_number, tracker)
+                                fns_by_number)
             all_rows.append(row)
     else:
         # ── Phase 2: L2 deep investigation (parallel) ──────────
@@ -1457,7 +1331,8 @@ def run_comparison(
 
         def _run_l2(entry_idx):
             fns_section, layer1, olg_results, _ = l1_results[entry_idx]
-            return entry_idx, investigate_section(
+            before = tracker.total()
+            result = investigate_section(
                 fns_section, layer1, olg_results,
                 engine=engine,
                 olg_clients=olg_clients,
@@ -1469,6 +1344,11 @@ def run_comparison(
                 tracker=tracker,
                 windowed=windowed,
             )
+            after = tracker.total()
+            result["_tokens_in"] = after["input_tokens"] - before["input_tokens"]
+            result["_tokens_out"] = after["output_tokens"] - before["output_tokens"]
+            result["_cost"] = after["cost"] - before["cost"]
+            return entry_idx, result
 
         workers = min(parallel, len(l2_queue))
         print(f"\nStarting L2 with {workers} parallel workers "
@@ -1513,7 +1393,7 @@ def run_comparison(
                     l2 = l2_results.get(i) if needs else None
                     if not needs or l2 is not None:
                         interim_rows.append(build_csv_row(
-                            fs, l1, olg, l2, None, None, fns_by_number, tracker))
+                            fs, l1, olg, l2, None, None, fns_by_number))
                 interim_path = OUTPUT_DIR / "comparison_interim.csv"
                 write_csv(interim_rows, interim_path)
 
@@ -1538,16 +1418,20 @@ def run_comparison(
 
             fns_section = l1_results[entry_idx][0]
             sec_id = fns_section["section_number"]
-            tracker.reset_section()
 
             layer3 = None
             if cmr_clients:
                 layer3_count += 1
                 print(f"  L3: {sec_id} — Checking CMR...")
                 cmr_results = query_cmr(fns_section, cmr_clients, cmr_max_results)
+                before = tracker.total()
                 layer3 = run_layer3(fns_section, layer2, cmr_results,
                                     claude, layer3_model, layer3_prompt,
                                     fns_by_number, tracker)
+                after = tracker.total()
+                layer3["_tokens_in"] = after["input_tokens"] - before["input_tokens"]
+                layer3["_tokens_out"] = after["output_tokens"] - before["output_tokens"]
+                layer3["_cost"] = after["cost"] - before["cost"]
                 l3_results[entry_idx] = layer3
                 action = layer3.get("action_recommended", "?")
                 priority = layer3.get("priority", "?")
@@ -1559,11 +1443,16 @@ def run_comparison(
                 layer3_cfr_count += 1
                 print(f"  L3: {sec_id} — Checking CFR...")
                 cfr_results = query_cfr(fns_section, cfr_clients, cfr_max_results)
+                before = tracker.total()
                 layer3_cfr = run_layer3_cfr(
                     fns_section, layer2, cfr_results,
                     claude, layer3_model, layer3_cfr_prompt,
                     fns_by_number, tracker,
                 )
+                after = tracker.total()
+                layer3_cfr["_tokens_in"] = after["input_tokens"] - before["input_tokens"]
+                layer3_cfr["_tokens_out"] = after["output_tokens"] - before["output_tokens"]
+                layer3_cfr["_cost"] = after["cost"] - before["cost"]
                 l3_cfr_results[entry_idx] = layer3_cfr
                 cfr_secs = layer3_cfr.get("cfr_sections", [])
                 cfr_secs_str = ", ".join(cfr_secs) if cfr_secs else "—"
@@ -1593,7 +1482,7 @@ def run_comparison(
             if layer2:
                 layer2_count += 1
             row = build_csv_row(fns_section, layer1, olg_results, layer2, layer3,
-                                layer3_cfr, fns_by_number, tracker)
+                                layer3_cfr, fns_by_number)
             all_rows.append(row)
 
             sec_id = fns_section["section_number"]
@@ -1623,7 +1512,9 @@ def run_comparison(
     print(f"  L3 CMR cross-checks: {layer3_count}")
     print(f"  L3 CFR cross-checks: {layer3_cfr_count}")
     print()
-    print(f"  API tokens: {tracker.total_summary()}")
+    totals = tracker.total()
+    print(f"  API tokens: {totals['input_tokens']:,} in / "
+          f"{totals['output_tokens']:,} out (${totals['cost']:.4f})")
     if engine == "claude-code":
         print(f"  L2 cost: $0 (Claude Code subscription)")
     print(f"  Report: {csv_path}")
