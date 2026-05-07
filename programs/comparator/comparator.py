@@ -530,12 +530,17 @@ def run_layer2(fns_section: dict, layer1_result: dict,
                olg_clients: dict, client: anthropic.Anthropic,
                model: str, system_prompt: str,
                max_results: int = 10,
+               max_searches: int = 10,
                fns_by_number: dict = None,
                tracker: Tracker | None = None,
                olg_results: list[dict] = None) -> dict:
     """
     Run Layer 2 agentic investigation. Claude can use the search_olg
     tool to query the OLG and lookup_fns_section to follow cross-references.
+
+    `max_searches` caps search_olg calls; lookup_fns_section is uncapped
+    (deterministic lookup, not fuzzy retrieval). The total turn budget
+    leaves a buffer for final-reasoning turns once searches run out.
     """
     parts = [
         f"## FNS Requirement\n\n"
@@ -557,12 +562,20 @@ def run_layer2(fns_section: dict, layer1_result: dict,
         parts.append(
             "\n\nPlease investigate this further using the search_olg tool."
         )
+    parts.append(
+        f"\n\n## Your Search Budget\n\n"
+        f"You have {max_searches} search_olg calls available. "
+        f"Plan your queries; finalize a verdict when the budget is "
+        f"spent."
+    )
     user_message = "".join(parts)
 
     messages = [{"role": "user", "content": user_message}]
     tools = [SEARCH_OLG_TOOL, LOOKUP_FNS_TOOL]
 
-    max_turns = 15
+    searches_performed = 0
+    # max_turns = search budget + buffer for final reasoning turns
+    max_turns = max_searches + 5
     for _ in range(max_turns):
         @with_rate_limit_retry()
         def _call():
@@ -587,6 +600,21 @@ def run_layer2(fns_section: dict, layer1_result: dict,
 
                 if block.name == "search_olg":
                     query = block.input.get("query", "")
+
+                    if searches_performed >= max_searches:
+                        budget_msg = (
+                            f"Search budget exhausted ({searches_performed} "
+                            f"searches used). Please provide your final "
+                            f"assessment now based on all results seen."
+                        )
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": budget_msg,
+                        })
+                        continue
+
+                    searches_performed += 1
                     search_response = search_with_client(
                         query, olg_clients,
                         collection="sections",
@@ -596,6 +624,8 @@ def run_layer2(fns_section: dict, layer1_result: dict,
                     formatted = format_results_for_prompt(
                         search_response["results"], "olg"
                     )
+                    remaining = max_searches - searches_performed
+                    formatted += f"\n\n[{remaining} searches remaining]"
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": block.id,
@@ -625,18 +655,24 @@ def run_layer2(fns_section: dict, layer1_result: dict,
                 text = block.text.strip()
                 break
 
-        return extract_json(text, fallback={
+        result = extract_json(text, fallback={
             "classification": "confirmed_gap",
             "confidence": "LOW",
             "note": text[:300],
         })
+        result.setdefault("searches_performed", searches_performed)
+        return result
 
     return {
         "classification": "confirmed_gap",
         "confidence": "LOW",
-        "note": "Layer 2 exhausted maximum tool-use turns without conclusion.",
+        "note": (
+            f"Layer 2 exhausted {max_turns} turns "
+            f"({searches_performed} of {max_searches} searches used) "
+            f"without final conclusion."
+        ),
         "olg_pages_found": [],
-        "searches_performed": max_turns,
+        "searches_performed": searches_performed,
     }
 
 
@@ -746,6 +782,7 @@ def investigate_section(
     model: str = None,
     system_prompt: str = None,
     max_results: int = 10,
+    max_searches: int = 10,
     fns_by_number: dict = None,
     tracker: Tracker | None = None,
     windowed: bool = False,
@@ -791,6 +828,7 @@ def investigate_section(
             fns_section, layer1_result, olg_clients,
             client, model, system_prompt,
             max_results=max_results,
+            max_searches=max_searches,
             fns_by_number=fns_by_number,
             tracker=tracker,
             olg_results=olg_results,
@@ -1167,6 +1205,7 @@ def run_comparison(
     olg_max_results = config.getint("comparator", "olg_max_results", fallback=10)
     cmr_max_results = config.getint("comparator", "cmr_max_results", fallback=5)
     cfr_max_results = config.getint("comparator", "cfr_max_results", fallback=5)
+    max_searches = config.getint("comparator", "max_searches", fallback=10)
     escalate_conf = config.get("comparator", "escalate_confidence",
                                fallback="MEDIUM,LOW")
     escalate_levels = set(s.strip() for s in escalate_conf.split(","))
@@ -1332,6 +1371,7 @@ def run_comparison(
                 model=layer2_model,
                 system_prompt=layer2_prompt,
                 max_results=olg_max_results,
+                max_searches=max_searches,
                 fns_by_number=fns_by_number,
                 tracker=tracker,
                 windowed=windowed,
