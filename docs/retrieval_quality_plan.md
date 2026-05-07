@@ -1,6 +1,6 @@
 # Retrieval Quality Plan — Post-Chunk-Cleanup Work
 
-**Status (2026-05-04 EOD)**: Phase 1 + 2 + 2.5 COMPLETE — architecture deployed stack-wide (voyage-context-3 mode A sections + voyage-4-large broad tier). Phase 3 (hybrid search) BUILT and BENCHMARKED but **regressed vs dense vctx3 alone** (OLG 62→46% Rel@1, CMR 65→57%). Useful@5 unchanged in both, suggesting hybrid re-orders the top-5 rather than changing the chunk pool. Default mode stays `dense`; hybrid is opt-in. Open question for next session: was the deployment off, was the testing off, or was there no room for value? Reranking deferred per user.
+**Status (2026-05-05)**: Phase 1 + 2 + 2.5 COMPLETE — architecture deployed stack-wide (voyage-context-3 mode A sections + voyage-4-large broad tier). **Phase 3 (hybrid search) CLOSED — dense wins.** Hybrid regressed vs dense vctx3 alone (OLG 62→46% Rel@1, CMR 65→57%). Useful@5 was unchanged on both — hybrid re-ordered the same chunk pool, the new order was worse. Sparse alone retrieves correct chunks but RRF fusion either dilutes (equal weight) or fails to rescue (low sparse weight). The remaining rel@5=0 cases are vocabulary-mismatch ("homeless" vs "shelter status documentation") which sparse can't bridge. **Decision: default mode stays `dense`, hybrid kept opt-in as foundation, no further retrieval architecture work planned.** Phase 4 (reranking) deferred per user. Plan ends here; next arc is consumer calibration (synthesis, comparator, author, QC) against the working dense vctx3 stack.
 **Context**: All four sources (OLG, CMR, FNS, CFR) are now cleanly chunked and embedded. This document captures the next arc of work — measuring retrieval quality, evaluating architectural improvements, and protecting the cleanup work — *before* moving on to calibrating the consumers (synthesis, comparator, author, QC analyzer) of the RAG.
 **Cost**: Modest. Re-embeds are ~$0.30 each. Reranker and judge calls are pennies-per-query.
 
@@ -302,7 +302,7 @@ Phase 2.5 (validate on OLG, deploy stack-wide)  ← COMPLETE
   └→ Eval collections + artifact JSON dropped
   └→ Smoke-tested on all 4 sources
 
-Phase 3 (hybrid search)                        ← BUILT + BENCHMARKED + NOT DEPLOYED
+Phase 3 (hybrid search)                        ← CLOSED 2026-05-05 — dense wins
   └→ BM25 sparse + weighted RRF fusion implemented (rag/sparse_tokenizer.py,
      rag/sparse_index.py, mode= dispatch, --mode harness flag)
   └→ Tokenizer locked at 2 rules (R1 dotted numerics, R3 hyphenated codes)
@@ -310,13 +310,19 @@ Phase 3 (hybrid search)                        ← BUILT + BENCHMARKED + NOT DEP
   └→ Hybrid REGRESSED: OLG 62→46% Rel@1, CMR 65→57%. Useful@5 unchanged.
      Sparse alone retrieves correct chunks (smoke tested), but RRF fusion
      either dilutes (equal weight) or fails to rescue (low sparse weight).
-  └→ Default mode stays dense; hybrid opt-in via mode="hybrid"
-  └→ Next-session question: deployment, testing, or no-room-for-value?
+  └→ Decision: default mode stays dense; hybrid retained opt-in as foundation.
+     The remaining rel@5=0 cases are vocabulary-mismatch which sparse can't
+     bridge anyway. Dense vctx3 (62%/65% Rel@1, ~5/5 Useful@5) is good enough
+     to ship and use.
 
 Phase 4 (reranking)                            ← deferred per user 2026-05-04
 
-Phase 5 (decide & commit)
-  └→ already partially done (architecture committed, CLAUDE.md updated, experimentation cruft killed)
+Phase 5 (decide & commit)                      ← CLOSED 2026-05-05
+  └→ Architecture: voyage-context-3 mode A sections + voyage-4-large broad tier
+  └→ Default retrieval mode: dense
+  └→ Hybrid: opt-in via mode="hybrid", code retained as foundation
+  └→ Reranking: not pursued
+  └→ Next arc: consumer calibration (synthesis, comparator, author, QC)
 ```
 
 **Open architectural decisions made at end of Phase 2**:
