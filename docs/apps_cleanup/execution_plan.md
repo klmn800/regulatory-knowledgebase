@@ -20,7 +20,8 @@ Created 2026-05-06. Cleanup audits complete (QC, comparator, search, author, syn
 | Build shared modules | ✅ **Complete (2026-05-06)** — `tools/retry.py`, `tools/cost_tracker.py`, `tools/result_formatters.py`, `tools/policy_tools.py` |
 | Synthesis migration | ✅ **Complete (2026-05-06)** — all four shared modules wired in. SynthesisResult `error: str | None` field added. Resolved synthesis F3 (run_standard retry), F6 (duplicated APIError handler), F11 (no error signal), F15 (manual deepcopy), F22 (FNS chunk_n/total). |
 | QC architecture pass | ✅ **Complete (2026-05-07)** — three additional decisions resolved (#9 program filters, #10 folder layout, #11 trace storage). Sub-steps refined; specific filter lists locked in. |
-| **Next: QC migration** | **Sequenced into 5 sub-steps (see "QC migration sub-steps" below). Sub-step 1 = delete CLI pipeline + legacy artifact cleanup.** |
+| QC migration | ✅ **Complete (2026-05-07)** — all 5 sub-steps done. `qc_analyzer.py` 1,658 → 992 lines (-40%). Commits: `f5cf65c`, `6ad0141`, `d3ab4ed`, `f2c8d3a`, `a9d3dfc`, `d8886ea`, `48367fe`, `5edb987`. See "QC migration outcome" section below. |
+| **Next: Comparator migration** | **Apply same shared modules + filter system shape to comparator. New session.** |
 | Migrate comparator → search → author | After QC validates the shapes |
 
 ## QC migration sub-steps (added 2026-05-06, refined 2026-05-07)
@@ -47,6 +48,40 @@ Unlike the shared-module commits (which were small, isolated units), QC migratio
    - Fix QC F5/B1 (`extract_json` fallback misshapen for cross-checks)
    - Update QC's judge result shape to mirror synthesis's error pattern
    - Docstring sweep (F4) + max_turns formula comment (F11)
+
+## QC migration outcome (closed 2026-05-07)
+
+**Total reduction**: `programs/qc/qc_analyzer.py` went from 1,658 → 992 lines (-40%) across 8 commits + 1 plan-refinement commit.
+
+**Per sub-step**:
+- **5a (`d8886ea`)** — per-source program filters: `[qc_analyzer]` config keys `{source}_include`/`{source}_exclude` for OLG/CMR/CFR/FNS, applied to seed search + judge tool calls + cross-checks. CFR's `program="SNAP"` hack removed. New `ui/templates/partials/qc_filter_panel.html` (zero-JS HTML5 details/summary). Each analysis's `meta.json` captures `filter_snapshot` for audit. Captured at upload time AND backfilled at first extract for legacy analyses.
+- **5b (`48367fe`)** — per-run folder layout: new uploads at `output/qc_analysis/{name}_{YYYY-MM-DD_HHMM}/`. Existing analyses (e.g., `Test/`) untouched.
+- **5c (`5edb987`)** — tail cleanup:
+  - Judge result gains `error: str | None` field on API failure + max-turns exhaustion paths
+  - F5/B1 fix: `extract_json(text, fallback: dict | None = None)` — callers pass exact shape they want; cross-check fallback now actually populates `classification` field
+  - Orphans dropped: `CHECKPOINT_FILE`, `APPENDED_COLUMNS`, `select_rows`, `_format_source_results_for_prompt`, plus `build_output_row` (5th orphan found by agent — same provenance, dropped)
+  - Module docstring rewritten to describe phased pipeline accurately
+  - `max_turns = max_searches + 5` formula commented
+
+**Behavior change watch-items captured**:
+- Cross-check formatter swap (sub-step 2) and judge formatter swap (sub-step 4): richer headers (program label, "Section:" prefix, parent_heading, chunk-of-N) now visible to Haiku/Sonnet. May shift classifications subtly toward "more covered." Logged in `~/.claude/projects/E--policy-navigator/memory/qc_cross_check_format_watch.md` with one observed instance (row_003 Partial → Adequate).
+
+**Watch-items NOT yet investigated**:
+- Whether the row_003 shift is correct or a confidence inflation
+- Cross-check Haiku-vs-Sonnet experiment (deferred per decision)
+
+**Config to add to fresh checkouts** (gitignored, agent documented in 5a commit body):
+```ini
+[qc_analyzer]
+olg_include = SNAP, Cross-Program, BP, Pathways, Harper, Self-Service, Domestic Violence, Policies & Procedures, SUN Bucks, General
+olg_exclude = TAFDC, EAEDC, COVID, Notices/Forms, Scheduled Mailings, Forms, microcontent
+fns_include = SNAP, QC_Process
+fns_exclude =
+cmr_include = SNAP, Hearings, Program Integrity, SSP
+cmr_exclude = EA
+cfr_include = SNAP, QC, Issuance, Disaster, Summer-EBT
+cfr_exclude = Administration
+```
 
 ## Shared module specs
 
