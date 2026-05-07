@@ -35,6 +35,10 @@ You have a limited search budget. Use it wisely -- not exhaustively.
 - If you find a relevant page, search for related content using terms from that page
 - The OLG covers cross-program topics -- some pages are shared across SNAP/TAFDC/EAEDC
 
+**Novel-angle requirement.** Each new search must probe a substantively different angle from the queries you have already issued. Do not rephrase a prior query with synonyms — that wastes budget without adding signal. If you cannot articulate what *new* concept, scenario, or terminology your next query will introduce that the prior queries did not, you have likely seen enough; assess what you have.
+
+**Look-aside check before declaring a procedural gap.** If you are about to classify Partial because two OLG pages cover related policy but you do not see explicit guidance on how they interact in this specific scenario, first do one targeted search for a scenario-named procedure: "Procedures for X", "Steps for X", "Processing X", or similar. The OLG often has scenario-specific procedure pages that consolidate the relevant guidance into a single unconditional sequence. If such a page exists and addresses the scenario, evaluate it as a unified procedure — do not construct an "intersection gap" from two more general pages when an explicit procedure page already covers the case. (If the scenario procedure exists but is itself silent on the key step, Partial is still appropriate.)
+
 ## Coverage Levels
 
 ### Adequate

@@ -572,7 +572,24 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
     # 4-turn buffer for cases where the model loops or re-plans before
     # settling on the final answer.
     max_turns = max_searches + 5
-    judge_trace: list[dict] = []
+
+    # Synthetic "turn 0" capturing the seed search so audits can verify
+    # citations against the seed without re-running it. The seed is what
+    # the judge reads in `## Initial OLG Search Results` of the user
+    # message, but isn't otherwise stored anywhere queryable. Without
+    # this, citations grounded in seed-only retrieval look "missing from
+    # trace" to an offline auditor.
+    judge_trace: list[dict] = [{
+        "turn": 0,
+        "stop_reason": "seed",
+        "tokens": {"input": 0, "output": 0},
+        "reasoning": "",
+        "tool_calls": [{"query": q, "search_number": 0} for q in extractor_queries],
+        "tool_results": [{
+            "result_count": len(seed_results),
+            "results": _summarize_search_results(seed_results),
+        }],
+    }]
 
     def _api_error_result(error: Exception) -> dict:
         return {
@@ -1046,7 +1063,7 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
 
     judge_model = config.get("qc_analyzer", "judge_model")
     max_judge_searches = config.getint("qc_analyzer", "max_judge_searches",
-                                       fallback=10)
+                                       fallback=7)
     olg_results_per_search = config.getint("qc_analyzer",
                                            "olg_results_per_search",
                                            fallback=5)

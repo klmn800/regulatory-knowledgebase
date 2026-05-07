@@ -23,6 +23,20 @@ Split when the narrative describes errors that would map to **different OLG page
 
 When in doubt, ask: would a reviewer searching the OLG type the same query for both, or different queries? Same query → one finding. Different queries → split.
 
+### Do not split client-side and agency-side framings of the same error
+
+A single QC error often has both a recipient angle ("client failed to report X") and an agency angle ("worker failed to identify the discrepancy"). These are **two framings of the same underlying topic**, not two findings. They cite the same OLG pages. Combine them into one finding that covers the whole event.
+
+- "Client failed to report new employment at IR" + "Worker did not catch the discrepancy at IR processing" → **1 finding** ("Interim Report processing of unreported earned income")
+- "ABAWD waiver expired and client wasn't recoded" + "Procedures for tracking exempt status when an exemption expires" → **1 finding** (the same waiver-expiration error)
+- "Client did not report income increase" + "Worker did not include the new pay stub in budgeting" → **1 finding** (income-increase reporting and processing)
+
+Split only when the recipient angle and the agency angle map to genuinely different OLG sections (different topical pages, not different sections of the same page).
+
+### Do not invent speculative findings
+
+If the narrative does not flag a topic as part of the error (it appears only in TAO response, agency comments, or background context), do not include it as a finding. The extractor's job is to surface the policy issues the QC reviewer identified, not to enumerate every topic mentioned in the case file.
+
 ## Query Strategy
 
 Good queries target the OLG's likely content structure:
