@@ -48,11 +48,11 @@ from tools.result_formatters import format_results_for_prompt
 from tools.policy_tools import SEARCH_OLG_TOOL, make_lookup_fns_section_tool
 
 
-def extract_json(text: str, fallback_classification: str = "no_match") -> dict:
-    """
-    Extract a JSON object from a response that may contain surrounding
-    prose or markdown. Tries multiple strategies.
-    """
+def extract_json(text: str, fallback: dict | None = None) -> dict:
+    """Extract a JSON object from a response that may contain surrounding
+    prose or markdown. Tries fenced-code, raw, and inline-object patterns.
+    On parse failure returns a copy of `fallback` (or {} if no fallback).
+    Callers handle missing keys via .get() defaults — no implicit shape."""
     text = text.strip()
     try:
         return json.loads(text)
@@ -74,11 +74,7 @@ def extract_json(text: str, fallback_classification: str = "no_match") -> dict:
         except json.JSONDecodeError:
             pass
 
-    return {
-        "classification": fallback_classification,
-        "confidence": "LOW",
-        "note": text[:300],
-    }
+    return dict(fallback) if fallback is not None else {}
 
 
 # ============================================================
@@ -227,12 +223,10 @@ def run_layer0(fns_section: dict, client: anthropic.Anthropic,
     response = _call()
 
     text = response.content[0].text.strip()
-    result = extract_json(text, fallback_classification="compare")
-    if "label" not in result:
-        result["label"] = result.pop("classification", "compare")
-    if "reason" not in result:
-        result["reason"] = result.pop("note", "")
-    return result
+    return extract_json(text, fallback={
+        "label": "compare",
+        "reason": text[:300],
+    })
 
 
 def classify_sections(chapters: list[int], dry_run: bool = False,
@@ -439,31 +433,16 @@ def multi_query_olg(fns_section: dict, olg_clients: dict,
     return all_results[:max_results]
 
 
-def query_cmr(fns_section: dict, cmr_clients: dict,
-              max_results: int = 5) -> list[dict]:
-    """Query CMR for sections relevant to an FNS requirement."""
+def query_source(source: str, fns_section: dict, clients: dict,
+                 max_results: int = 5) -> list[dict]:
+    """Query a single source (CMR or CFR) for sections relevant to an FNS
+    requirement. The `source` parameter pairs with run_layer3's signature."""
     title = fns_section.get("section_title", "")
     text = fns_section.get("text", "")
     query = f"{title} {text[:200]}"
 
     response = search_with_client(
-        query, cmr_clients,
-        collection="sections",
-        program="SNAP",
-        top_n=max_results,
-    )
-    return response["results"]
-
-
-def query_cfr(fns_section: dict, cfr_clients: dict,
-              max_results: int = 5) -> list[dict]:
-    """Query 7 CFR for sections relevant to an FNS requirement."""
-    title = fns_section.get("section_title", "")
-    text = fns_section.get("text", "")
-    query = f"{title} {text[:200]}"
-
-    response = search_with_client(
-        query, cfr_clients,
+        query, clients,
         collection="sections",
         program="SNAP",
         top_n=max_results,
@@ -523,7 +502,11 @@ def run_layer1(fns_section: dict, olg_results: list[dict],
         tracker.record("session", model, response.usage)
 
     text = response.content[0].text.strip()
-    return extract_json(text, fallback_classification="no_match")
+    return extract_json(text, fallback={
+        "classification": "no_match",
+        "confidence": "LOW",
+        "note": text[:300],
+    })
 
 
 # ============================================================
@@ -642,7 +625,11 @@ def run_layer2(fns_section: dict, layer1_result: dict,
                 text = block.text.strip()
                 break
 
-        return extract_json(text, fallback_classification="confirmed_gap")
+        return extract_json(text, fallback={
+            "classification": "confirmed_gap",
+            "confidence": "LOW",
+            "note": text[:300],
+        })
 
     return {
         "classification": "confirmed_gap",
@@ -818,59 +805,58 @@ def investigate_section(
 
 
 # ============================================================
-# LAYER 3: CMR CROSS-CHECK
+# LAYER 3: SOURCE CROSS-CHECK (CMR + CFR)
 # ============================================================
 
-def run_layer3(fns_section: dict, layer2_result: dict,
-               cmr_results: list[dict], client: anthropic.Anthropic,
+# LAYER3_CONFIG drives run_layer3. Each entry collapses what was once a
+# near-duplicate run_layer3 / run_layer3_cfr pair into a single row.
+# Persistence keys (_layer3, _layer3_cfr) live in the orchestrator to
+# preserve report.py's stable on-disk contract.
+LAYER3_CONFIG = {
+    "cmr": {
+        "prompt_name": "layer3_validation",
+        "results_header": "## CMR Matches",
+        "fallback_extras": {
+            "action_recommended": "",
+            "priority": "",
+        },
+    },
+    "cfr": {
+        "prompt_name": "layer3_cfr_validation",
+        "results_header": "## 7 CFR Matches",
+        "fallback_extras": {
+            "cfr_sections": [],
+        },
+    },
+}
+
+
+def run_layer3(source: str, fns_section: dict, layer2_result: dict,
+               source_results: list[dict], client: anthropic.Anthropic,
                model: str, system_prompt: str,
                fns_by_number: dict = None,
                tracker: Tracker | None = None) -> dict:
-    """Run Layer 3 CMR cross-check for a confirmed gap."""
-    user_message = (
-        f"## FNS Requirement\n\n"
-        f"{format_fns_for_prompt(fns_section, fns_by_number)}\n\n"
-        f"## Gap Finding (Layer 2)\n\n"
-        f"Classification: {layer2_result['classification']}\n"
-        f"Note: {layer2_result['note']}\n\n"
-        f"## CMR Matches\n\n"
-        f"{format_results_for_prompt(cmr_results, 'cmr')}"
-    )
+    """Run Layer 3 cross-check for the given source ('cmr' or 'cfr').
 
-    @with_rate_limit_retry()
-    def _call():
-        return client.messages.create(
-            model=model,
-            max_tokens=800,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
-        )
-    response = _call()
-    if tracker:
-        tracker.record("session", model, response.usage)
-
-    text = response.content[0].text.strip()
-    return extract_json(text, fallback_classification="state_silent")
-
-
-def run_layer3_cfr(fns_section: dict, layer2_result: dict,
-                   cfr_results: list[dict], client: anthropic.Anthropic,
-                   model: str, system_prompt: str,
-                   fns_by_number: dict = None,
-                   tracker: Tracker | None = None) -> dict:
-    """Run Layer 3 CFR cross-check for a confirmed gap.
-
-    Mirrors run_layer3 but cross-checks against federal SNAP regulations
-    (7 CFR Parts 271-275, 280, 292) instead of state regulations.
+    The orchestrator pre-loads each source's prompt (via
+    LAYER3_CONFIG[source]['prompt_name']) and passes it in as
+    `system_prompt`.
     """
+    if source not in LAYER3_CONFIG:
+        raise ValueError(
+            f"Unknown source {source!r}; valid sources are "
+            f"{list(LAYER3_CONFIG)}"
+        )
+    cfg = LAYER3_CONFIG[source]
+
     user_message = (
         f"## FNS Requirement\n\n"
         f"{format_fns_for_prompt(fns_section, fns_by_number)}\n\n"
         f"## Gap Finding (Layer 2)\n\n"
         f"Classification: {layer2_result['classification']}\n"
         f"Note: {layer2_result['note']}\n\n"
-        f"## 7 CFR Matches\n\n"
-        f"{format_results_for_prompt(cfr_results, 'cfr')}"
+        f"{cfg['results_header']}\n\n"
+        f"{format_results_for_prompt(source_results, source)}"
     )
 
     @with_rate_limit_retry()
@@ -886,7 +872,13 @@ def run_layer3_cfr(fns_section: dict, layer2_result: dict,
         tracker.record("session", model, response.usage)
 
     text = response.content[0].text.strip()
-    return extract_json(text, fallback_classification="cfr_silent")
+    fallback = {
+        "classification": "no_match",
+        "confidence": "LOW",
+        "note": text[:300],
+        **cfg["fallback_extras"],
+    }
+    return extract_json(text, fallback=fallback)
 
 
 # ============================================================
@@ -1423,9 +1415,10 @@ def run_comparison(
             if cmr_clients:
                 layer3_count += 1
                 print(f"  L3: {sec_id} — Checking CMR...")
-                cmr_results = query_cmr(fns_section, cmr_clients, cmr_max_results)
+                cmr_results = query_source("cmr", fns_section, cmr_clients,
+                                           cmr_max_results)
                 before = tracker.total()
-                layer3 = run_layer3(fns_section, layer2, cmr_results,
+                layer3 = run_layer3("cmr", fns_section, layer2, cmr_results,
                                     claude, layer3_model, layer3_prompt,
                                     fns_by_number, tracker)
                 after = tracker.total()
@@ -1442,13 +1435,12 @@ def run_comparison(
             if cfr_clients:
                 layer3_cfr_count += 1
                 print(f"  L3: {sec_id} — Checking CFR...")
-                cfr_results = query_cfr(fns_section, cfr_clients, cfr_max_results)
+                cfr_results = query_source("cfr", fns_section, cfr_clients,
+                                           cfr_max_results)
                 before = tracker.total()
-                layer3_cfr = run_layer3_cfr(
-                    fns_section, layer2, cfr_results,
-                    claude, layer3_model, layer3_cfr_prompt,
-                    fns_by_number, tracker,
-                )
+                layer3_cfr = run_layer3("cfr", fns_section, layer2, cfr_results,
+                                        claude, layer3_model, layer3_cfr_prompt,
+                                        fns_by_number, tracker)
                 after = tracker.total()
                 layer3_cfr["_tokens_in"] = after["input_tokens"] - before["input_tokens"]
                 layer3_cfr["_tokens_out"] = after["output_tokens"] - before["output_tokens"]
