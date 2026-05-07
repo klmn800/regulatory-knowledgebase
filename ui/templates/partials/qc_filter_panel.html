@@ -1,0 +1,34 @@
+{# Read-only view of the active per-source program filters from
+   [qc_analyzer] in config.ini. To change a filter, move a program
+   between the include and exclude lists in config.ini and reload. #}
+{% set source_labels = {"olg": "OLG", "cmr": "CMR", "fns": "FNS", "cfr": "CFR"} %}
+{% set ordered = ["olg", "cmr", "cfr", "fns"] %}
+<details class="qc-filter-panel">
+  <summary>
+    <span class="qc-filter-summary-label">Active filters</span>
+    {% for src in ordered %}
+      {% set inc = filters[src].include | length %}
+      {% set total = inc + (filters[src].exclude | length) %}
+      <span class="qc-filter-chip">
+        {{ source_labels[src] }}:
+        {% if filters[src].exclude | length == 0 %}all ({{ total }}){% else %}{{ inc }} of {{ total }}{% endif %}
+      </span>
+    {% endfor %}
+  </summary>
+  <div class="qc-filter-detail">
+    {% for src in ordered %}
+      <div class="qc-filter-source">
+        <h4>{{ source_labels[src] }}</h4>
+        <div class="qc-filter-row">
+          <span class="qc-filter-tag qc-filter-tag-include">Include ({{ filters[src].include | length }})</span>
+          <span class="qc-filter-list">{% if filters[src].include %}{{ filters[src].include | join(", ") }}{% else %}<em class="text-muted">(none)</em>{% endif %}</span>
+        </div>
+        <div class="qc-filter-row">
+          <span class="qc-filter-tag qc-filter-tag-exclude">Exclude ({{ filters[src].exclude | length }})</span>
+          <span class="qc-filter-list">{% if filters[src].exclude %}{{ filters[src].exclude | join(", ") }}{% else %}<em class="text-muted">(none)</em>{% endif %}</span>
+        </div>
+      </div>
+    {% endfor %}
+    <p class="qc-filter-hint">To change: edit <code>[qc_analyzer]</code> {<code>source</code>}<code>_include</code> / <code>_exclude</code> in <code>config.ini</code>, then reload the page.</p>
+  </div>
+</details>

@@ -67,6 +67,7 @@ from programs.qc.qc_analyzer import (
     load_meta,
     save_meta,
     generate_summary_csv,
+    _load_filters as load_qc_filters,
     ANALYSIS_DIR as QC_DIR,
 )
 
@@ -767,7 +768,10 @@ def _build_preview_rows(rows: list[dict]) -> list[dict]:
 @app.get("/qc", response_class=HTMLResponse)
 async def qc_page(request: Request):
     """Render the QC analysis page."""
-    return templates.TemplateResponse(request, "qc.html")
+    filters = load_qc_filters(load_qc_config())
+    return templates.TemplateResponse(
+        request, "qc.html", {"filters": filters},
+    )
 
 
 @app.get("/qc/analyses", response_class=HTMLResponse)
@@ -906,6 +910,8 @@ async def qc_upload(
     meta["phases"]["uploaded"] = True
     if "cost" not in meta:
         meta["cost"] = {}
+    if "filter_snapshot" not in meta:
+        meta["filter_snapshot"] = load_qc_filters(load_qc_config())
     save_meta(analysis_dir, meta)
 
     return templates.TemplateResponse(

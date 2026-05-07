@@ -70,6 +70,24 @@ def load_prompt(name: str, with_preamble: bool = False) -> str:
     return content
 
 
+FILTER_SOURCES = ("olg", "cmr", "fns", "cfr")
+
+
+def _load_filters(config: configparser.ConfigParser) -> dict:
+    """Read per-source program filter lists from [qc_analyzer]. Returns
+    {source: {"include": [...], "exclude": [...]}}. Both lists are
+    informational; the include list is the active whitelist."""
+    filters = {}
+    for src in FILTER_SOURCES:
+        include_raw = config.get("qc_analyzer", f"{src}_include", fallback="")
+        exclude_raw = config.get("qc_analyzer", f"{src}_exclude", fallback="")
+        filters[src] = {
+            "include": [p.strip() for p in include_raw.split(",") if p.strip()],
+            "exclude": [p.strip() for p in exclude_raw.split(",") if p.strip()],
+        }
+    return filters
+
+
 # ============================================================
 # UTILITIES
 # ============================================================
@@ -311,7 +329,8 @@ def run_extractor(user_message: str, client: anthropic.Anthropic,
 # ============================================================
 
 def run_seed_searches(queries: list[str], olg_clients: dict,
-                      results_per_query: int = 5) -> list[dict]:
+                      results_per_query: int = 5,
+                      programs: list[str] | None = None) -> list[dict]:
     """Run extractor's queries against OLG and deduplicate results."""
     seen_ids = set()
     all_results = []
@@ -322,6 +341,7 @@ def run_seed_searches(queries: list[str], olg_clients: dict,
         response = search_with_client(
             query, olg_clients,
             collection="sections",
+            programs=programs,
             top_n=results_per_query,
             threshold=0.0,
         )
@@ -343,7 +363,8 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
               model: str, system_prompt: str,
               max_searches: int = 10,
               results_per_search: int = 5,
-              cost_tracker: Tracker | None = None) -> tuple[dict, list[dict]]:
+              cost_tracker: Tracker | None = None,
+              olg_programs: list[str] | None = None) -> tuple[dict, list[dict]]:
     """Call 2: Agentic OLG coverage assessment with iterative search.
 
     Returns (result, judge_trace) — the final classification dict plus an
@@ -444,6 +465,7 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
                     search_response = search_with_client(
                         query, olg_clients,
                         collection="sections",
+                        programs=olg_programs,
                         top_n=results_per_search,
                         threshold=0.0,
                     )
@@ -642,6 +664,8 @@ def run_extract(analysis_dir: Path, rows: list[dict],
     meta["phases"]["extracted"] = True
     if "cost" not in meta:
         meta["cost"] = {}
+    if "filter_snapshot" not in meta:
+        meta["filter_snapshot"] = _load_filters(config)
     extractor_data = cost_tracker.by_stage()["extractor"]
     meta["cost"]["extractor"] = round(extractor_data["cost"], 4)
     meta["extract_stats"] = {
@@ -706,6 +730,8 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
         stages=["extractor", "judge", "cmr_check", "fns_check", "cfr_check"]
     )
 
+    olg_programs = _load_filters(config)["olg"]["include"] or None
+
     start_time = time.time()
     results = []
     for row_idx in row_indices:
@@ -728,6 +754,7 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
         seed_results = run_seed_searches(
             extractor_result["search_queries"], olg_clients,
             results_per_query=seed_results_per_query,
+            programs=olg_programs,
         )
 
         # Judge
@@ -737,6 +764,7 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
             max_searches=max_judge_searches,
             results_per_search=olg_results_per_search,
             cost_tracker=cost_tracker,
+            olg_programs=olg_programs,
         )
 
         # Update finding with judge results
@@ -852,9 +880,8 @@ def _build_crosscheck_user_message(finding: dict, source_results_formatted: str,
 
 # SOURCE_CHECK_CONFIG drives run_source_check. Each entry collapses what
 # was once a near-duplicate run_X_check function into a single row in this
-# table. CFR's program="SNAP" filter is preserved here as a transitional
-# placeholder; sub-step 5 replaces it with the per-source filter system
-# (see docs/apps_cleanup/execution_plan.md decision #9).
+# table. Program filtering is driven uniformly through [qc_analyzer]
+# {source}_include / {source}_exclude config keys (see _load_filters).
 SOURCE_CHECK_CONFIG = {
     "cmr": {
         "prompt_name": "qc_cmr_check",
@@ -863,7 +890,6 @@ SOURCE_CHECK_CONFIG = {
         "result_key": "_cmr_check",
         "sections_key": "cmr_sections",
         "phase_name": "cmr_checked",
-        "program": None,
     },
     "fns": {
         "prompt_name": "qc_fns_check",
@@ -872,7 +898,6 @@ SOURCE_CHECK_CONFIG = {
         "result_key": "_fns_check",
         "sections_key": "fns_sections",
         "phase_name": "fns_checked",
-        "program": None,
     },
     "cfr": {
         "prompt_name": "qc_cfr_check",
@@ -881,7 +906,6 @@ SOURCE_CHECK_CONFIG = {
         "result_key": "_cfr_check",
         "sections_key": "cfr_sections",
         "phase_name": "cfr_checked",
-        "program": "SNAP",
     },
 }
 
@@ -950,13 +974,14 @@ def run_source_check(source: str, analysis_dir: Path,
             if f.get("coverage") in ("Partial", "Gap")
         ]
 
+    source_programs = _load_filters(config)[source]["include"] or None
+
     search_kwargs = {
         "collection": "sections",
+        "programs": source_programs,
         "top_n": 5,
         "threshold": 0.0,
     }
-    if spec["program"]:
-        search_kwargs["program"] = spec["program"]
 
     cost_stage = f"{source}_check"
     cost_tracker = Tracker(stages=[cost_stage])
