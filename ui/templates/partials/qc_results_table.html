@@ -28,12 +28,37 @@
         {% set adequate_count = findings | selectattr('coverage', 'equalto', 'Adequate') | list | length %}
         {% set partial_count = findings | selectattr('coverage', 'equalto', 'Partial') | list | length %}
         {% set gap_count = findings | selectattr('coverage', 'equalto', 'Gap') | list | length %}
+        {% set errored_count = findings | selectattr('coverage', 'equalto', 'Error') | list | length %}
         {% set extracted_only = findings | rejectattr('coverage', 'defined') | list | length %}
+
+        {% if errored_count > 0 %}
+        {% set first_error = (findings | selectattr('coverage', 'equalto', 'Error') | list | first) %}
+        <div class="qc-error-banner" role="alert">
+            <div class="qc-error-banner-header">
+                <strong>{{ errored_count }} of {{ findings | length }} findings errored during investigation.</strong>
+            </div>
+            <p>
+                The judge API call failed for these findings. They aren't real verdicts —
+                the table marks them as <span class="coverage-badge error">Error</span>. Re-run
+                investigate after resolving the underlying issue (typically API credit, rate
+                limit, or auth).
+            </p>
+            {% if first_error and (first_error.error or first_error.gap_description) %}
+            <details>
+                <summary>Last error message</summary>
+                <pre class="qc-error-pre">{{ first_error.error or first_error.gap_description }}</pre>
+            </details>
+            {% endif %}
+        </div>
+        {% endif %}
 
         <div class="qc-stats">
             <span class="qc-stat" style="color:var(--color-score-high);">{{ adequate_count }} Adequate</span>
             <span class="qc-stat" style="color:var(--color-score-mid);">{{ partial_count }} Partial</span>
             <span class="qc-stat" style="color:#dc2626;">{{ gap_count }} Gap</span>
+            {% if errored_count > 0 %}
+            <span class="qc-stat" style="color:#b45309;">{{ errored_count }} Errored</span>
+            {% endif %}
             {% if extracted_only > 0 %}
             <span class="qc-stat" style="color:var(--color-text-muted);">{{ extracted_only }} Not investigated</span>
             {% endif %}
@@ -48,6 +73,8 @@
                 <dd>OLG addresses the topic but is missing something material — typically a specific threshold, exception, BEACON procedure, or guidance on how two policies interact. <em>Partial does not mean the OLG is silent</em>; it usually means a worker would need to synthesize across multiple pages to get the full answer.</dd>
                 <dt><strong>Gap</strong></dt>
                 <dd>OLG does not address this policy or procedure at all. A worker would have no written guidance to consult.</dd>
+                <dt><strong>Error</strong></dt>
+                <dd>The judge API call failed before producing a verdict (e.g., out of credit, rate limit, network). Not a real assessment — re-run investigate to replace.</dd>
             </dl>
         </details>
 
@@ -75,6 +102,9 @@
             <button class="qc-filter-btn" onclick="qcFilter('Adequate', this)">Adequate ({{ adequate_count }})</button>
             <button class="qc-filter-btn" onclick="qcFilter('Partial', this)">Partial ({{ partial_count }})</button>
             <button class="qc-filter-btn" onclick="qcFilter('Gap', this)">Gap ({{ gap_count }})</button>
+            {% if errored_count > 0 %}
+            <button class="qc-filter-btn" onclick="qcFilter('Error', this)">Errored ({{ errored_count }})</button>
+            {% endif %}
             <a href="/qc/download/{{ name }}" class="btn btn-sm btn-outline" style="text-decoration:none; margin-left:auto;">
                 Download CSV
             </a>
@@ -115,6 +145,8 @@
                             <span class="coverage-badge partial">Partial</span>
                             {% elif f.coverage == 'Gap' %}
                             <span class="coverage-badge gap">Gap</span>
+                            {% elif f.coverage == 'Error' %}
+                            <span class="coverage-badge error" title="{{ f.error or f.gap_description or 'Judge call failed' }}">Error</span>
                             {% elif f.coverage %}
                             <span class="coverage-badge" style="background:var(--color-border);">{{ f.coverage }}</span>
                             {% else %}

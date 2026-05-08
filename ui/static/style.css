@@ -1280,6 +1280,56 @@ a.download-btn {
     color: white;
 }
 
+.coverage-badge.error {
+    background: #b45309;
+    color: white;
+    text-transform: none;
+    font-style: italic;
+}
+
+/* Errored-investigation banner (e.g. credit-out, rate limit) */
+.qc-error-banner {
+    border: 1px solid #d97706;
+    background: #fff7ed;
+    color: #7c2d12;
+    border-radius: 4px;
+    padding: 0.85rem 1rem;
+    margin: 0 0 1rem 0;
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+
+.qc-error-banner-header {
+    margin-bottom: 0.35rem;
+}
+
+.qc-error-banner p {
+    margin: 0.35rem 0;
+}
+
+.qc-error-banner details {
+    margin-top: 0.35rem;
+}
+
+.qc-error-banner summary {
+    cursor: pointer;
+    color: #92400e;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.qc-error-pre {
+    margin: 0.4rem 0 0 0;
+    padding: 0.5rem 0.75rem;
+    background: #fef3c7;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 8rem;
+    overflow: auto;
+}
+
 /* Cross-check badges */
 .xcheck-badge {
     display: inline-block;

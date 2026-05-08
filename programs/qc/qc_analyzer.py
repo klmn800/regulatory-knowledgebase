@@ -266,17 +266,30 @@ def _migrate_legacy_row(row: dict) -> dict:
     judge/cross-check results at row level. New shape nests them inside
     `row["findings"][i]`. This migration runs on read so legacy data
     keeps loading; re-running any phase rewrites in the new shape.
+
+    Also normalizes legacy "API error" stubs (coverage=Partial,
+    confidence=LOW, gap_description starts with "Judge API error:")
+    into the new coverage=Error / confidence=N/A shape so the UI
+    doesn't show them as real Partial verdicts.
     """
-    if "findings" in row:
-        return row
-    finding = {"finding_index": 1}
-    for k in _PER_FINDING_KEYS:
-        if k in row:
-            finding[k] = row.pop(k)
-    if finding.get("policy_issues"):
-        row["findings"] = [finding]
-    else:
-        row["findings"] = []
+    if "findings" not in row:
+        finding = {"finding_index": 1}
+        for k in _PER_FINDING_KEYS:
+            if k in row:
+                finding[k] = row.pop(k)
+        if finding.get("policy_issues"):
+            row["findings"] = [finding]
+        else:
+            row["findings"] = []
+    for f in row.get("findings", []):
+        gap = f.get("gap_description") or ""
+        if (f.get("coverage") == "Partial"
+                and f.get("confidence") == "LOW"
+                and gap.startswith("Judge API error:")):
+            f["coverage"] = "Error"
+            f["confidence"] = "N/A"
+            if not f.get("error"):
+                f["error"] = gap[len("Judge API error: "):]
     return row
 
 
@@ -667,10 +680,10 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
 
     def _api_error_result(error: Exception) -> dict:
         return {
-            "coverage": "Partial",
+            "coverage": "Error",
             "olg_references": [],
             "gap_description": f"Judge API error: {error}",
-            "confidence": "LOW",
+            "confidence": "N/A",
             "reasoning": "Analysis incomplete due to API error.",
             "error": str(error),
             "searches_performed": searches_performed,
@@ -1108,6 +1121,7 @@ def _investigate_one_finding(
         "reasoning": judge_result.get("reasoning", ""),
         "searches_performed": judge_result.get("searches_performed", 0),
         "all_search_queries": judge_result.get("all_search_queries", []),
+        "error": judge_result.get("error"),
         "judge_trace": judge_trace,
     }
 
@@ -1256,6 +1270,7 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
                                 "reasoning": f"Investigate failed: {error}",
                                 "olg_references": [],
                                 "gap_description": str(error),
+                                "error": str(error),
                                 "searches_performed": 0,
                                 "all_search_queries": [],
                                 "judge_trace": [],
