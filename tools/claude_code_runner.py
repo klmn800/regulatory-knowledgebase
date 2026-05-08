@@ -25,6 +25,8 @@ Usage:
 import json
 import shutil
 import subprocess
+import sys
+import threading
 import time
 from pathlib import Path
 
@@ -37,6 +39,35 @@ if not _claude_available:
         "run_claude_task() will fail. Install from https://claude.ai/code",
         stacklevel=2,
     )
+
+
+# Cached permission mode for this process. Starts at "auto"; the first
+# piped run that fails triggers a one-shot retry with "bypassPermissions"
+# and, if that succeeds, caches bypass for the rest of the session
+# (both piped and windowed). Auto mode requires Max/Team/Enterprise/API
+# tier and Claude Code v2.1.83+; on Pro tier or older CLIs the flag is
+# rejected and we transparently fall back to the prior bypass behavior.
+_mode_lock = threading.Lock()
+_permission_mode = "auto"
+
+
+def get_permission_mode() -> str:
+    """Return the currently active --permission-mode value."""
+    with _mode_lock:
+        return _permission_mode
+
+
+def _record_auto_failure(reason: str) -> None:
+    """Latch bypassPermissions for the rest of this process."""
+    global _permission_mode
+    with _mode_lock:
+        if _permission_mode == "auto":
+            _permission_mode = "bypassPermissions"
+            sys.stderr.write(
+                f"[claude_code_runner] --permission-mode auto failed "
+                f"({reason}). Falling back to bypassPermissions for "
+                f"the rest of this session.\n"
+            )
 
 
 def run_claude_task(
@@ -104,11 +135,40 @@ def run_claude_task(
 
 def _run_piped(prompt, result_file, timeout, cwd, log_dir, task_id, start,
                parse_json=True):
-    """Run claude in pipe mode — stdout captured as JSON, not visible."""
+    """Run claude in pipe mode — stdout captured as JSON, not visible.
+
+    Tries the cached permission mode first. If auto fails on this run,
+    retries once with bypassPermissions; on bypass success the failure
+    is recorded so subsequent calls (piped and windowed) skip auto.
+    """
+    mode = get_permission_mode()
+    result = _run_piped_once(prompt, mode, result_file, timeout, cwd,
+                             log_dir, task_id, start, parse_json)
+
+    if mode == "auto" and not result["success"]:
+        # Treat any failure on the first auto-mode invocation as a
+        # potential mode rejection (wrong tier, older CLI). Retry once
+        # with bypass — if it works, latch the fallback. Worst-case
+        # cost is one extra subprocess on the first failing call.
+        fallback_start = time.time()
+        fallback = _run_piped_once(prompt, "bypassPermissions", result_file,
+                                   timeout, cwd, log_dir, task_id,
+                                   fallback_start, parse_json)
+        if fallback["success"]:
+            _record_auto_failure(result.get("error") or "auto-mode subprocess failed")
+            fallback["_used_fallback_mode"] = "bypassPermissions"
+            return fallback
+
+    return result
+
+
+def _run_piped_once(prompt, mode, result_file, timeout, cwd, log_dir,
+                    task_id, start, parse_json=True):
+    """Single piped subprocess attempt with a specific permission mode."""
     try:
         proc = subprocess.run(
             ["claude", "-p", "--output-format", "json",
-             "--permission-mode", "auto"],
+             "--permission-mode", mode],
             input=prompt,
             capture_output=True,
             text=True,
@@ -180,7 +240,7 @@ def _run_windowed(prompt_file, result_file, timeout, cwd, log_dir, task_id, star
         f'@echo off\n'
         f'cd /d {cwd}\n'
         f'title Claude Code - {task_id}\n'
-        f'start "" cmd /k "claude --permission-mode auto'
+        f'start "" cmd /k "claude --permission-mode {get_permission_mode()}'
         f' @{prompt_path}"\n',
         encoding="utf-8",
     )
