@@ -1266,6 +1266,139 @@ async def qc_download(name: str):
     )
 
 
+# ------------------------------------------------------------
+# QC PPT panel (Step 2: UI only — no generation backend yet)
+# ------------------------------------------------------------
+
+def _list_ppt_versions(runs_dir: Path) -> list[dict]:
+    """Enumerate PPT runs under output/qc_analysis/{name}_{ts}/ppt/runs/.
+    Each entry: {num, ts, has_outline, has_pptx, has_session, classifications,
+    selected_count}. Returns [] if dir is missing."""
+    if not runs_dir.exists():
+        return []
+    out = []
+    for d in sorted(runs_dir.iterdir()):
+        if not d.is_dir():
+            continue
+        try:
+            num = int(d.name.split("_", 1)[0])
+        except (ValueError, IndexError):
+            continue
+        ts = d.name.split("_", 1)[1] if "_" in d.name else ""
+        entry = {
+            "num": num,
+            "ts": ts,
+            "dir": str(d),
+            "has_outline": (d / "outline.json").exists(),
+            "has_pptx": (d / "output.pptx").exists(),
+            "has_session": (d / "session_id.txt").exists(),
+        }
+        inputs_file = d / "inputs.json"
+        if inputs_file.exists():
+            try:
+                inputs = json.loads(inputs_file.read_text(encoding="utf-8"))
+                fs = inputs.get("filter_state", {}) or {}
+                cls = []
+                if fs.get("include_gap"):
+                    cls.append("Gap")
+                if fs.get("include_partial"):
+                    cls.append("Partial")
+                if fs.get("include_adequate"):
+                    cls.append("Adequate")
+                entry["classifications"] = cls
+                entry["selected_count"] = len(inputs.get("selected_findings", []) or [])
+            except (json.JSONDecodeError, OSError):
+                pass
+        out.append(entry)
+    return out
+
+
+def _load_ppt_version(runs_dir: Path, num: int | None) -> dict | None:
+    """Load one PPT run's data with navigation metadata for the detail view."""
+    versions = _list_ppt_versions(runs_dir)
+    total = len(versions)
+    if total == 0:
+        return None
+
+    if num is None:
+        idx = total - 1
+    else:
+        idx = next((i for i, v in enumerate(versions) if v["num"] == num), total - 1)
+
+    v = versions[idx]
+    version_dir = Path(v["dir"])
+    data = dict(v)
+    data["version_num"] = v["num"]
+    data["total"] = total
+    data["index"] = idx + 1
+    data["has_prev"] = idx > 0
+    data["has_next"] = idx < total - 1
+    if data["has_prev"]:
+        data["prev_num"] = versions[idx - 1]["num"]
+    if data["has_next"]:
+        data["next_num"] = versions[idx + 1]["num"]
+
+    inputs_file = version_dir / "inputs.json"
+    if inputs_file.exists():
+        try:
+            inputs = json.loads(inputs_file.read_text(encoding="utf-8"))
+            data["instructions"] = inputs.get("instructions", "")
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    sid_file = version_dir / "session_id.txt"
+    if sid_file.exists():
+        data["session_id"] = sid_file.read_text(encoding="utf-8").strip()
+
+    return data
+
+
+def _ppt_panel_context(name: str, version: int | None = None) -> dict:
+    """Build the template context for qc_ppt_panel.html."""
+    analysis_dir = get_analysis_dir(name)
+    rows = load_all_findings(analysis_dir) if analysis_dir.exists() else []
+    flat = flatten_findings(rows) if rows else []
+    counts = {
+        "gap": sum(1 for f in flat if f.get("coverage") == "Gap"),
+        "partial": sum(1 for f in flat if f.get("coverage") == "Partial"),
+        "adequate": sum(1 for f in flat if f.get("coverage") == "Adequate"),
+    }
+    has_findings = (counts["gap"] + counts["partial"] + counts["adequate"]) > 0
+
+    runs_dir = analysis_dir / "ppt" / "runs"
+    versions = _list_ppt_versions(runs_dir)
+    view = _load_ppt_version(runs_dir, version) if versions else None
+
+    return {
+        "name": name,
+        "counts": counts,
+        "has_findings": has_findings,
+        "versions": versions,
+        "view": view,
+    }
+
+
+@app.get("/qc/{name}/ppt", response_class=HTMLResponse)
+async def qc_ppt_panel(request: Request, name: str):
+    """Render the PPT generation panel for a QC analysis."""
+    return templates.TemplateResponse(
+        request, "partials/qc_ppt_panel.html",
+        _ppt_panel_context(name),
+    )
+
+
+@app.get("/qc/{name}/ppt/view/{version_num}", response_class=HTMLResponse)
+async def qc_ppt_view_version(request: Request, name: str, version_num: int):
+    """Render just the run-detail block for a specific PPT version (for nav)."""
+    ctx = _ppt_panel_context(name, version=version_num)
+    if not ctx.get("view"):
+        return HTMLResponse("<p>Version not found.</p>", status_code=404)
+    return templates.TemplateResponse(
+        request, "partials/qc_ppt_run_detail.html",
+        {"name": name, "view": ctx["view"]},
+    )
+
+
 # ============================================================
 # CONVERT
 # ============================================================

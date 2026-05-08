@@ -51,6 +51,7 @@ import time
 from pathlib import Path
 
 import chromadb
+from chromadb.config import Settings as ChromaSettings
 import voyageai
 
 
@@ -530,7 +531,10 @@ def create_client(
         sys.exit(1)
 
     vo = voyageai.Client(api_key=api_key)
-    chroma = chromadb.PersistentClient(path=str(persist_path))
+    chroma = chromadb.PersistentClient(
+        path=str(persist_path),
+        settings=ChromaSettings(anonymized_telemetry=False),
+    )
 
     # Granular is required (the workhorse collection); broad is
     # tolerated as missing for evaluation runs that only build the
@@ -1137,7 +1141,10 @@ def _print_info(source: str) -> None:
         print("Run embedder.py first to create the vector store.")
         sys.exit(1)
 
-    chroma = chromadb.PersistentClient(path=str(persist_path))
+    chroma = chromadb.PersistentClient(
+        path=str(persist_path),
+        settings=ChromaSettings(anonymized_telemetry=False),
+    )
     granular_coll_name = config.get(
         "chromadb", source_config["granular_collection_key"],
         fallback=source_config["granular_name"])

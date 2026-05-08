@@ -41,6 +41,7 @@ import time
 from pathlib import Path
 
 import chromadb
+from chromadb.config import Settings as ChromaSettings
 import voyageai
 
 
@@ -737,7 +738,10 @@ def run_embedder(
 
     # Initialize clients
     vo = voyageai.Client(api_key=api_key)
-    chroma_client = chromadb.PersistentClient(path=str(persist_path))
+    chroma_client = chromadb.PersistentClient(
+        path=str(persist_path),
+        settings=ChromaSettings(anonymized_telemetry=False),
+    )
 
     total_stats = {"tokens": 0, "cost": 0.0, "embedded": 0}
 

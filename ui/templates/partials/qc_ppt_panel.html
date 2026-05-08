@@ -1,0 +1,90 @@
+<section class="qc-ppt-section" data-analysis-name="{{ name }}">
+    <div class="qc-ppt-header">
+        <h3>Generate Presentation</h3>
+        <p class="qc-ppt-subtitle">Curate findings into a slide deck for a leadership briefing.</p>
+    </div>
+
+    {% if not has_findings %}
+    <p class="text-muted">Run Investigate first to populate findings, then return here to build a deck.</p>
+    {% else %}
+
+    <div class="qc-ppt-layout">
+        <div class="qc-ppt-config">
+            <div class="form-group">
+                <label class="form-label">Include findings classified as:</label>
+                <div class="qc-ppt-checkboxes">
+                    <label class="qc-ppt-cb">
+                        <input type="checkbox" class="qc-ppt-cls-cb" value="Gap" checked>
+                        <span class="coverage-badge gap" style="margin-left:0.25rem;">Gap</span>
+                        <span class="qc-ppt-cb-count">({{ counts.gap }})</span>
+                    </label>
+                    <label class="qc-ppt-cb">
+                        <input type="checkbox" class="qc-ppt-cls-cb" value="Partial">
+                        <span class="coverage-badge partial" style="margin-left:0.25rem;">Partial</span>
+                        <span class="qc-ppt-cb-count">({{ counts.partial }})</span>
+                    </label>
+                    <label class="qc-ppt-cb">
+                        <input type="checkbox" class="qc-ppt-cls-cb" value="Adequate">
+                        <span class="coverage-badge adequate" style="margin-left:0.25rem;">Adequate</span>
+                        <span class="qc-ppt-cb-count">({{ counts.adequate }})</span>
+                    </label>
+                </div>
+                <p class="qc-ppt-selection-summary" id="qc-ppt-selection-summary">
+                    {{ counts.gap }} finding{{ '' if counts.gap == 1 else 's' }} selected
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label for="qc-ppt-instructions">Instructions (optional)</label>
+                <textarea id="qc-ppt-instructions" rows="4"
+                          placeholder="e.g. frame as urgency for next quarter; lead with income-coding pattern; keep under 10 slides; emphasize cross-source disagreements"></textarea>
+            </div>
+
+            <button class="btn btn-accent" onclick="qcPptGenerate()" id="qc-ppt-generate-btn">
+                Generate PPT
+            </button>
+        </div>
+
+        <div class="qc-ppt-versions-area">
+            <div class="version-list-header">
+                <h4>Presentation Runs</h4>
+            </div>
+            {% if versions %}
+            <div class="version-entries">
+                {% for v in versions | reverse %}
+                <div class="version-entry{% if loop.first %} latest{% endif %}"
+                     onclick="qcPptViewVersion({{ v.num }})">
+                    <div class="version-entry-header">
+                        <span class="version-num">v{{ '%03d' % v.num }}</span>
+                        <span class="version-ts">{{ v.ts }}</span>
+                        {% if v.has_pptx %}
+                        <span class="phase-badge phase-done" style="font-size:0.6rem;">pptx</span>
+                        {% elif v.has_outline %}
+                        <span class="phase-badge" style="font-size:0.6rem;">outline</span>
+                        {% else %}
+                        <span class="phase-badge" style="font-size:0.6rem;">pending</span>
+                        {% endif %}
+                    </div>
+                    {% if v.selected_count is defined %}
+                    <div class="version-preview">
+                        {{ v.selected_count }} finding{{ '' if v.selected_count == 1 else 's' }}
+                        {% if v.classifications %} — {{ v.classifications | join(', ') }}{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted">No runs yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="qc-ppt-detail" class="qc-ppt-detail">
+        {% if view %}
+            {% include "partials/qc_ppt_run_detail.html" %}
+        {% endif %}
+    </div>
+
+    {% endif %}
+</section>

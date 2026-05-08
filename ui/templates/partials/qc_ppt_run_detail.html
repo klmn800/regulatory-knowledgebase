@@ -1,0 +1,66 @@
+<div class="author-result-container">
+    <div class="author-version-bar">
+        <div class="version-nav">
+            <span class="version-phase">PPT</span>
+            {% if view.total > 1 %}
+            <button class="btn-nav{% if not view.has_prev %} disabled{% endif %}"
+                    {% if view.has_prev %}onclick="qcPptViewVersion({{ view.prev_num }})"{% endif %}
+                    title="Previous version">&lsaquo;</button>
+            <span class="version-id">v{{ '%03d' % view.version_num }} ({{ view.index }} of {{ view.total }})</span>
+            <button class="btn-nav{% if not view.has_next %} disabled{% endif %}"
+                    {% if view.has_next %}onclick="qcPptViewVersion({{ view.next_num }})"{% endif %}
+                    title="Next version">&rsaquo;</button>
+            {% else %}
+            <span class="version-id">v{{ '%03d' % view.version_num }}</span>
+            {% endif %}
+        </div>
+        <div class="version-actions">
+            {% if view.has_pptx %}
+            <a href="/qc/{{ name }}/ppt/{{ view.version_num }}/download"
+               class="btn btn-sm btn-outline" style="text-decoration:none;">Download .pptx</a>
+            {% endif %}
+            {% if view.has_outline %}
+            <a href="/qc/{{ name }}/ppt/{{ view.version_num }}/outline" target="_blank"
+               class="btn btn-sm btn-outline" style="text-decoration:none;">View outline.json</a>
+            {% endif %}
+            {% if view.session_id %}
+            <button class="btn btn-sm btn-outline" onclick="qcPptResume({{ view.version_num }})">Resume</button>
+            {% endif %}
+            <button class="btn btn-sm btn-outline" onclick="qcPptRunAgain({{ view.version_num }})">Run Again</button>
+        </div>
+    </div>
+
+    <div class="answer-card">
+        {% if view.classifications %}
+        <p class="text-muted" style="font-size:0.8rem; margin-bottom:0.5rem;">
+            <strong>Included:</strong> {{ view.classifications | join(', ') }}
+            {% if view.selected_count is defined %} — {{ view.selected_count }} finding{{ '' if view.selected_count == 1 else 's' }}{% endif %}
+        </p>
+        {% endif %}
+
+        {% if view.instructions %}
+        <details class="qc-ppt-instructions-block">
+            <summary>Instructions</summary>
+            <p>{{ view.instructions }}</p>
+        </details>
+        {% endif %}
+
+        {% if view.has_pptx %}
+        <p>
+            <a href="/qc/{{ name }}/ppt/{{ view.version_num }}/download">
+                Download {{ name }}_v{{ '%03d' % view.version_num }}.pptx
+            </a>
+        </p>
+        {% elif view.has_outline %}
+        <p class="text-muted">Outline written but .pptx not yet generated.</p>
+        {% else %}
+        <p class="text-muted">Run is in progress or hasn't completed. The Claude Code window may still be open.</p>
+        {% endif %}
+
+        {% if view.session_id %}
+        <div class="answer-meta">
+            <span>Session: <code>{{ view.session_id[:8] }}...</code></span>
+        </div>
+        {% endif %}
+    </div>
+</div>

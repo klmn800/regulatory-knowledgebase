@@ -614,6 +614,47 @@ function qcRerun(action) {
             resultsArea.innerHTML = html;
             htmx.process(resultsArea);
             htmx.ajax('GET', '/qc/analyses', '#qc-analyses-list');
+            if (name) loadQcPptPanel(name);
+        })
+        .catch(function(err) {
+            qcHideProgress();
+            resultsArea.innerHTML = '<p>Error: ' + err.message + '</p>';
+        })
+        .finally(function() {
+            buttons.forEach(function(b) { b.disabled = false; });
+        });
+}
+
+function qcRerunErrored(button) {
+    var rowIndices = button.getAttribute('data-row-indices') || '';
+    if (!rowIndices) return;
+    var count = rowIndices.split(',').filter(Boolean).length;
+    if (!confirm('Re-run investigation for ' + count + ' errored row(s)? This will overwrite their existing Error verdicts.')) return;
+
+    var nameEl = document.getElementById('qc-name');
+    var name = nameEl ? nameEl.value.trim() : '';
+    if (!name) return;
+
+    var resultsArea = document.getElementById('qc-results');
+    var formData = new FormData();
+    formData.append('name', name);
+    formData.append('rerun', '1');
+    formData.append('row_indices', rowIndices);
+
+    qcShowProgress(INVESTIGATE_STEPS);
+
+    var buttons = document.querySelectorAll('.qc-actions .btn');
+    buttons.forEach(function(b) { b.disabled = true; });
+    button.disabled = true;
+
+    fetch('/qc/investigate', { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            qcHideProgress();
+            resultsArea.innerHTML = html;
+            htmx.process(resultsArea);
+            htmx.ajax('GET', '/qc/analyses', '#qc-analyses-list');
+            if (name) loadQcPptPanel(name);
         })
         .catch(function(err) {
             qcHideProgress();
@@ -667,6 +708,8 @@ function qcConfirmExtract(mode) {
                 }
             }
             htmx.ajax('GET', '/qc/analyses', '#qc-analyses-list');
+            var refreshName = (nameEl && nameEl.value) ? nameEl.value.trim() : '';
+            if (refreshName) loadQcPptPanel(refreshName);
         })
         .catch(function(err) {
             qcHideProgress();
@@ -762,6 +805,8 @@ function qcRun(action) {
                 }
             }
             htmx.ajax('GET', '/qc/analyses', '#qc-analyses-list');
+            var refreshName = (nameEl && nameEl.value) ? nameEl.value.trim() : '';
+            if (refreshName) loadQcPptPanel(refreshName);
         })
         .catch(function(err) {
             qcHideProgress();
@@ -806,7 +851,115 @@ function loadQcAnalysis(name) {
                         htmx.process(resultsArea);
                     });
             }
+
+            loadQcPptPanel(name);
         });
+}
+
+/* ---- QC PPT panel ---- */
+
+function loadQcPptPanel(name) {
+    var panel = document.getElementById('qc-ppt-panel');
+    if (!panel || !name) return;
+    fetch('/qc/' + encodeURIComponent(name) + '/ppt')
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            panel.innerHTML = html;
+            htmx.process(panel);
+            qcPptUpdateSelectionSummary();
+            var cbs = panel.querySelectorAll('.qc-ppt-cls-cb');
+            cbs.forEach(function(cb) {
+                cb.addEventListener('change', qcPptUpdateSelectionSummary);
+            });
+        })
+        .catch(function() { panel.innerHTML = ''; });
+}
+
+function qcPptCurrentName() {
+    var panel = document.getElementById('qc-ppt-panel');
+    if (!panel) return '';
+    var section = panel.querySelector('.qc-ppt-section');
+    if (section && section.dataset.analysisName) return section.dataset.analysisName;
+    var nameEl = document.getElementById('qc-name');
+    return nameEl ? nameEl.value.trim() : '';
+}
+
+function qcPptSelectedClassifications() {
+    var cbs = document.querySelectorAll('.qc-ppt-cls-cb:checked');
+    var out = [];
+    cbs.forEach(function(cb) { out.push(cb.value); });
+    return out;
+}
+
+function qcPptUpdateSelectionSummary() {
+    var summary = document.getElementById('qc-ppt-selection-summary');
+    if (!summary) return;
+    var panel = document.getElementById('qc-ppt-panel');
+    if (!panel) return;
+
+    var totals = { Gap: 0, Partial: 0, Adequate: 0 };
+    var labels = panel.querySelectorAll('.qc-ppt-cb');
+    labels.forEach(function(lbl) {
+        var cb = lbl.querySelector('.qc-ppt-cls-cb');
+        var countEl = lbl.querySelector('.qc-ppt-cb-count');
+        if (!cb || !countEl) return;
+        var m = countEl.textContent.match(/\((\d+)\)/);
+        if (m) totals[cb.value] = parseInt(m[1], 10);
+    });
+
+    var selected = qcPptSelectedClassifications();
+    var count = 0;
+    selected.forEach(function(c) { count += (totals[c] || 0); });
+
+    if (selected.length === 0) {
+        summary.textContent = 'No classifications selected.';
+    } else {
+        summary.textContent = count + ' finding' + (count === 1 ? '' : 's') +
+            ' selected (' + selected.join(', ') + ')';
+    }
+}
+
+function qcPptGenerate() {
+    var name = qcPptCurrentName();
+    if (!name) { alert('Load an analysis first.'); return; }
+    var classifications = qcPptSelectedClassifications();
+    if (classifications.length === 0) {
+        alert('Select at least one classification to include.');
+        return;
+    }
+    /* TODO Step 3: POST to /qc/{name}/ppt/generate with classifications +
+       instructions, write inputs.json, spawn Claude Code windowed session. */
+    alert('Generate not yet wired (Step 3).\n\nWould include: ' +
+          classifications.join(', ') + '\n\nInstructions: ' +
+          (document.getElementById('qc-ppt-instructions').value || '(none)'));
+}
+
+function qcPptViewVersion(num) {
+    var name = qcPptCurrentName();
+    if (!name) return;
+    fetch('/qc/' + encodeURIComponent(name) + '/ppt/view/' + num)
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            var detail = document.getElementById('qc-ppt-detail');
+            if (detail) {
+                detail.innerHTML = html;
+                htmx.process(detail);
+            }
+        });
+}
+
+function qcPptResume(num) {
+    /* TODO Step 3: POST to /qc/{name}/ppt/{num}/resume to relaunch Claude
+       Code with the captured session_id.txt. */
+    alert('Resume not yet wired (Step 3). Would resume PPT run v' +
+          String(num).padStart(3, '0') + '.');
+}
+
+function qcPptRunAgain(num) {
+    /* TODO Step 3: same as Generate, but seeded from this version's
+       inputs.json (classifications + instructions pre-filled). */
+    alert('Run Again not yet wired (Step 3). Would clone v' +
+          String(num).padStart(3, '0') + ' inputs into a new run.');
 }
 
 function qcToggleAll(masterCheckbox) {

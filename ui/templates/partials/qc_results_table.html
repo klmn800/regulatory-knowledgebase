@@ -33,18 +33,26 @@
 
         {% if errored_count > 0 %}
         {% set first_error = (findings | selectattr('coverage', 'equalto', 'Error') | list | first) %}
+        {% set errored_row_indices = findings | selectattr('coverage', 'equalto', 'Error') | map(attribute='row_index') | unique | list %}
         <div class="qc-error-banner" role="alert">
             <div class="qc-error-banner-header">
                 <strong>{{ errored_count }} of {{ findings | length }} findings errored during investigation.</strong>
             </div>
             <p>
-                The judge API call failed for these findings. They aren't real verdicts —
+                The investigation step failed for these findings. They aren't real verdicts —
                 the table marks them as <span class="coverage-badge error">Error</span>. Re-run
                 investigate after resolving the underlying issue (typically API credit, rate
-                limit, or auth).
+                limit, auth, or a transient backend error).
             </p>
+            <div style="margin-top:0.5rem;">
+                <button class="btn btn-sm btn-outline"
+                        data-row-indices="{{ errored_row_indices | join(',') }}"
+                        onclick="qcRerunErrored(this)">
+                    Re-run errored rows only ({{ errored_row_indices | length }})
+                </button>
+            </div>
             {% if first_error and (first_error.error or first_error.gap_description) %}
-            <details>
+            <details style="margin-top:0.5rem;">
                 <summary>Last error message</summary>
                 <pre class="qc-error-pre">{{ first_error.error or first_error.gap_description }}</pre>
             </details>
