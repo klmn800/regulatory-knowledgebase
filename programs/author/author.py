@@ -341,7 +341,7 @@ def launch_draft(
         f'echo  Draft output: {draft_file}\n'
         f'echo  Session ID: {session_id}\n'
         f'echo.\n'
-        f'claude --session-id {session_id} "{initial_msg}"\n'
+        f'claude --permission-mode auto --session-id {session_id} "{initial_msg}"\n'
         f'echo.\n'
         f'echo  === Draft session complete ===\n'
         f'echo.\n'
@@ -371,7 +371,7 @@ def launch_resume(
         f'echo.\n'
         f'echo  Resuming session: {session_id}\n'
         f'echo.\n'
-        f'claude --resume {session_id}\n'
+        f'claude --permission-mode auto --resume {session_id}\n'
         f'echo.\n'
         f'pause\n',
         encoding="utf-8",

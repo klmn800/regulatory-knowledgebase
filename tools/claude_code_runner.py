@@ -108,7 +108,7 @@ def _run_piped(prompt, result_file, timeout, cwd, log_dir, task_id, start,
     try:
         proc = subprocess.run(
             ["claude", "-p", "--output-format", "json",
-             "--dangerously-skip-permissions"],
+             "--permission-mode", "auto"],
             input=prompt,
             capture_output=True,
             text=True,
@@ -180,7 +180,7 @@ def _run_windowed(prompt_file, result_file, timeout, cwd, log_dir, task_id, star
         f'@echo off\n'
         f'cd /d {cwd}\n'
         f'title Claude Code - {task_id}\n'
-        f'start "" cmd /k "claude --dangerously-skip-permissions'
+        f'start "" cmd /k "claude --permission-mode auto'
         f' @{prompt_path}"\n',
         encoding="utf-8",
     )
@@ -197,8 +197,6 @@ def _run_windowed(prompt_file, result_file, timeout, cwd, log_dir, task_id, star
             "success": False,
             "error": f"Could not launch batch file: {e}",
         }
-
-    _auto_accept_bypass_prompt()
 
     deadline = start + timeout
     poll_interval = 5
@@ -228,39 +226,6 @@ def _run_windowed(prompt_file, result_file, timeout, cwd, log_dir, task_id, star
     )
     result["session_id"] = None  # Not available in windowed mode
     return result
-
-
-def _auto_accept_bypass_prompt():
-    """Send keystrokes to accept Claude Code's bypass permissions prompt.
-
-    The bypassPermissions mode shows a confirmation dialog:
-        1. No, exit
-        2. Yes, I accept
-    This sends '2' + Enter after a delay to auto-accept it.
-    Pattern from the proven autofix system.
-    """
-    print("  Waiting for Claude Code bypass prompt...")
-    time.sleep(15)
-
-    try:
-        ps_script = (
-            'Add-Type -AssemblyName System.Windows.Forms; '
-            'Start-Sleep -Milliseconds 500; '
-            '[System.Windows.Forms.SendKeys]::SendWait("2{ENTER}")'
-        )
-        result = subprocess.run(
-            ["powershell", "-Command", ps_script],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.returncode == 0:
-            print("  Bypass prompt accepted")
-        else:
-            print(f"  WARNING: SendKeys failed: {result.stderr}")
-    except Exception as e:
-        print(f"  WARNING: Could not auto-accept prompt: {e}")
-        print("  You may need to manually press 2 + Enter in the Claude window")
 
 
 def _read_result(result_file, session_log, elapsed, parse_json=True):
