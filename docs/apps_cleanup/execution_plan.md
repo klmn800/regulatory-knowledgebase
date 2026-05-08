@@ -21,8 +21,9 @@ Created 2026-05-06. Cleanup audits complete (QC, comparator, search, author, syn
 | Synthesis migration | ✅ **Complete (2026-05-06)** — all four shared modules wired in. SynthesisResult `error: str | None` field added. Resolved synthesis F3 (run_standard retry), F6 (duplicated APIError handler), F11 (no error signal), F15 (manual deepcopy), F22 (FNS chunk_n/total). |
 | QC architecture pass | ✅ **Complete (2026-05-07)** — three additional decisions resolved (#9 program filters, #10 folder layout, #11 trace storage). Sub-steps refined; specific filter lists locked in. |
 | QC migration | ✅ **Complete (2026-05-07)** — all 5 sub-steps done. `qc_analyzer.py` 1,658 → 992 lines (-40%). Commits: `f5cf65c`, `6ad0141`, `d3ab4ed`, `f2c8d3a`, `a9d3dfc`, `d8886ea`, `48367fe`, `5edb987`. See "QC migration outcome" section below. |
-| **Next: Comparator migration** | **Apply same shared modules + filter system shape to comparator. New session.** |
-| Migrate comparator → search → author | After QC validates the shapes |
+| Comparator migration | ✅ **Complete (2026-05-07)** — all 4 sub-steps done. `comparator.py` 1,757 → 1,700 lines (−57 net). Commits: `93a3789`, `e017546`, `81fc5a2`, `b363f50`. See "Comparator migration outcome" section below. |
+| **Next: Search migration** | **Smaller surface — most logic already in `tools/synthesis.py`. New session.** |
+| Migrate search → author | After comparator validates the shapes |
 
 ## QC migration sub-steps (added 2026-05-06, refined 2026-05-07)
 
@@ -82,6 +83,40 @@ cmr_exclude = EA
 cfr_include = SNAP, QC, Issuance, Disaster, Summer-EBT
 cfr_exclude = Administration
 ```
+
+## Comparator migration outcome (closed 2026-05-07)
+
+**Total reduction**: `programs/comparator/comparator.py` went from 1,757 → 1,700 lines (−57 net) across 4 commits. Line-count delta is small because of necessary docstring expansion in sub-step 4; internals are substantially cleaner.
+
+**Per sub-step**:
+- **1 (`93a3789`)** — apply 4 shared modules: drop local `PRICING` dict (auto-fixes B1 wrong Haiku rates), `TokenTracker` class, three near-duplicate search-result formatters (OLG/CMR/CFR; `format_fns_for_prompt` retained — different shape), and two inline tool defs. Five Anthropic call sites wrapped with `@with_rate_limit_retry()` (L0, L1, L2 agentic loop, L3 CMR, L3 CFR). L2 uses the per-iteration closure pattern to preserve agentic-loop messages state across retries. `run_layer2_claude_code` (subprocess) intentionally not wrapped. Per-layer token diffs (`_tokens_in`, `_tokens_out`, `_cost`) captured at orchestrator boundaries via `before = tracker.total(); after = tracker.total()`. Side benefit: fixed pre-existing CSV bug where every row carried the last-section's broken counters.
+- **2 (`e017546`)** — collapse `run_layer3` (CMR) + `run_layer3_cfr` (CFR) into one `run_layer3(source, ...)` driven by module-level `LAYER3_CONFIG` dict (per-source: `prompt_name`, `results_header`, `fallback_extras`). Persistence keys `_layer3` / `_layer3_cfr` preserved for `report.py` compat. Converge `extract_json` signature with QC's pattern: `fallback: dict | None = None`; each callsite passes its own shape. Closed a latent L0 bug: prior fallback returned `{classification, confidence, note}` to a layer whose prompt schema is `{label, reason}`; downstream shim was patching the mismatch (deleted). Trivial collapse of `query_cmr` + `query_cfr` into `query_source(source, ...)`.
+- **3 (`81fc5a2`)** — separate L2 search budget from turn budget. New `[comparator] max_searches = 10` config key; `max_turns = max_searches + 5` formula in code (15 turns total — same as prior hardcoded value, just decomposed). `search_olg` is capped; `lookup_fns_section` is uncapped (deterministic lookup, not fuzzy retrieval). Budget exhaustion returns "finalize now" tool result rather than terminating, mirroring QC's judge pattern. Up-front "You have N searches available" hint in user message; `[N searches remaining]` running counter appended to each successful search response. Bug fix: full-loop exhaustion previously returned `searches_performed: max_turns` (= 15) — now reflects the real counter.
+- **4 (`b363f50`)** — tail cleanup: orphan sweep clean (zero true orphans across sub-steps 1-3); remove dead `confidence` field from L3 fallbacks (no consumer reads it); rewrite module docstring (was claiming Sonnet, actually Haiku via API engine — describes both engines + L3 parameterization + search-budget separation now); fix `report.py` docstring path (was pre-restructure `agents/report.py`); remove dead `queries_per_section` config key (zero references); dedupe `fns_chapters_to_compare` (3 reads → 1 via `_resolve_chapters` helper) and `anthropic_api_key` (2 reads → 1 via `_make_anthropic_client` helper).
+
+**Latent bugs fixed during the migration** (worth knowing for anyone diffing pre/post-migration outputs):
+- Pre-migration CSV per-row `tokens_in` / `tokens_out` / `est_cost` columns showed the *last-section's* values for every row — `reset_section()` was inside per-section loops but `build_csv_row` ran in a separate later pass. Post-migration values are per-row-accurate. (sub-step 1)
+- L0 `extract_json` fallback returned `{"classification": ...}` to a layer whose prompt schema is `{"label": ...}`. Silent failure mode; downstream shim was patching the mismatch. (sub-step 2)
+- `searches_performed` field on full-loop-exhaustion rows was the constant `max_turns` (= 15), not a real measurement. (sub-step 3)
+
+**Behavior change watch-items captured**:
+- **Parallel-L2 per-section diff race** — the `before = tracker.total(); ...; after = tracker.total()` pattern for per-section attribution is no worse than the prior `tracker.record` race. Aggregate cost remains correct at any `--parallel`. Per-section L2 token diffs may be slightly off when `--parallel > 1`. Acceptable; not worth resolving in cleanup.
+- **Budget-aware Claude searches more thoroughly** — same section, same model, same prompt: 7 searches without budget hint (sub-step 2 baseline) → 10 searches with the up-front hint + `[N remaining]` running counter (sub-step 3). Could be helpful prompting eliciting more thorough investigation, or pacing pressure padding the count. Watch the average `searches_performed` trend.
+- **`max_searches = 10` calibrated against section 980** — at `2`, returns `partial_match`; at `10`, returns `confirmed_gap`. Use 980 as the regression test if anyone proposes changing it.
+
+**Config to add to fresh checkouts** (config.ini gitignored):
+```ini
+[comparator]
+max_searches = 10
+```
+The orchestrator falls back to `10` when the key is missing, so fresh checkouts work without the explicit line — but adding it makes the budget visible at the config layer.
+
+**Open items NOT addressed in cleanup arc** (deferrable, audit findings):
+- F10/F11 (`report.py` methodology footer omits CFR; says L2 is Claude Code only) — categorized as CFR rollout follow-up per 2026-05-06 decisions, not architectural drift
+- F19 (layer-model `fallback=` policy inconsistency) — premature-flexibility cleanup, separate pass
+- F22 (all four `layer{0-3}_model` keys point to Haiku) — same
+- F23 (`layer0_model` ordering in config.ini) — cosmetic
+- F12-F17 (`report.py` findings) — separate report.py cleanup arc
 
 ## Shared module specs
 
