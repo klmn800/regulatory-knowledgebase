@@ -617,6 +617,58 @@ def run_seed_searches(queries: list[str], olg_clients: dict,
 # ============================================================
 # CALL 2: JUDGE (AGENTIC)
 # ============================================================
+#
+# CANONICAL JUDGE TRACE SCHEMA
+# ----------------------------
+# Every judge engine (API, Claude Code, future) MUST return a trace
+# conforming to this shape so the audit walker, inspect_finding.py,
+# recurring-gap heuristic, and UI rendering stay engine-agnostic.
+#
+# judge_trace: list[turn_entry]
+#
+# turn_entry = {
+#     "turn":         int,           # 0 = seed (no LLM call); 1+ = LLM turns
+#     "stop_reason":  str,            # "seed" | "tool_use" | "end_turn"
+#                                     # | "max_tokens" | "budget_exhausted"
+#     "tokens": {
+#         "input":    int,            # 0 for the seed entry
+#         "output":   int,
+#     },
+#     "reasoning":    str,            # The model's text reasoning for this
+#                                     # turn (empty string for seed)
+#     "tool_calls":   list[tool_call],
+#     "tool_results": list[tool_result],
+# }
+#
+# tool_call = {
+#     "query":            str,        # The OLG search query
+#     "search_number":    int,        # Globally unique within this finding;
+#                                     # 0 for seed queries
+#     "budget_exhausted": bool,       # Optional; True iff the budget guard
+#                                     # rejected this call
+# }
+#
+# tool_result = {
+#     "result_count":     int,
+#     "results":          list[result_summary],   # Empty if budget exhausted
+#     "status":           str,                     # Optional; e.g.
+#                                                  # "budget_exhausted"
+# }
+#
+# result_summary = {
+#     "id":               str,        # ChromaDB chunk id
+#     "score":            float,
+#     "page_title":       str,
+#     "section_heading":  str,
+#     "url":              str,
+#     "text_preview":     str,         # Capped (~300 chars)
+# }
+#
+# Engines that wrap a different toolset (e.g. Claude Code calling
+# `python rag/query.py ... --json` via Bash) must translate their
+# native event stream into this shape before persisting. Citations
+# referenced by olg_references are validated against
+# tool_results[*].results[*].url and result_summary.page_title.
 
 def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
               olg_clients: dict, client: anthropic.Anthropic,
@@ -1084,7 +1136,11 @@ def _investigate_one_finding(
     olg_clients, claude, judge_model: str, judge_prompt: str,
     max_judge_searches: int, olg_results_per_search: int,
     seed_results_per_query: int,
-    olg_programs, locked_tracker
+    olg_programs, locked_tracker,
+    judge_engine: str = "claude-code",
+    analysis_dir: Path | None = None,
+    row_index: int | None = None,
+    finding_index: int | None = None,
 ) -> dict:
     """Run seed search + judge for one finding. Returns the field updates
     to merge into the finding dict.
@@ -1092,6 +1148,11 @@ def _investigate_one_finding(
     Pure function — does not mutate `finding`. Thread-safe given thread-safe
     inputs (claude HTTP client is, ChromaDB clients are shared safely per
     comparator pattern, locked_tracker wraps Tracker.record()).
+
+    Routes to the API or Claude Code judge engine based on `judge_engine`.
+    Both engines return a (judge_result, judge_trace) tuple conforming to
+    the canonical judge trace schema (see qc_analyzer.py just above
+    run_judge for the schema).
     """
     extractor_result = {
         "policy_issues": finding.get("policy_issues", ""),
@@ -1104,14 +1165,24 @@ def _investigate_one_finding(
         programs=olg_programs,
     )
 
-    judge_result, judge_trace = run_judge(
-        original_row, extractor_result, seed_results, olg_clients,
-        claude, judge_model, judge_prompt,
-        max_searches=max_judge_searches,
-        results_per_search=olg_results_per_search,
-        cost_tracker=locked_tracker,
-        olg_programs=olg_programs,
-    )
+    if judge_engine == "claude-code":
+        from programs.qc.judge_claude_code import run_judge_claude_code
+        judge_result, judge_trace = run_judge_claude_code(
+            original_row, extractor_result, seed_results,
+            analysis_dir=analysis_dir,
+            row_index=row_index,
+            finding_index=finding_index,
+            max_searches=max_judge_searches,
+        )
+    else:
+        judge_result, judge_trace = run_judge(
+            original_row, extractor_result, seed_results, olg_clients,
+            claude, judge_model, judge_prompt,
+            max_searches=max_judge_searches,
+            results_per_search=olg_results_per_search,
+            cost_tracker=locked_tracker,
+            olg_programs=olg_programs,
+        )
 
     return {
         "coverage": judge_result.get("coverage", "Unknown"),
@@ -1123,6 +1194,9 @@ def _investigate_one_finding(
         "all_search_queries": judge_result.get("all_search_queries", []),
         "error": judge_result.get("error"),
         "judge_trace": judge_trace,
+        "_session_id": judge_result.get("_session_id"),
+        "_engine": judge_result.get("_engine", judge_engine),
+        "_elapsed": judge_result.get("_elapsed"),
     }
 
 
@@ -1160,6 +1234,13 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
                                            fallback=5)
     parallel = config.getint("qc_analyzer", "investigate_parallel",
                              fallback=4)
+    judge_engine = config.get("qc_analyzer", "judge_engine",
+                              fallback="claude-code").strip()
+    if judge_engine not in ("claude-code", "api"):
+        raise ValueError(
+            f"qc_analyzer.judge_engine must be 'claude-code' or 'api', "
+            f"got {judge_engine!r}"
+        )
     judge_prompt = load_prompt("qc_judge", with_preamble=True)
 
     api_key = config.get("api", "anthropic_api_key")
@@ -1248,6 +1329,10 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
                 max_judge_searches, olg_results_per_search,
                 seed_results_per_query,
                 olg_programs, locked_tracker,
+                judge_engine=judge_engine,
+                analysis_dir=analysis_dir,
+                row_index=row_idx,
+                finding_index=finding_idx,
             )
             return row_idx, finding_idx, updates, None
         except Exception as e:  # noqa: BLE001 — surface error in result
@@ -1291,6 +1376,7 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
             meta["phases"] = {}
         meta["phases"]["investigated"] = True
         meta["investigated_rows"] = row_indices
+        meta["judge_engine"] = judge_engine
         if "cost" not in meta:
             meta["cost"] = {}
         judge_data = cost_tracker.by_stage()["judge"]

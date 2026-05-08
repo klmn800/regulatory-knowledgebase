@@ -266,12 +266,25 @@
                                         Send to Author
                                     </button>
                                     {% endif %}
+                                    {% if f._session_id %}
+                                    <button class="btn btn-sm btn-outline"
+                                            hx-post="/qc/judge_resume/{{ name }}/{{ f.row_index }}/{{ f.finding_index }}"
+                                            hx-target="#qc-resume-status-{{ f.detail_id }}"
+                                            hx-swap="innerHTML"
+                                            onclick="event.stopPropagation();"
+                                            title="Open a terminal resuming the Claude Code judge session for this finding">
+                                        Resume in terminal
+                                    </button>
+                                    {% endif %}
                                     <a href="/qc/finding/{{ name }}/{{ f.row_index }}" target="_blank"
                                        class="btn btn-sm btn-outline" style="text-decoration:none; margin-left:0.25rem;"
                                        onclick="event.stopPropagation();">
                                         View JSON
                                     </a>
                                 </div>
+                                {% if f._session_id %}
+                                <div id="qc-resume-status-{{ f.detail_id }}" class="qc-resume-status-slot"></div>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>

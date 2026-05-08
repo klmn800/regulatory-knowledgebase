@@ -1252,6 +1252,49 @@ async def qc_finding_json(name: str, row_index: int):
     return JSONResponse(finding)
 
 
+@app.post("/qc/judge_resume/{name}/{row_index}/{finding_index}",
+          response_class=HTMLResponse)
+async def qc_judge_resume(name: str, row_index: int, finding_index: int):
+    """Open a terminal resuming the Claude Code judge session for a finding."""
+    from programs.qc.qc_analyzer import load_finding as _load_finding
+    from programs.qc.judge_claude_code import launch_judge_resume
+
+    analysis_dir = get_analysis_dir(name)
+    row = _load_finding(analysis_dir, row_index)
+    if not row:
+        return HTMLResponse("<p>Finding not found.</p>", status_code=404)
+
+    findings = row.get("findings", [])
+    target = next(
+        (f for f in findings if f.get("finding_index") == finding_index),
+        None,
+    )
+    if not target:
+        return HTMLResponse(
+            f"<p>Finding {finding_index} not found in row {row_index}.</p>",
+            status_code=404,
+        )
+
+    session_id = target.get("_session_id")
+    if not session_id:
+        return HTMLResponse(
+            "<p>This finding has no Claude Code session ID — it was either "
+            "judged via the API engine, or pre-dates the dual-engine "
+            "support. Re-run investigate via the Claude Code engine to "
+            "produce a resumable session.</p>",
+            status_code=400,
+        )
+
+    label = f"{name} {row_index}.{finding_index}"
+    await asyncio.to_thread(launch_judge_resume, session_id, label)
+
+    return HTMLResponse(
+        f'<div class="qc-resume-status">Terminal opened. '
+        f'Resuming session <code>{session_id[:8]}…</code> for '
+        f'finding {row_index}.{finding_index}.</div>'
+    )
+
+
 @app.get("/qc/download/{name}")
 async def qc_download(name: str):
     """Download the summary CSV."""
@@ -1267,13 +1310,26 @@ async def qc_download(name: str):
 
 
 # ------------------------------------------------------------
-# QC PPT panel (Step 2: UI only — no generation backend yet)
+# QC PPT panel + orchestration
 # ------------------------------------------------------------
 
+from programs.qc.ppt_generator import (
+    ensure_pptx_built as _ppt_ensure_built,
+    generate_ppt as _ppt_generate,
+    resume_ppt as _ppt_resume,
+    run_ppt_again as _ppt_run_again,
+    read_metadata as _ppt_read_metadata,
+)
+
+
 def _list_ppt_versions(runs_dir: Path) -> list[dict]:
-    """Enumerate PPT runs under output/qc_analysis/{name}_{ts}/ppt/runs/.
+    """Enumerate PPT runs under output/qc_analysis/{name_ts}/ppt/runs/.
     Each entry: {num, ts, has_outline, has_pptx, has_session, classifications,
-    selected_count}. Returns [] if dir is missing."""
+    selected_count, format_status, format_error}. Returns [] if dir missing.
+
+    Side effect: calls ensure_pptx_built() on each run so newly-arrived
+    outline.json files get formatted opportunistically. Idempotent — built
+    runs short-circuit immediately."""
     if not runs_dir.exists():
         return []
     out = []
@@ -1285,6 +1341,10 @@ def _list_ppt_versions(runs_dir: Path) -> list[dict]:
         except (ValueError, IndexError):
             continue
         ts = d.name.split("_", 1)[1] if "_" in d.name else ""
+
+        # Lazy format: turn outline.json → output.pptx the moment it appears.
+        _ppt_ensure_built(d)
+
         entry = {
             "num": num,
             "ts": ts,
@@ -1309,6 +1369,13 @@ def _list_ppt_versions(runs_dir: Path) -> list[dict]:
                 entry["selected_count"] = len(inputs.get("selected_findings", []) or [])
             except (json.JSONDecodeError, OSError):
                 pass
+
+        meta = _ppt_read_metadata(d)
+        if meta:
+            entry["format_status"] = meta.get("format_status")
+            entry["format_error"] = meta.get("format_error")
+            entry["format_warnings"] = meta.get("format_warnings", [])
+
         out.append(entry)
     return out
 
@@ -1378,6 +1445,19 @@ def _ppt_panel_context(name: str, version: int | None = None) -> dict:
     }
 
 
+def _parse_classifications(raw: str) -> list[str]:
+    """Comma-separated 'Gap,Partial,Adequate' → list, dedup + drop unknowns."""
+    valid = {"Gap", "Partial", "Adequate"}
+    seen = set()
+    out = []
+    for token in (raw or "").split(","):
+        t = token.strip()
+        if t in valid and t not in seen:
+            out.append(t)
+            seen.add(t)
+    return out
+
+
 @app.get("/qc/{name}/ppt", response_class=HTMLResponse)
 async def qc_ppt_panel(request: Request, name: str):
     """Render the PPT generation panel for a QC analysis."""
@@ -1397,6 +1477,166 @@ async def qc_ppt_view_version(request: Request, name: str, version_num: int):
         request, "partials/qc_ppt_run_detail.html",
         {"name": name, "view": ctx["view"]},
     )
+
+
+@app.post("/qc/{name}/ppt/generate", response_class=HTMLResponse)
+async def qc_ppt_generate(
+    request: Request,
+    name: str,
+    classifications: str = Form(""),
+    instructions: str = Form(""),
+):
+    """Spawn a windowed Claude Code session that writes outline.json into a
+    new versioned run dir. Returns the panel partial reflecting the new run."""
+    analysis_dir = get_analysis_dir(name)
+    if not analysis_dir.exists():
+        return HTMLResponse("<p>Analysis not found.</p>", status_code=404)
+
+    cls = _parse_classifications(classifications)
+    if not cls:
+        return HTMLResponse(
+            "<p>Select at least one classification (Gap, Partial, Adequate).</p>",
+            status_code=400,
+        )
+
+    rows = load_all_findings(analysis_dir)
+    flat = flatten_findings(rows) if rows else []
+    if not any(f.get("coverage") in cls for f in flat):
+        return HTMLResponse(
+            f"<p>No findings match the selected classifications "
+            f"({', '.join(cls)}). Run Investigate first or pick a different mix.</p>",
+            status_code=400,
+        )
+
+    try:
+        result = await asyncio.to_thread(
+            _ppt_generate, analysis_dir, cls, instructions,
+        )
+    except Exception as e:
+        return HTMLResponse(f"<p>Error launching PPT generation: {e}</p>",
+                             status_code=500)
+
+    return templates.TemplateResponse(
+        request, "partials/qc_ppt_panel.html",
+        _ppt_panel_context(name, version=result["version_num"]),
+    )
+
+
+@app.post("/qc/{name}/ppt/resume/{version_num}", response_class=HTMLResponse)
+async def qc_ppt_resume(request: Request, name: str, version_num: int):
+    """Re-launch the windowed Claude Code session for an existing run."""
+    analysis_dir = get_analysis_dir(name)
+    if not analysis_dir.exists():
+        return HTMLResponse("<p>Analysis not found.</p>", status_code=404)
+
+    try:
+        await asyncio.to_thread(_ppt_resume, analysis_dir, version_num)
+    except FileNotFoundError as e:
+        return HTMLResponse(f"<p>{e}</p>", status_code=404)
+    except Exception as e:
+        return HTMLResponse(f"<p>Error resuming session: {e}</p>",
+                             status_code=500)
+
+    return templates.TemplateResponse(
+        request, "partials/qc_ppt_panel.html",
+        _ppt_panel_context(name, version=version_num),
+    )
+
+
+@app.post("/qc/{name}/ppt/run-again", response_class=HTMLResponse)
+async def qc_ppt_run_again(
+    request: Request,
+    name: str,
+    version_num: int = Form(...),
+):
+    """Clone a prior run's inputs into a new versioned run + spawn fresh CC."""
+    analysis_dir = get_analysis_dir(name)
+    if not analysis_dir.exists():
+        return HTMLResponse("<p>Analysis not found.</p>", status_code=404)
+
+    try:
+        result = await asyncio.to_thread(
+            _ppt_run_again, analysis_dir, version_num,
+        )
+    except FileNotFoundError as e:
+        return HTMLResponse(f"<p>{e}</p>", status_code=404)
+    except Exception as e:
+        return HTMLResponse(f"<p>Error cloning run: {e}</p>", status_code=500)
+
+    return templates.TemplateResponse(
+        request, "partials/qc_ppt_panel.html",
+        _ppt_panel_context(name, version=result["version_num"]),
+    )
+
+
+@app.get("/qc/{name}/ppt/{version_num}/download")
+async def qc_ppt_download(name: str, version_num: int):
+    """Serve output.pptx for a specific PPT run version."""
+    analysis_dir = get_analysis_dir(name)
+    runs_dir = analysis_dir / "ppt" / "runs"
+    if not runs_dir.exists():
+        return HTMLResponse("<p>No PPT runs.</p>", status_code=404)
+
+    target = None
+    for d in sorted(runs_dir.iterdir()):
+        if not d.is_dir():
+            continue
+        try:
+            if int(d.name.split("_", 1)[0]) == version_num:
+                target = d
+                break
+        except (ValueError, IndexError):
+            continue
+    if target is None:
+        return HTMLResponse("<p>Version not found.</p>", status_code=404)
+
+    pptx_file = target / "output.pptx"
+    if not pptx_file.exists():
+        # Try a lazy build before giving up — covers a race where the user
+        # clicks Download right after Claude Code finished outline.json.
+        await asyncio.to_thread(_ppt_ensure_built, target)
+
+    if not pptx_file.exists():
+        return HTMLResponse("<p>output.pptx not yet built.</p>", status_code=404)
+
+    return FileResponse(
+        pptx_file,
+        filename=f"{name}_v{version_num:03d}.pptx",
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    )
+
+
+@app.get("/qc/{name}/ppt/{version_num}/outline")
+async def qc_ppt_outline(name: str, version_num: int):
+    """Serve outline.json inline so the browser displays it as JSON."""
+    analysis_dir = get_analysis_dir(name)
+    runs_dir = analysis_dir / "ppt" / "runs"
+    if not runs_dir.exists():
+        return HTMLResponse("<p>No PPT runs.</p>", status_code=404)
+
+    target = None
+    for d in sorted(runs_dir.iterdir()):
+        if not d.is_dir():
+            continue
+        try:
+            if int(d.name.split("_", 1)[0]) == version_num:
+                target = d
+                break
+        except (ValueError, IndexError):
+            continue
+    if target is None:
+        return HTMLResponse("<p>Version not found.</p>", status_code=404)
+
+    outline_file = target / "outline.json"
+    if not outline_file.exists():
+        return HTMLResponse("<p>outline.json not yet written.</p>",
+                             status_code=404)
+
+    try:
+        outline = json.loads(outline_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return FileResponse(outline_file, media_type="application/json")
+    return JSONResponse(outline)
 
 
 # ============================================================
@@ -1494,6 +1734,66 @@ async def convert_download(stem: str):
     )
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+# ------------------------------------------------------------
+# QC HTML report — live render + downloadable self-contained file
+# ------------------------------------------------------------
+
+from programs.qc.html_report import (
+    generate_html as _qc_html_generate,
+    list_analysis_names as _qc_html_list_names,
+    load_analyses as _qc_html_load_analyses,
+)
+
+
+def _parse_names_param(names: Optional[str]) -> Optional[list[str]]:
+    if not names:
+        return None
+    parsed = [n.strip() for n in names.split(",") if n.strip()]
+    return parsed or None
+
+
+def _render_qc_report(names: Optional[str], selected: Optional[str]) -> tuple[str, int]:
+    """Build the HTML report on a thread-pool worker. Returns (html, status)."""
+    name_list = _parse_names_param(names)
+    selected_list = [selected] if selected else None
+    analyses = _qc_html_load_analyses(name_list)
+    if not analyses:
+        return ("<h1>No QC analyses available.</h1>"
+                "<p>Upload and run an analysis under the QC tab first.</p>", 404)
+    html = _qc_html_generate(analyses, selected=selected_list)
+    return (html, 200)
+
+
+@app.get("/qc/report", response_class=HTMLResponse)
+async def qc_report(names: Optional[str] = None, selected: Optional[str] = None):
+    """Live-render the QC HTML report.
+
+    Query params:
+        names     comma-separated analysis names; defaults to all
+        selected  single analysis name to pre-apply as the scope filter
+                  (loads all analyses but lands on a filtered view)
+    """
+    html, status = await asyncio.to_thread(_render_qc_report, names, selected)
+    return HTMLResponse(html, status_code=status)
+
+
+@app.get("/qc/report/download")
+async def qc_report_download(names: Optional[str] = None, selected: Optional[str] = None):
+    """Download the QC HTML report as a self-contained .html file."""
+    html, status = await asyncio.to_thread(_render_qc_report, names, selected)
+    if status != 200:
+        return HTMLResponse(html, status_code=status)
+    ts = datetime.now().strftime("%Y%m%d_%H%M")
+    filename = f"qc_report_{ts}.html"
+    return HTMLResponse(
+        html,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 if __name__ == "__main__":
