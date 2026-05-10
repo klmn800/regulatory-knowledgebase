@@ -443,7 +443,14 @@ def load_meta(analysis_dir: Path) -> dict | None:
 
 
 def generate_summary_csv(analysis_dir: Path) -> Path:
-    """Build a summary CSV — one row per (row_index, finding_index)."""
+    """Build a summary CSV — one row per (row, finding).
+
+    Column order mirrors the HTML report: verdict + investigation
+    detail up front, cross-checks next, engine metadata after, case
+    identity at the far right. Cross-check columns are always emitted
+    (empty when the phase didn't run) so CSVs from different runs are
+    diff-comparable for engine A/B testing.
+    """
     rows = load_all_findings(analysis_dir)
     if not rows:
         return None
@@ -455,23 +462,26 @@ def generate_summary_csv(analysis_dir: Path) -> Path:
     csv_path = analysis_dir / "summary.csv"
 
     summary_columns = [
-        "row_index", "finding_index", "review_number", "tao", "error_amount",
-        "determination", "error_type", "policy_issues", "coverage",
-        "confidence", "gap_description", "olg_references",
-        "searches_performed",
+        # Verdict
+        "display_index", "coverage", "confidence",
+        # Investigation detail
+        "policy_issues", "reasoning", "gap_description",
+        "olg_references", "searches_performed",
+        # Cross-checks
+        "cmr_classification", "cmr_sections", "cmr_note",
+        "fns_classification", "fns_sections", "fns_note",
+        "cfr_classification", "cfr_sections", "cfr_note",
+        # Engine metadata (A/B columns)
+        "engine", "session_id", "elapsed_sec", "error",
+        # Case identity (far right)
+        "row_index", "finding_index", "review_number", "apid", "tao",
+        "error_amount", "determination", "error_type",
     ]
-    if any("_cmr_check" in f for f in flat):
-        summary_columns.extend([
-            "cmr_classification", "cmr_sections", "cmr_note",
-        ])
-    if any("_fns_check" in f for f in flat):
-        summary_columns.extend([
-            "fns_classification", "fns_sections", "fns_note",
-        ])
-    if any("_cfr_check" in f for f in flat):
-        summary_columns.extend([
-            "cfr_classification", "cfr_sections", "cfr_note",
-        ])
+
+    def _join(value):
+        if isinstance(value, list):
+            return "; ".join(str(v) for v in value)
+        return str(value) if value else ""
 
     with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=summary_columns,
@@ -479,27 +489,30 @@ def generate_summary_csv(analysis_dir: Path) -> Path:
         writer.writeheader()
         for entry in flat:
             row = {k: entry.get(k, "") for k in summary_columns}
-            refs = entry.get("olg_references", [])
-            if isinstance(refs, list):
-                row["olg_references"] = "; ".join(str(r) for r in refs)
+            row["olg_references"] = _join(entry.get("olg_references", []))
+
             cmr = entry.get("_cmr_check") or {}
-            if cmr:
-                row["cmr_classification"] = cmr.get("classification", "")
-                secs = cmr.get("cmr_sections", [])
-                row["cmr_sections"] = "; ".join(secs) if isinstance(secs, list) else str(secs)
-                row["cmr_note"] = cmr.get("note", "")
+            row["cmr_classification"] = cmr.get("classification", "")
+            row["cmr_sections"] = _join(cmr.get("cmr_sections", []))
+            row["cmr_note"] = cmr.get("note", "")
+
             fns = entry.get("_fns_check") or {}
-            if fns:
-                row["fns_classification"] = fns.get("classification", "")
-                secs = fns.get("fns_sections", [])
-                row["fns_sections"] = "; ".join(secs) if isinstance(secs, list) else str(secs)
-                row["fns_note"] = fns.get("note", "")
+            row["fns_classification"] = fns.get("classification", "")
+            row["fns_sections"] = _join(fns.get("fns_sections", []))
+            row["fns_note"] = fns.get("note", "")
+
             cfr = entry.get("_cfr_check") or {}
-            if cfr:
-                row["cfr_classification"] = cfr.get("classification", "")
-                secs = cfr.get("cfr_sections", [])
-                row["cfr_sections"] = "; ".join(secs) if isinstance(secs, list) else str(secs)
-                row["cfr_note"] = cfr.get("note", "")
+            row["cfr_classification"] = cfr.get("classification", "")
+            row["cfr_sections"] = _join(cfr.get("cfr_sections", []))
+            row["cfr_note"] = cfr.get("note", "")
+
+            row["engine"] = entry.get("_engine", "")
+            row["session_id"] = entry.get("_session_id", "")
+            elapsed = entry.get("_elapsed")
+            row["elapsed_sec"] = (
+                f"{elapsed:.1f}" if isinstance(elapsed, (int, float)) else ""
+            )
+
             writer.writerow(row)
 
     return csv_path
