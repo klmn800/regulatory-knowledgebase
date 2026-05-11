@@ -35,7 +35,7 @@ def inspect(analysis_dir, row_num, finding_idx, by_url, by_title):
     f = d["findings"][finding_idx - 1]
 
     print(f"═══ Row {row_num} Finding {finding_idx} ═══")
-    print(f'Review #: {d.get("review_number")}, Det: {d.get("determination")}, Error: ${d.get("error_amount")}')
+    print(f'Review #: {d.get("review_number")}, Det: {d.get("determination")}')
     print("Narrative (full):")
     print(d.get("finding_narrative", ""))
     print()

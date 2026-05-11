@@ -23,10 +23,8 @@ The user kickoff message will tell you:
       "row_index": 1,
       "finding_index": 1,
       "display_index": "1.1",
-      "review_number": "...",
       "error_type": "...",
       "determination": "...",
-      "error_amount": "...",
       "policy_issues": "<the abstract policy issue>",
       "coverage": "Gap | Partial | Adequate",
       "confidence": "HIGH | MEDIUM | LOW",
@@ -68,7 +66,7 @@ If validation reports anything beyond bullet-length warnings, fix it and re-vali
 
 ## Slide schema
 
-Every slide is one of five types. Required fields are non-negotiable; the validator rejects malformed slides.
+Every slide is one of six types. Required fields are non-negotiable; the validator rejects malformed slides.
 
 ### `title` — opener
 ```json
@@ -122,7 +120,25 @@ Every row must have exactly `len(headers)` cells. Good for "X findings across Y 
 ```
 The 120-char rule applies to bullets in both columns. This is the natural shape for a per-finding gap slide: left column = what OLG covers, right column = what CMR/FNS/CFR require that OLG doesn't say.
 
-All five types accept an optional `notes` field for speaker notes (see Speaker notes below).
+### `citations` — source references, grouped
+```json
+{
+  "type": "citations",
+  "title": "References",
+  "sources": {
+    "olg": ["Page Title 1", "Page Title 2"],
+    "cmr": ["362.330 — Good Cause Criteria", "362.340"],
+    "fns": ["1021.1 Positive Allegation"],
+    "cfr": ["273.18(b)"]
+  },
+  "notes": "..."
+}
+```
+A dedicated reference layout. Each `sources` key (`olg` / `cmr` / `fns` / `cfr`) renders as a labeled group ("OLG", "106 CMR", "FNS Handbook 310", "7 CFR") with smaller, denser typography than a regular content slide — citations are a reference layer, not a focal point. Omit keys with no entries. `title` is optional and defaults to "References".
+
+Use this any time you'd otherwise build a content slide that's mostly citation lists. Don't fake citations using `content` with sub-bullets — the agent before you tried that and the typography came out wrong.
+
+All six types accept an optional `notes` field for speaker notes (see Speaker notes below).
 
 ## DTA visual context (so you write to the layout)
 
@@ -133,9 +149,16 @@ The deck renders against a DTA-branded template:
 
 Write titles, headers, and bullets that read well at presentation distance. No code blocks, no markdown formatting inside string fields — the renderer treats them as plain text. Em-dashes, regular punctuation, and parenthetical asides are fine.
 
-## Default narrative arc (when the user gives no instructions)
+## Default narrative arcs (when the user gives no instructions)
 
-If `instructions` is empty or generic, build the deck in this shape:
+Two default shapes. Pick by finding count and any signal in the instructions:
+
+- **Summary arc** — one slide per finding, flat structure. Best for medium-to-high finding counts (≈8+) where the audience wants the landscape, not a deep dive on each case.
+- **Section-per-finding arc** — a 5–6 slide block per finding, with a section divider and dedicated slides for the QC error, the proper action, the OLG gap, the cross-source fix, and citations. Best for low finding counts (≤7) where leadership has time to absorb each case in depth.
+
+When in doubt, summary arc. When the user's instructions explicitly call for one shape over the other, follow them.
+
+### Summary arc
 
 1. **Title slide** — `analysis_name` as title, the analysis date and "QC Findings: OLG Coverage Review" or similar as subtitle.
 2. **Executive summary** (`content`) — what was reviewed, how many findings, how they break down by classification, the headline takeaway. Bullets, not prose.
@@ -146,6 +169,21 @@ If `instructions` is empty or generic, build the deck in this shape:
    - `right_title` = "What's missing" or "What CMR/FNS/CFR require" / `right` = `gap_description` distilled, plus relevant cross-source citations
    - For Adequate findings (if any selected), invert the framing: confirm coverage and note any cross-source alignment.
 5. **Closing / recommendation slide** (`content`) — what should happen next. Typical: "Pages identified for OLG authoring," "Cross-source confirmations," "Open questions." Tie back to the four-stage workflow — these gaps feed the author tool.
+
+### Section-per-finding arc
+
+1. **Title slide** — same as summary arc.
+2. **Introduction** (`content`) — what was reviewed, the classification mix, the headline pattern, and the deck's structural choice. One slide; same intent as the summary's executive summary, sized for the longer deck that follows.
+3. **One section per selected finding**, each a 5–6 slide block:
+   1. **Section divider** (`section`) — the finding's distilled title.
+   2. **QC error** (`content`) — what the case error was, abstracted from PII. Substance of `policy_issues` framed at presentation level.
+   3. **Proper action** (`content`) — what should have happened per policy. Drawn from `reasoning` and the cross-source `note` fields.
+   4. **OLG gap** (`content` or `two_column`) — what the OLG covers today vs. what's missing. Distilled from `gap_description`. Use `two_column` when the contrast is sharp.
+   5. **Cross-source fix** (`content` or `two_column`) — what CMR / FNS / CFR say that fills the gap. Section numbers cited; quote sparingly.
+   6. **Citations** (`citations`) — OLG / CMR / FNS / CFR references in a dedicated references layout. End of section.
+4. **Closing / recommendation slide** — same as summary arc.
+
+If a finding has no cross-source coverage, fold step 5 into step 4 or drop it. Skip steps freely when the data doesn't support them; don't pad sections with hollow slides.
 
 If the user's instructions ask for a different shape (e.g., "frame as urgency for next quarter," "lead with income-coding pattern"), adapt the arc to honor the framing. Don't mechanically follow the default if instructions push elsewhere.
 
@@ -185,7 +223,7 @@ Specifically:
 - **Numbers**: any count or dollar figure on a slide must come from the data. If you say "X findings classified as Gap," count them.
 - **No hallucinated policy**: do not paraphrase policy you don't see in the finding data. If `gap_description` is empty for an Adequate finding, don't invent a hypothetical gap.
 
-**PII discipline**: the QC narrative contains client names, APIDs, addresses, and phone numbers. **None of this belongs on slides or in notes.** Strip it. Use abstracted framings: "client failed to report new employment at IR" — not "Joe Sample (APID 1234567) failed to report her housekeeping job for the Sample family." The `policy_issues` field is already abstracted; lean on that. Review numbers and TAO names are also PII-adjacent — exclude them unless the user's instructions explicitly request case-level detail.
+**PII discipline**: the QC narrative contains client names, APIDs, addresses, and phone numbers. **None of this belongs on slides or in notes.** Strip it. Use abstracted framings: "client failed to report new employment at IR" — not "Joe Sample (APID 1234567) failed to report her housekeeping job for the Sample family." The `policy_issues` field is already abstracted; lean on that. Review numbers and TAO names are also PII-adjacent — exclude them unless the user's instructions explicitly request case-level detail. Specific benefit amounts, dollar errors, and dates from a single case can be re-identifying when paired with other context — abstract them too (refer to thresholds and ranges, not the case's exact numbers) unless the user explicitly asks for case-level dollars.
 
 ## Edge cases
 

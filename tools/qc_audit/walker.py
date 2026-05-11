@@ -68,7 +68,6 @@ def walk_row(row_path, by_url, by_title):
         "row_index": d["row_index"],
         "review_number": d.get("review_number"),
         "apid": d.get("apid"),
-        "error_amount": d.get("error_amount"),
         "determination": d.get("determination"),
         "error_type": d.get("error_type"),
         "narrative": d.get("finding_narrative", "")[:500],

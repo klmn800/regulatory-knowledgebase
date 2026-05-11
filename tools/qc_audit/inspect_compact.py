@@ -35,7 +35,7 @@ def view(analysis_dir, row_num, finding_idx, by_url, by_title,
     d = json.load(open(p, encoding="utf-8"))
     f = d["findings"][finding_idx - 1]
 
-    print(f'═══ Row {row_num}.{finding_idx} ═══ Review #{d.get("review_number")}, Det:{d.get("determination")}, ${d.get("error_amount")}')
+    print(f'═══ Row {row_num}.{finding_idx} ═══ Review #{d.get("review_number")}, Det:{d.get("determination")}')
     print(f'NARRATIVE: {(d.get("finding_narrative", "") or "")[:narrative_chars]}')
     print(f'\nPOLICY ISSUE: {f.get("policy_issues")}')
     print("\nEXTRACTOR Qs:")

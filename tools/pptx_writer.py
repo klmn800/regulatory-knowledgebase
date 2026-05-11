@@ -14,6 +14,7 @@ Slide types:
   - content: Title + bullet list (1_Title and Content layout)
   - table: Title + data table (1_Blank layout + manual table)
   - two_column: Title + two side-by-side bullet lists (1_Comparison layout)
+  - citations: References grouped by source, smaller/denser typography (1_Blank layout)
 
 Usage:
     from tools.pptx_writer import generate_pptx
@@ -78,6 +79,9 @@ SUB_BULLET_SIZE = Pt(20)        # Indented sub-bullets
 TABLE_HEADER_SIZE = Pt(14)      # Table header text
 TABLE_BODY_SIZE = Pt(13)        # Table body text
 COL_HEADER_SIZE = Pt(20)        # Comparison column headers
+CITATION_TITLE_SIZE = Pt(32)    # Citations slide title (smaller than regular content)
+CITATION_LABEL_SIZE = Pt(16)    # Source label ("OLG", "106 CMR", etc.)
+CITATION_BODY_SIZE = Pt(13)     # Citation entries
 
 # Standalone fallback positions (when no template)
 MARGIN_LEFT = Inches(0.5)
@@ -89,7 +93,16 @@ BODY_HEIGHT = Inches(4.95)
 TABLE_TOP = Inches(1.9)
 TABLE_HEIGHT_MAX = Inches(4.8)
 
-VALID_SLIDE_TYPES = {"title", "section", "content", "table", "two_column"}
+VALID_SLIDE_TYPES = {"title", "section", "content", "table", "two_column", "citations"}
+
+# Display labels for citation source groups (keyed by the lowercase JSON key)
+CITATION_SOURCE_LABELS = {
+    "olg": "OLG",
+    "cmr": "106 CMR",
+    "fns": "FNS Handbook 310",
+    "cfr": "7 CFR",
+}
+CITATION_SOURCE_ORDER = ("olg", "cmr", "fns", "cfr")
 
 
 # ============================================================
@@ -131,7 +144,8 @@ def validate_outline(outline: dict) -> list[str]:
             )
             continue
 
-        if "title" not in slide:
+        # citations slides have an optional title (defaults to "References")
+        if slide_type != "citations" and "title" not in slide:
             warnings.append(f"{prefix} ({slide_type}): missing 'title'")
 
         if slide_type == "content":
@@ -167,6 +181,32 @@ def validate_outline(outline: dict) -> list[str]:
                 warnings.append(f"{prefix}: two_column slide missing 'left'")
             if "right" not in slide:
                 warnings.append(f"{prefix}: two_column slide missing 'right'")
+
+        elif slide_type == "citations":
+            sources = slide.get("sources")
+            if sources is None:
+                warnings.append(f"{prefix}: citations slide missing 'sources'")
+            elif not isinstance(sources, dict):
+                warnings.append(f"{prefix}: 'sources' must be a dict")
+            else:
+                known = set(CITATION_SOURCE_LABELS)
+                for k, v in sources.items():
+                    if k not in known:
+                        warnings.append(
+                            f"{prefix}: unknown citation source '{k}' "
+                            f"(must be one of {sorted(known)})"
+                        )
+                    elif not isinstance(v, list):
+                        warnings.append(
+                            f"{prefix}: sources['{k}'] must be a list of strings"
+                        )
+                    else:
+                        for j, entry in enumerate(v):
+                            if not isinstance(entry, str):
+                                warnings.append(
+                                    f"{prefix}: sources['{k}'][{j}] "
+                                    f"must be a string"
+                                )
 
     return warnings
 
@@ -537,6 +577,64 @@ def _render_two_column_slide_template(prs: Presentation, slide_data: dict):
     _add_speaker_notes(slide, slide_data.get("notes"))
 
 
+def _render_citations_slide(prs: Presentation, slide_data: dict):
+    """Render a citations slide using 1_Blank + manual textboxes.
+
+    Same layout/positioning in template and standalone modes — uses a Blank
+    canvas with manual textboxes, so it doesn't depend on placeholder mapping.
+
+    Title at top (smaller than a regular content title), then one labeled
+    group per source in `sources` (olg/cmr/fns/cfr), with entries listed
+    under each label in small, dense type.
+    """
+    layout = _find_layout(prs, LAYOUT_BLANK, 7)
+    slide = prs.slides.add_slide(layout)
+
+    # Title — narrower band than a content slide title (32pt vs 40pt)
+    title = slide_data.get("title") or "References"
+    title_tf = _add_textbox(slide, MARGIN_LEFT, MARGIN_TOP,
+                             CONTENT_WIDTH, Inches(0.8))
+    run = title_tf.paragraphs[0].add_run()
+    run.text = title
+    _set_font(run, CITATION_TITLE_SIZE, DTA_PRIMARY, name=HEADING_FONT)
+
+    # Body block — one labeled group per populated source
+    sources = slide_data.get("sources", {}) or {}
+    body_tf = _add_textbox(slide, MARGIN_LEFT, Inches(1.25),
+                            CONTENT_WIDTH, Inches(5.9))
+    body_tf.word_wrap = True
+
+    first = True
+    for key in CITATION_SOURCE_ORDER:
+        entries = sources.get(key, []) or []
+        if not entries:
+            continue
+
+        # Source label (bold, DTA blue)
+        if first:
+            p = body_tf.paragraphs[0]
+            first = False
+        else:
+            p = body_tf.add_paragraph()
+            p.space_before = Pt(10)
+        p.space_after = Pt(2)
+        run = p.add_run()
+        run.text = CITATION_SOURCE_LABELS[key]
+        _set_font(run, CITATION_LABEL_SIZE, DTA_PRIMARY,
+                   bold=True, name=HEADING_FONT)
+
+        # Entries indented under the label
+        for entry in entries:
+            ep = body_tf.add_paragraph()
+            ep.level = 1
+            ep.space_after = Pt(1)
+            erun = ep.add_run()
+            erun.text = entry
+            _set_font(erun, CITATION_BODY_SIZE, BODY_COLOR, name=BODY_FONT)
+
+    _add_speaker_notes(slide, slide_data.get("notes"))
+
+
 # ============================================================
 # STANDALONE (NO-TEMPLATE) SLIDE RENDERERS
 # ============================================================
@@ -674,6 +772,7 @@ RENDERERS_TEMPLATE = {
     "content": _render_content_slide_template,
     "table": _render_table_slide_template,
     "two_column": _render_two_column_slide_template,
+    "citations": _render_citations_slide,
 }
 
 RENDERERS_STANDALONE = {
@@ -682,6 +781,7 @@ RENDERERS_STANDALONE = {
     "content": _render_content_slide_standalone,
     "table": _render_table_slide_standalone,
     "two_column": _render_two_column_slide_standalone,
+    "citations": _render_citations_slide,
 }
 
 
