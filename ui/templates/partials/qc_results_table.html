@@ -105,6 +105,25 @@
         </details>
         {% endif %}
 
+        {% if agent_notes %}
+        <details class="qc-agent-notes">
+            <summary>Agent notes ({{ agent_notes | length }} finding{{ '' if agent_notes | length == 1 else 's' }})</summary>
+            <p class="qc-recurring-aux">
+                Freeform commentary each judge agent left after investigating its finding — tool gaps, unfamiliar terminology, prompt ambiguities. Aggregated here for easy review. Same content is written to <code>agent_notes.md</code> in the analysis folder for copy-paste.
+            </p>
+            <ul>
+                {% for entry in agent_notes %}
+                <li style="margin-bottom:0.75rem;">
+                    <strong>Row {{ entry.display_index }}</strong>
+                    {% if entry.coverage %}<span style="color:var(--color-text-muted); font-size:0.78rem;">— {{ entry.coverage }}</span>{% endif %}
+                    {% if entry.error_type %}<span style="color:var(--color-text-muted); font-size:0.78rem;"> | {{ entry.error_type }}</span>{% endif %}
+                    <div style="margin-top:0.25rem; white-space:pre-wrap;">{{ entry.agent_notes | trim }}</div>
+                </li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% endif %}
+
         <div class="qc-filter-bar">
             <button class="qc-filter-btn active" onclick="qcFilter('all', this)">All ({{ findings|length }})</button>
             <button class="qc-filter-btn" onclick="qcFilter('Adequate', this)">Adequate ({{ adequate_count }})</button>
@@ -124,7 +143,6 @@
                     <tr>
                         <th style="width:35px;">#</th>
                         <th>Review #</th>
-                        <th>APID</th>
                         <th>Error Type</th>
                         <th>Coverage</th>
                         {% if findings | selectattr('_cmr_check', 'defined') | list | length > 0 %}
@@ -144,7 +162,6 @@
                     <tr class="clickable-row qc-result-row" data-coverage="{{ f.coverage | default('none') }}" onclick="qcToggleDetail('{{ f.detail_id }}')">
                         <td>{{ f.display_index }}</td>
                         <td>{% if f.finding_index == 1 %}{{ f.review_number }}{% endif %}</td>
-                        <td>{% if f.finding_index == 1 %}{{ f.apid }}{% endif %}</td>
                         <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{% if f.finding_index == 1 %}{{ f.error_type }}{% endif %}</td>
                         <td>
                             {% if f.coverage == 'Adequate' %}
@@ -254,7 +271,7 @@
                                 {% endif %}
 
                                 <p style="margin-top:0.75rem; font-size:0.75rem; color:var(--color-text-muted);">
-                                    {{ f.tao }} | {{ f.determination }} |
+                                    {% if f.apid %}APID {{ f.apid }} | {% endif %}{{ f.tao }} | {{ f.determination }} |
                                     {% if f.searches_performed is defined %}{{ f.searches_performed }} searches{% endif %}
                                     {% if f.confidence is defined %} | Confidence: {{ f.confidence }}{% endif %}
                                 </p>

@@ -45,11 +45,25 @@ from pathlib import Path
 import anthropic
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from rag.query import create_client, search_with_client
+from rag.query import (
+    create_client,
+    fetch_chunk_neighbors,
+    fetch_page_chunks,
+    search_with_client,
+)
 from tools.cost_tracker import Tracker
-from tools.policy_tools import SEARCH_OLG_TOOL
+from tools.policy_tools import (
+    FETCH_OLG_NEIGHBORS_TOOL,
+    FETCH_OLG_PAGE_TOOL,
+    SEARCH_OLG_TOOL,
+)
 from tools.result_formatters import format_results_for_prompt
 from tools.retry import with_rate_limit_retry
+
+# Soft cap on assembled page text returned by fetch_olg_page. Pages above
+# this length are truncated with a continuation marker so a single page
+# fetch can't blow out the judge's context window.
+PAGE_FETCH_CHAR_CAP = 6000
 
 
 # ============================================================
@@ -444,6 +458,63 @@ def load_meta(analysis_dir: Path) -> dict | None:
     return None
 
 
+def generate_agent_notes_md(analysis_dir: Path) -> Path | None:
+    """Compile per-finding `agent_notes` into a single markdown file at
+    the analysis root for easy copy-paste review.
+
+    Notes live in each finding's row JSON (`findings[].agent_notes`) —
+    that's the source of truth. This file is a deterministic byproduct,
+    safe to regenerate any time from the row JSONs.
+
+    Returns the written path, or None if no notes are present.
+    """
+    rows = load_all_findings(analysis_dir)
+    if not rows:
+        return None
+
+    flat = flatten_findings(rows)
+    notes_entries = [
+        f for f in flat
+        if (f.get("agent_notes") or "").strip()
+    ]
+    if not notes_entries:
+        # If a previous run wrote a notes file but none survive now,
+        # remove it so the artifact stays in sync with the row JSONs.
+        existing = analysis_dir / "agent_notes.md"
+        if existing.exists():
+            existing.unlink()
+        return None
+
+    lines = [
+        f"# Agent notes — {analysis_dir.name}",
+        "",
+        f"Compiled from {len(notes_entries)} finding(s) with non-empty notes. "
+        "Each entry is the freeform commentary the judge agent left after "
+        "investigating its finding.",
+        "",
+    ]
+    for entry in notes_entries:
+        display = entry.get("display_index", entry.get("row_index", ""))
+        coverage = entry.get("coverage", "")
+        error_type = entry.get("error_type", "")
+        header = f"## Row {display}"
+        meta_bits = []
+        if coverage:
+            meta_bits.append(coverage)
+        if error_type:
+            meta_bits.append(error_type)
+        if meta_bits:
+            header += f" ({', '.join(meta_bits)})"
+        lines.append(header)
+        lines.append("")
+        lines.append(entry["agent_notes"].strip())
+        lines.append("")
+
+    path = analysis_dir / "agent_notes.md"
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
+
+
 def generate_summary_csv(analysis_dir: Path) -> Path:
     """Build a summary CSV — one row per (row, finding).
 
@@ -656,18 +727,31 @@ def run_seed_searches(queries: list[str], olg_clients: dict,
 # }
 #
 # tool_call = {
-#     "query":            str,        # The OLG search query
-#     "search_number":    int,        # Globally unique within this finding;
-#                                     # 0 for seed queries
+#     "tool_name":        str,        # "search_olg" | "fetch_olg_neighbors"
+#                                     # | "fetch_olg_page". Absent in
+#                                     # pre-2026-05-11 traces (assume
+#                                     # "search_olg").
+#     "query":            str,        # search_olg only: the search query.
+#     "chunk_id":         str,        # fetch_olg_neighbors only.
+#     "n":                int,        # fetch_olg_neighbors only.
+#     "direction":        str,        # fetch_olg_neighbors only.
+#     "url":              str,        # fetch_olg_page only.
+#     "search_number":    int,        # search_olg only; globally unique
+#                                     # within this finding; 0 for seed.
+#     "fetch_number":     int,        # fetch_olg_* only; per-tool counter.
 #     "budget_exhausted": bool,       # Optional; True iff the budget guard
 #                                     # rejected this call
 # }
 #
 # tool_result = {
+#     "tool_name":        str,        # Same values as in tool_call above.
 #     "result_count":     int,
 #     "results":          list[result_summary],   # Empty if budget exhausted
-#     "status":           str,                     # Optional; e.g.
-#                                                  # "budget_exhausted"
+#     "page_text_chars":  int,        # fetch_olg_page only; length of the
+#                                     # assembled page text before truncation
+#     "truncated":        bool,       # fetch_olg_page only; whether the
+#                                     # assembled text was soft-capped
+#     "status":           str,        # Optional; e.g. "budget_exhausted"
 # }
 #
 # result_summary = {
@@ -689,6 +773,8 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
               olg_clients: dict, client: anthropic.Anthropic,
               model: str, system_prompt: str,
               max_searches: int = 10,
+              max_neighbor_fetches: int = 8,
+              max_page_fetches: int = 3,
               results_per_search: int = 5,
               cost_tracker: Tracker | None = None,
               olg_programs: list[str] | None = None) -> tuple[dict, list[dict]]:
@@ -698,6 +784,11 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
     array of per-turn entries (turn / stop_reason / tokens / reasoning /
     tool_calls / tool_results). The trace is appended to the per-finding
     JSON so prompt-tuning consumers can see how the judge reasoned.
+
+    Three tools, with separate budgets:
+      - search_olg: semantic search (scalpel for discovery)
+      - fetch_olg_neighbors: ±N chunks around an anchor (scalpel for context)
+      - fetch_olg_page: whole page (hacksaw, soft-capped at PAGE_FETCH_CHAR_CAP)
     """
 
     seed_formatted = format_results_for_prompt(seed_results, "olg")
@@ -712,20 +803,30 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
         f"The following results were found using {len(extractor_queries)} "
         f"automated search queries:\n\n"
         f"{seed_formatted}\n\n"
-        f"## Your Search Budget\n\n"
-        f"You have {max_searches} search_olg calls available. "
-        f"Review the seed results above, then plan and execute your "
-        f"search strategy to assess OLG coverage."
+        f"## Your Tool Budgets\n\n"
+        f"- search_olg: {max_searches} calls (discovery)\n"
+        f"- fetch_olg_neighbors: {max_neighbor_fetches} calls "
+        f"(stitch context around a specific chunk; cheap)\n"
+        f"- fetch_olg_page: {max_page_fetches} calls (read a whole page; "
+        f"reserve for when neighbors aren't enough)\n\n"
+        f"Each tool has its own budget; using one does NOT consume "
+        f"another's. Prefer the scalpel (search then neighbors) over the "
+        f"hacksaw (full page). Review the seed results above before "
+        f"deciding which tool to reach for first."
     )
 
     messages = [{"role": "user", "content": user_message}]
 
     searches_performed = 0
+    neighbor_fetches_performed = 0
+    page_fetches_performed = 0
     all_search_queries = list(extractor_queries)
     # Budget = max_searches tool-use turns + 1 final-reasoning turn + a
     # 4-turn buffer for cases where the model loops or re-plans before
-    # settling on the final answer.
-    max_turns = max_searches + 5
+    # settling on the final answer. Fetch tools may add additional turns
+    # since they're separately budgeted; we add half of (neighbors + pages)
+    # to the turn cap so the agent can interleave fetches with searches.
+    max_turns = max_searches + 5 + (max_neighbor_fetches + max_page_fetches) // 2
 
     # Synthetic "turn 0" capturing the seed search so audits can verify
     # citations against the seed without re-running it. The seed is what
@@ -754,7 +855,10 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
             "reasoning": "Analysis incomplete due to API error.",
             "error": str(error),
             "searches_performed": searches_performed,
+            "neighbor_fetches_performed": neighbor_fetches_performed,
+            "page_fetches_performed": page_fetches_performed,
             "all_search_queries": all_search_queries,
+            "agent_notes": "",
         }
 
     @with_rate_limit_retry()
@@ -764,7 +868,7 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
             max_tokens=2000,
             system=system_prompt,
             messages=messages,
-            tools=[SEARCH_OLG_TOOL],
+            tools=[SEARCH_OLG_TOOL, FETCH_OLG_NEIGHBORS_TOOL, FETCH_OLG_PAGE_TOOL],
         )
 
     for turn in range(max_turns):
@@ -788,7 +892,10 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
             assistant_content = response.content
 
             for block in response.content:
-                if block.type == "tool_use" and block.name == "search_olg":
+                if block.type != "tool_use":
+                    continue
+
+                if block.name == "search_olg":
                     query = block.input.get("query", "")
 
                     if searches_performed >= max_searches:
@@ -802,8 +909,15 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
                             "tool_use_id": block.id,
                             "content": budget_msg,
                         })
-                        trace_tool_calls.append({"query": query, "budget_exhausted": True})
-                        trace_tool_results.append({"status": "budget_exhausted"})
+                        trace_tool_calls.append({
+                            "tool_name": "search_olg",
+                            "query": query,
+                            "budget_exhausted": True,
+                        })
+                        trace_tool_results.append({
+                            "tool_name": "search_olg",
+                            "status": "budget_exhausted",
+                        })
                         continue
 
                     searches_performed += 1
@@ -831,12 +945,142 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
                     })
 
                     trace_tool_calls.append({
+                        "tool_name": "search_olg",
                         "query": query,
                         "search_number": searches_performed,
                     })
                     trace_tool_results.append({
+                        "tool_name": "search_olg",
                         "result_count": len(search_response["results"]),
                         "results": _summarize_search_results(search_response["results"]),
+                    })
+
+                elif block.name == "fetch_olg_neighbors":
+                    chunk_id = block.input.get("chunk_id", "")
+                    n = block.input.get("n", 1)
+                    direction = block.input.get("direction", "both")
+
+                    if neighbor_fetches_performed >= max_neighbor_fetches:
+                        budget_msg = (
+                            f"Neighbor-fetch budget exhausted "
+                            f"({neighbor_fetches_performed} fetches used). "
+                            f"Use remaining searches or provide your final "
+                            f"assessment."
+                        )
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": budget_msg,
+                        })
+                        trace_tool_calls.append({
+                            "tool_name": "fetch_olg_neighbors",
+                            "chunk_id": chunk_id,
+                            "n": n,
+                            "direction": direction,
+                            "budget_exhausted": True,
+                        })
+                        trace_tool_results.append({
+                            "tool_name": "fetch_olg_neighbors",
+                            "status": "budget_exhausted",
+                        })
+                        continue
+
+                    neighbor_fetches_performed += 1
+                    print(f"n", end="", flush=True)
+
+                    try:
+                        neighbors = fetch_chunk_neighbors(
+                            chunk_id, olg_clients, n=n, direction=direction
+                        )
+                    except Exception as e:
+                        neighbors = []
+                        fetch_error = str(e)
+                    else:
+                        fetch_error = None
+
+                    formatted = _format_neighbor_results(
+                        neighbors, chunk_id, direction, fetch_error
+                    )
+                    remaining_n = max_neighbor_fetches - neighbor_fetches_performed
+                    formatted += f"\n\n[{remaining_n} neighbor fetches remaining]"
+
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": formatted,
+                    })
+                    trace_tool_calls.append({
+                        "tool_name": "fetch_olg_neighbors",
+                        "chunk_id": chunk_id,
+                        "n": n,
+                        "direction": direction,
+                        "fetch_number": neighbor_fetches_performed,
+                    })
+                    trace_tool_results.append({
+                        "tool_name": "fetch_olg_neighbors",
+                        "result_count": len(neighbors),
+                        "results": _summarize_search_results(neighbors),
+                    })
+
+                elif block.name == "fetch_olg_page":
+                    url = block.input.get("url", "")
+
+                    if page_fetches_performed >= max_page_fetches:
+                        budget_msg = (
+                            f"Page-fetch budget exhausted "
+                            f"({page_fetches_performed} pages used). "
+                            f"Use neighbor fetches or provide your final "
+                            f"assessment."
+                        )
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": budget_msg,
+                        })
+                        trace_tool_calls.append({
+                            "tool_name": "fetch_olg_page",
+                            "url": url,
+                            "budget_exhausted": True,
+                        })
+                        trace_tool_results.append({
+                            "tool_name": "fetch_olg_page",
+                            "status": "budget_exhausted",
+                        })
+                        continue
+
+                    page_fetches_performed += 1
+                    print(f"P", end="", flush=True)
+
+                    try:
+                        page_chunks = fetch_page_chunks(url, olg_clients)
+                    except Exception as e:
+                        page_chunks = []
+                        fetch_error = str(e)
+                    else:
+                        fetch_error = None
+
+                    formatted, full_chars, truncated = _format_page_result(
+                        page_chunks, url, fetch_error
+                    )
+                    remaining_p = max_page_fetches - page_fetches_performed
+                    formatted += f"\n\n[{remaining_p} page fetches remaining]"
+
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": formatted,
+                    })
+                    trace_tool_calls.append({
+                        "tool_name": "fetch_olg_page",
+                        "url": url,
+                        "fetch_number": page_fetches_performed,
+                    })
+                    trace_tool_results.append({
+                        "tool_name": "fetch_olg_page",
+                        "result_count": len(page_chunks),
+                        "page_text_chars": full_chars,
+                        "truncated": truncated,
+                        "results": _summarize_search_results(page_chunks),
                     })
 
             judge_trace.append({
@@ -873,7 +1117,10 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
             "reasoning": reasoning_text[:300],
         })
         result["searches_performed"] = searches_performed
+        result["neighbor_fetches_performed"] = neighbor_fetches_performed
+        result["page_fetches_performed"] = page_fetches_performed
         result["all_search_queries"] = all_search_queries
+        result.setdefault("agent_notes", "")
         return result, judge_trace
 
     return {
@@ -884,8 +1131,113 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
         "reasoning": "Maximum conversation turns reached.",
         "error": "max_turns_exhausted",
         "searches_performed": searches_performed,
+        "neighbor_fetches_performed": neighbor_fetches_performed,
+        "page_fetches_performed": page_fetches_performed,
         "all_search_queries": all_search_queries,
+        "agent_notes": "",
     }, judge_trace
+
+
+def _format_neighbor_results(
+    neighbors: list[dict],
+    anchor_chunk_id: str,
+    direction: str,
+    error: str | None,
+) -> str:
+    """Format neighbor-fetch output for the judge prompt.
+
+    Same shape as format_results_for_prompt's OLG branch — header line
+    with chunk_id / page / section / chunk_n + text body — but introduced
+    as neighbor matches rather than search matches.
+    """
+    if error:
+        return f"fetch_olg_neighbors error for {anchor_chunk_id}: {error}"
+    if not neighbors:
+        return (
+            f"No neighbors found for {anchor_chunk_id} (direction={direction}). "
+            f"The anchor may be at the start/end of its page."
+        )
+
+    label_dir = {"prev": "before", "next": "after", "both": "around"}.get(
+        direction, direction
+    )
+    parts = [
+        f"Neighbors of {anchor_chunk_id} ({label_dir} the anchor, "
+        f"in reading order):\n"
+    ]
+    for n in neighbors:
+        meta = n.get("metadata", {})
+        chunk_id = n.get("id", "")
+        page_title = meta.get("page_title", meta.get("title", ""))
+        heading = meta.get("section_heading", "")
+        chunk_n = meta.get("chunk_n")
+        chunk_total = meta.get("chunk_total")
+        url = meta.get("url", "")
+        header = f"[Neighbor] id: {chunk_id}"
+        if page_title:
+            header += f" | Page: {page_title}"
+        if heading:
+            header += f" | Section: {heading}"
+        if chunk_total is not None and chunk_total > 1:
+            header += f" (part {chunk_n} of {chunk_total})"
+        if url:
+            header += f"\n  URL: {url}"
+        text = n.get("text", "")[:1000]
+        parts.append(f"{header}\n{text}")
+        if len(n.get("text", "")) > 1000:
+            parts.append("... (truncated)")
+        parts.append("")
+    return "\n".join(parts)
+
+
+def _format_page_result(
+    chunks: list[dict],
+    url: str,
+    error: str | None,
+) -> tuple[str, int, bool]:
+    """Assemble a full-page fetch into a single text body for the judge.
+
+    Returns (formatted_text, full_chars, truncated_bool). Body is the
+    concatenated chunk texts in reading order. If the assembled length
+    exceeds PAGE_FETCH_CHAR_CAP, the tail is replaced with a continuation
+    marker; full_chars reports the un-truncated length so the trace can
+    show how much was dropped.
+    """
+    if error:
+        return f"fetch_olg_page error for {url}: {error}", 0, False
+    if not chunks:
+        return f"No chunks found for URL {url}.", 0, False
+
+    first_meta = chunks[0].get("metadata", {})
+    page_title = first_meta.get("page_title", first_meta.get("title", ""))
+    breadcrumb = first_meta.get("breadcrumb", "")
+    program = first_meta.get("program", "")
+
+    body_parts = [chunk.get("text", "") for chunk in chunks]
+    body = "\n\n".join(body_parts)
+    full_chars = len(body)
+    truncated = False
+    if full_chars > PAGE_FETCH_CHAR_CAP:
+        body = body[:PAGE_FETCH_CHAR_CAP]
+        body += (
+            f"\n\n[... page truncated at {PAGE_FETCH_CHAR_CAP} chars; "
+            f"full page is {full_chars} chars. Use fetch_olg_neighbors "
+            f"against a specific chunk_id below to read further.]"
+        )
+        truncated = True
+
+    header_lines = [f"Full page: {page_title or '(untitled)'}"]
+    if program:
+        header_lines.append(f"Program: {program}")
+    if breadcrumb:
+        header_lines.append(f"Path: {breadcrumb}")
+    header_lines.append(f"URL: {url}")
+    header_lines.append(f"Chunks: {len(chunks)}")
+    chunk_ids = [c.get("id", "") for c in chunks]
+    header_lines.append("Chunk IDs (in order): " + ", ".join(chunk_ids))
+    header = "\n".join(header_lines)
+
+    return f"{header}\n\n{body}", full_chars, truncated
 
 
 def _summarize_search_results(results: list[dict]) -> list[dict]:
@@ -1152,6 +1504,9 @@ def _investigate_one_finding(
     seed_results_per_query: int,
     olg_programs, locked_tracker,
     judge_engine: str = "claude-code",
+    judge_cc_model: str = "",
+    max_neighbor_fetches: int = 8,
+    max_page_fetches: int = 3,
     analysis_dir: Path | None = None,
     row_index: int | None = None,
     finding_index: int | None = None,
@@ -1187,12 +1542,15 @@ def _investigate_one_finding(
             row_index=row_index,
             finding_index=finding_index,
             max_searches=max_judge_searches,
+            model=(judge_cc_model or None),
         )
     else:
         judge_result, judge_trace = run_judge(
             original_row, extractor_result, seed_results, olg_clients,
             claude, judge_model, judge_prompt,
             max_searches=max_judge_searches,
+            max_neighbor_fetches=max_neighbor_fetches,
+            max_page_fetches=max_page_fetches,
             results_per_search=olg_results_per_search,
             cost_tracker=locked_tracker,
             olg_programs=olg_programs,
@@ -1205,7 +1563,10 @@ def _investigate_one_finding(
         "gap_description": judge_result.get("gap_description", ""),
         "reasoning": judge_result.get("reasoning", ""),
         "searches_performed": judge_result.get("searches_performed", 0),
+        "neighbor_fetches_performed": judge_result.get("neighbor_fetches_performed", 0),
+        "page_fetches_performed": judge_result.get("page_fetches_performed", 0),
         "all_search_queries": judge_result.get("all_search_queries", []),
+        "agent_notes": judge_result.get("agent_notes", ""),
         "error": judge_result.get("error"),
         "judge_trace": judge_trace,
         "_session_id": judge_result.get("_session_id"),
@@ -1240,6 +1601,12 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
     judge_model = config.get("qc_analyzer", "judge_model")
     max_judge_searches = config.getint("qc_analyzer", "max_judge_searches",
                                        fallback=7)
+    max_neighbor_fetches = config.getint("qc_analyzer",
+                                         "max_neighbor_fetches",
+                                         fallback=8)
+    max_page_fetches = config.getint("qc_analyzer",
+                                     "max_page_fetches",
+                                     fallback=3)
     olg_results_per_search = config.getint("qc_analyzer",
                                            "olg_results_per_search",
                                            fallback=5)
@@ -1255,6 +1622,8 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
             f"qc_analyzer.judge_engine must be 'claude-code' or 'api', "
             f"got {judge_engine!r}"
         )
+    judge_cc_model = config.get("qc_analyzer", "judge_cc_model",
+                                fallback="").strip()
     judge_prompt = load_prompt("qc_judge", with_preamble=True)
 
     api_key = config.get("api", "anthropic_api_key")
@@ -1344,6 +1713,9 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
                 seed_results_per_query,
                 olg_programs, locked_tracker,
                 judge_engine=judge_engine,
+                judge_cc_model=judge_cc_model,
+                max_neighbor_fetches=max_neighbor_fetches,
+                max_page_fetches=max_page_fetches,
                 analysis_dir=analysis_dir,
                 row_index=row_idx,
                 finding_index=finding_idx,
@@ -1391,15 +1763,21 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
         meta["phases"]["investigated"] = True
         meta["investigated_rows"] = row_indices
         meta["judge_engine"] = judge_engine
+        if judge_engine == "claude-code":
+            meta["judge_cc_model"] = judge_cc_model
         if "cost" not in meta:
             meta["cost"] = {}
         judge_data = cost_tracker.by_stage()["judge"]
         meta["cost"]["judge"] = round(judge_data["cost"], 4)
+        if judge_engine == "claude-code":
+            stats_model = judge_cc_model or "(claude code default)"
+        else:
+            stats_model = judge_model
         meta["investigate_stats"] = {
             "timestamp": datetime.now().isoformat(),
             "duration_sec": elapsed,
             "rows_processed": len(results),
-            "model": judge_model,
+            "model": stats_model,
             "tokens_in": judge_data["input_tokens"],
             "tokens_out": judge_data["output_tokens"],
             "cost": round(judge_data["cost"], 4),
@@ -1412,6 +1790,10 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
         # click "Generate" / "Download" to materialize it.
         try:
             generate_summary_csv(analysis_dir)
+        except Exception:
+            pass
+        try:
+            generate_agent_notes_md(analysis_dir)
         except Exception:
             pass
 

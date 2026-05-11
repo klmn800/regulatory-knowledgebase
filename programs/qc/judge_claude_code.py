@@ -140,6 +140,7 @@ def run_judge_claude_code(
     finding_index: int,
     max_searches: int = 7,
     timeout: int = 1800,
+    model: str | None = None,
 ) -> tuple[dict, list[dict]]:
     """Run the judge phase for a single finding via Claude Code CLI.
 
@@ -158,6 +159,9 @@ def run_judge_claude_code(
                            For artifact naming and task IDs.
         max_searches:      Soft search budget surfaced in the prompt.
         timeout:           Subprocess timeout in seconds.
+        model:             Optional CC model alias/ID (e.g. "sonnet", "opus",
+                           "claude-sonnet-4-6"). None / empty = let Claude
+                           Code pick its own default.
     """
     sessions_dir = analysis_dir / "judge_sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
@@ -177,6 +181,7 @@ def run_judge_claude_code(
         log_dir=sessions_dir,
         task_id=task_id,
         windowed=False,
+        model=model,
     )
 
     if not task_result["success"]:
@@ -200,6 +205,7 @@ def run_judge_claude_code(
                 "all_search_queries": list(extractor_queries),
                 "_session_id": task_result.get("session_id"),
                 "_engine": "claude-code",
+                "_model": model or "",
                 "_elapsed": task_result.get("elapsed"),
             },
             seed_only_trace,
@@ -225,10 +231,12 @@ def run_judge_claude_code(
             "olg_references": parsed.get("olg_references", []),
             "gap_description": parsed.get("gap_description", ""),
             "reasoning": parsed.get("reasoning", ""),
+            "agent_notes": parsed.get("agent_notes", ""),
             "searches_performed": len(judge_queries),
             "all_search_queries": all_search_queries,
             "_session_id": task_result.get("session_id"),
             "_engine": "claude-code",
+            "_model": model or "",
             "_elapsed": task_result.get("elapsed"),
         },
         judge_trace,

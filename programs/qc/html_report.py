@@ -512,6 +512,20 @@ details.recurring-panel .badge-count {
 }
 .recurring-panel .hidden-row { display: none; }
 .recurring-panel.show-all .hidden-row { display: flex; }
+.agent-notes-panel .agent-notes-aux {
+    font-size: 0.78rem; color: var(--text-muted);
+    margin: 0 0 0.5rem 0;
+}
+.agent-notes-list { list-style: none; }
+.agent-notes-list li {
+    padding: 0.5rem 0; border-top: 1px solid var(--border-light);
+    font-size: 0.8125rem; display: block;
+}
+.agent-notes-list li:first-child { border-top: none; }
+.agent-notes-body {
+    margin-top: 0.3125rem; white-space: pre-wrap;
+    color: var(--text);
+}
 
 /* ── Filters ──────────────────────────────────────────── */
 .filters { margin-bottom: 0.875rem; }
@@ -1425,6 +1439,57 @@ def _filter_row(label: str, pills_html: str) -> str:
 RECURRING_INITIAL = 8
 
 
+def _render_agent_notes_panel(flat: list[dict]) -> str:
+    """Render the agent-notes aggregation panel, default-collapsed.
+
+    Pulls every finding with a non-empty `agent_notes` string and lists
+    them with row/finding identifier. Empty list → empty string (no
+    panel). Mirrors the live UI panel; closed by default since these
+    are introspective notes, not gating signal.
+    """
+    notes = [f for f in flat if (f.get("agent_notes") or "").strip()]
+    if not notes:
+        return ""
+
+    parts = [
+        '<details class="recurring-panel agent-notes-panel" id="agent-notes-panel">',
+        '<summary>',
+        '<span>Agent notes</span>',
+        f'<span class="badge-count">{len(notes)} finding'
+        f'{"s" if len(notes) != 1 else ""}</span>',
+        '</summary>',
+        '<p class="agent-notes-aux">Freeform commentary each judge agent '
+        'left after investigating its finding — tool gaps, unfamiliar '
+        'terminology, prompt ambiguities, suspected corpus holes. Same '
+        'content lives in <code>agent_notes.md</code> in each analysis '
+        'folder for copy-paste.</p>',
+        '<ul class="agent-notes-list">',
+    ]
+    for entry in notes:
+        disp = entry.get("display_index") or entry.get("ns_display_index") or "?"
+        an = entry.get("analysis_name", "")
+        ri = entry.get("row_index")
+        fi = entry.get("finding_index")
+        key = f"{_dom_safe(an)}_{ri}_{fi}" if an else ""
+        coverage = entry.get("coverage", "")
+        error_type = entry.get("error_type", "")
+        meta_bits = " · ".join(b for b in (coverage, error_type) if b)
+        link_opener = (
+            f'<a class="finding-chip" href="#" '
+            f'onclick="event.preventDefault();jumpToFinding(\'{esc(key)}\')" '
+            f'title="Jump to this finding">{esc(str(disp))}</a>'
+        ) if key else f'<strong>Row {esc(str(disp))}</strong>'
+        parts.append(
+            f'<li>{link_opener}'
+            f'{" · " + esc(meta_bits) if meta_bits else ""}'
+            f'<div class="agent-notes-body">{esc(entry["agent_notes"].strip())}</div>'
+            f'</li>'
+        )
+    parts.append('</ul>')
+    parts.append('</details>')
+    return "".join(parts)
+
+
 def _render_recurring_panel(recurring: list[dict]) -> str:
     if not recurring:
         return ""
@@ -1558,6 +1623,9 @@ def generate_html(analyses: list[dict],
 
     # ── Recurring panel ──
     h.append(_render_recurring_panel(recurring))
+
+    # ── Agent notes panel ──
+    h.append(_render_agent_notes_panel(flat))
 
     # ── Filters ──
     h.append('<section class="filters">')

@@ -84,14 +84,19 @@ from programs.qc.qc_analyzer import (
 
 def _qc_results_context(name: str, rows: list, meta: dict) -> dict:
     """Build the template context for qc_results_table.html, including the
-    recurring-gaps panel data. Centralized so every route renders the
-    table the same way."""
+    recurring-gaps and agent-notes panel data. Centralized so every route
+    renders the table the same way."""
     flat = flatten_findings(rows)
+    agent_notes = [
+        f for f in flat
+        if (f.get("agent_notes") or "").strip()
+    ]
     return {
         "findings": flat,
         "name": name,
         "meta": meta,
         "recurring_gaps": find_recurring_gaps(flat),
+        "agent_notes": agent_notes,
     }
 
 
@@ -1838,6 +1843,12 @@ _QC_STR_FIELDS = (
     "cfr_check_model",
 )
 
+# Free-text fields where empty is meaningful (and not a validation error).
+# judge_cc_model = "" means "let Claude Code use its own default model".
+_QC_OPTIONAL_STR_FIELDS = (
+    "judge_cc_model",
+)
+
 
 def _read_qc_settings() -> dict:
     """Return current [qc_analyzer] values, suitable for form pre-fill."""
@@ -1845,7 +1856,7 @@ def _read_qc_settings() -> dict:
     values = {}
     for k in _QC_ENUM_FIELDS:
         values[k] = config.get("qc_analyzer", k, fallback="")
-    for k in _QC_INT_FIELDS + _QC_STR_FIELDS:
+    for k in _QC_INT_FIELDS + _QC_STR_FIELDS + _QC_OPTIONAL_STR_FIELDS:
         values[k] = config.get("qc_analyzer", k, fallback="")
     return values
 
@@ -1905,7 +1916,8 @@ async def settings_save(request: Request):
     """Validate, write back to config.ini, redirect on success."""
     form = await request.form()
     submitted = {k: (form.get(k) or "").strip()
-                 for k in (*_QC_ENUM_FIELDS, *_QC_INT_FIELDS, *_QC_STR_FIELDS)}
+                 for k in (*_QC_ENUM_FIELDS, *_QC_INT_FIELDS,
+                           *_QC_STR_FIELDS, *_QC_OPTIONAL_STR_FIELDS)}
 
     errors: dict[str, str] = {}
     parsed_ints: dict[str, int] = {}
@@ -1951,6 +1963,8 @@ async def settings_save(request: Request):
     for k, v in parsed_ints.items():
         config.set("qc_analyzer", k, str(v))
     for k in _QC_STR_FIELDS:
+        config.set("qc_analyzer", k, submitted[k])
+    for k in _QC_OPTIONAL_STR_FIELDS:
         config.set("qc_analyzer", k, submitted[k])
 
     with open(QC_CONFIG_FILE, "w", encoding="utf-8") as f:

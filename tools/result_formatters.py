@@ -58,7 +58,10 @@ def format_results_for_prompt(
             url = meta.get("url", "")
             chunk_n = meta.get("chunk_n")
             chunk_total = meta.get("chunk_total")
+            chunk_id = result.get("id", "")
             header = f"[{label} Match {i+1}] Score: {score_str}"
+            if chunk_id:
+                header += f" | id: {chunk_id}"
             if page_title:
                 header += f" | Page: {page_title}"
             if heading:

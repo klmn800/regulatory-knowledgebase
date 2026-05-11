@@ -38,6 +38,9 @@ Usage:
     python query.py --source olg --chunk-id sec__SNAP__Eligibility__Stu_Students__035
     python query.py --source olg --chunk-id sec__SNAP__Eligibility__Stu_Students__035 --neighbors 1
 
+    # Full OLG page by URL
+    python query.py --source olg --url "https://eohhs.ehs.state.ma.us/.../page.htm"
+
 Configuration:
     See config.ini for API key, model, and ChromaDB settings.
 """
@@ -444,6 +447,95 @@ def fetch_chunks_by_id(
 
     # Return in index order, skipping any IDs not found
     return [found[rid] for rid in ids_to_fetch if rid in found]
+
+
+def fetch_chunk_neighbors(
+    chunk_id: str,
+    clients: dict,
+    n: int = 1,
+    direction: str = "both",
+) -> list[dict]:
+    """Fetch chunks adjacent to chunk_id by parsing its numeric suffix.
+
+    Chunk IDs follow a `{base}__{NNN}` convention where NNN counts the
+    chunk's position within its parent document (OLG: within page; FNS /
+    CMR / CFR: within section). Neighbors are fetched by incrementing /
+    decrementing the suffix — chunks with the same `base` automatically
+    stay in the same parent document, so this can't cross boundaries.
+
+    Note: the `chunk_n` metadata field is NOT a substitute — it counts
+    position within a *section* on OLG, not within a page, so filtering
+    by it can return cross-section chunks. Suffix parsing is the
+    authoritative ordering.
+
+    Args:
+        chunk_id: The exact chunk ID of the anchor chunk.
+        clients: Dict from create_client().
+        n: How many neighbors to fetch on each side (or per direction).
+        direction: "prev" | "next" | "both". 'both' returns up to 2n
+            chunks (anchor itself is excluded).
+
+    Returns:
+        List of dicts with 'id', 'text', 'metadata' sorted by suffix
+        index. Does NOT include the anchor chunk. Missing IDs (e.g.
+        beyond the first/last chunk) are silently skipped.
+    """
+    if direction not in ("prev", "next", "both"):
+        raise ValueError(f"direction must be 'prev', 'next', or 'both', got {direction!r}")
+
+    coll = clients["granular_collection"]
+    sep = "__"
+    parts = chunk_id.rsplit(sep, 1)
+    if len(parts) != 2 or not parts[1].isdigit():
+        return []
+    base = parts[0]
+    anchor_idx = int(parts[1])
+    width = len(parts[1])
+
+    if direction == "prev":
+        wanted = list(range(max(0, anchor_idx - n), anchor_idx))
+    elif direction == "next":
+        wanted = list(range(anchor_idx + 1, anchor_idx + n + 1))
+    else:
+        wanted = list(range(max(0, anchor_idx - n), anchor_idx + n + 1))
+        wanted = [i for i in wanted if i != anchor_idx]
+    if not wanted:
+        return []
+
+    ids_to_fetch = [f"{base}{sep}{str(i).zfill(width)}" for i in wanted]
+    result = coll.get(ids=ids_to_fetch, include=["documents", "metadatas"])
+    rows = []
+    for cid, doc, m in zip(result["ids"], result["documents"], result["metadatas"]):
+        rows.append({"id": cid, "text": doc, "metadata": m})
+
+    def _suffix_idx(row: dict) -> int:
+        suffix = row["id"].rsplit(sep, 1)[1]
+        return int(suffix) if suffix.isdigit() else 0
+
+    rows.sort(key=_suffix_idx)
+    return rows
+
+
+def fetch_page_chunks(url: str, clients: dict) -> list[dict]:
+    """Fetch all chunks belonging to a single OLG page (by URL).
+
+    Returns chunks sorted by chunk_n for natural reading order. Each chunk
+    is the same shape returned by fetch_chunk_neighbors.
+
+    OLG-only — relies on the `url` metadata field. Other sources have no
+    URL equivalent (they're PDFs); for those, fetch via parent_id_field.
+    """
+    if clients.get("source") != "olg":
+        raise ValueError(
+            f"fetch_page_chunks is OLG-only; got source={clients.get('source')!r}"
+        )
+    coll = clients["granular_collection"]
+    result = coll.get(where={"url": url}, include=["documents", "metadatas"])
+    rows = []
+    for cid, doc, m in zip(result["ids"], result["documents"], result["metadatas"]):
+        rows.append({"id": cid, "text": doc, "metadata": m})
+    rows.sort(key=lambda r: r["metadata"].get("chunk_n", 0))
+    return rows
 
 
 def fetch_parent_context(
@@ -1356,7 +1448,26 @@ Examples:
         "--neighbors", type=int, default=0,
         help="With --chunk-id, also return N chunks before and after (default: 0)",
     )
+    parser.add_argument(
+        "--url",
+        help="Retrieve all chunks of an OLG page by URL (full-page fetch).",
+    )
     args = parser.parse_args()
+
+    # --- URL → full page mode (OLG-only) ---
+    if args.url:
+        if args.source != "olg":
+            print("Error: --url is OLG-only.", file=sys.stderr)
+            sys.exit(1)
+        clients = create_client(source="olg")
+        chunks = fetch_page_chunks(args.url, clients)
+        if args.output_json:
+            print(format_chunk_lookup_json(chunks, args.url, args.source))
+        else:
+            print(format_chunk_lookup_text(
+                chunks, args.url, args.source, show_full=True
+            ))
+        return
 
     # --- Chunk ID lookup mode ---
     if args.chunk_id:
