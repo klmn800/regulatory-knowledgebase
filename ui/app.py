@@ -10,6 +10,7 @@ import asyncio
 import json
 import shutil
 import sys
+import threading
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -24,7 +25,7 @@ PROJECT_ROOT = UI_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -58,6 +59,7 @@ from tools.docx_reader import has_tracked_changes, read_docx, to_markdown
 from tools.docx_writer import generate_docx
 from programs.qc.qc_analyzer import (
     load_config as load_qc_config,
+    CONFIG_FILE as QC_CONFIG_FILE,
     get_analysis_dir,
     load_csv as load_qc_csv,
     run_extract,
@@ -1781,12 +1783,23 @@ async def qc_report(names: Optional[str] = None, selected: Optional[str] = None)
 
 @app.get("/qc/report/download")
 async def qc_report_download(names: Optional[str] = None, selected: Optional[str] = None):
-    """Download the QC HTML report as a self-contained .html file."""
+    """Download the QC HTML report as a self-contained .html file.
+
+    Filename includes the active scope when present (e.g.
+    `qc_report_Oct-2025-QC-Report_20260511_1322.html`) so saved
+    snapshots over time are distinguishable.
+    """
     html, status = await asyncio.to_thread(_render_qc_report, names, selected)
     if status != 200:
         return HTMLResponse(html, status_code=status)
     ts = datetime.now().strftime("%Y%m%d_%H%M")
-    filename = f"qc_report_{ts}.html"
+    scope = selected or (names.split(",")[0] if names else None)
+    if scope:
+        safe_scope = "".join(c if c.isalnum() or c in "-_." else "_"
+                             for c in scope.strip())[:60]
+        filename = f"qc_report_{safe_scope}_{ts}.html"
+    else:
+        filename = f"qc_report_{ts}.html"
     return HTMLResponse(
         html,
         headers={
@@ -1794,6 +1807,156 @@ async def qc_report_download(names: Optional[str] = None, selected: Optional[str
             "Cache-Control": "no-store",
         },
     )
+
+
+# ============================================================
+# SETTINGS — config.ini editor (UI-first replacement for hand-editing)
+# ============================================================
+#
+# Scope grows incrementally — start with [qc_analyzer], add other
+# sections as the surface stabilizes. [api] is intentionally excluded
+# (plaintext keys do not belong in a browser-rendered DOM).
+#
+# Comments in config.ini are NOT preserved on save (Python configparser
+# is line-based and drops them on write). Per-field help text in
+# settings.html is the canonical reference for what each value does.
+
+_QC_ENUM_FIELDS = {"judge_engine": ("api", "claude-code")}
+
+_QC_INT_FIELDS = (
+    "max_judge_searches",
+    "investigate_parallel",
+    "olg_results_per_search",
+    "seed_results_per_query",
+)
+
+_QC_STR_FIELDS = (
+    "judge_model",
+    "extractor_model",
+    "cmr_check_model",
+    "fns_check_model",
+    "cfr_check_model",
+)
+
+
+def _read_qc_settings() -> dict:
+    """Return current [qc_analyzer] values, suitable for form pre-fill."""
+    config = load_qc_config()
+    values = {}
+    for k in _QC_ENUM_FIELDS:
+        values[k] = config.get("qc_analyzer", k, fallback="")
+    for k in _QC_INT_FIELDS + _QC_STR_FIELDS:
+        values[k] = config.get("qc_analyzer", k, fallback="")
+    return values
+
+
+_anthropic_models_cache: list[dict] | None = None
+_anthropic_models_lock = threading.Lock()
+
+
+def _get_anthropic_models() -> list[dict]:
+    """Fetch the Anthropic model catalog for the settings datalist.
+
+    Cached for the process lifetime — restart the UI to pick up new
+    models. On failure (network, auth, rate limit) we cache an empty
+    list so the field falls back to a plain text input rather than
+    re-hitting the API on every page load.
+    """
+    global _anthropic_models_cache
+    if _anthropic_models_cache is not None:
+        return _anthropic_models_cache
+    with _anthropic_models_lock:
+        if _anthropic_models_cache is not None:
+            return _anthropic_models_cache
+        try:
+            import anthropic
+            config = load_qc_config()
+            api_key = config.get("api", "anthropic_api_key")
+            client = anthropic.Anthropic(api_key=api_key)
+            resp = client.models.list(limit=20)
+            _anthropic_models_cache = [
+                {"id": m.id, "display_name": m.display_name}
+                for m in resp.data
+            ]
+        except Exception:
+            _anthropic_models_cache = []
+        return _anthropic_models_cache
+
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request, saved: int = 0):
+    """Render the settings page with current config.ini values pre-filled."""
+    values = _read_qc_settings()
+    models = await asyncio.to_thread(_get_anthropic_models)
+    return templates.TemplateResponse(
+        request,
+        "settings.html",
+        {
+            "values": values,
+            "errors": {},
+            "saved": saved,
+            "anthropic_models": models,
+        },
+    )
+
+
+@app.post("/settings/save")
+async def settings_save(request: Request):
+    """Validate, write back to config.ini, redirect on success."""
+    form = await request.form()
+    submitted = {k: (form.get(k) or "").strip()
+                 for k in (*_QC_ENUM_FIELDS, *_QC_INT_FIELDS, *_QC_STR_FIELDS)}
+
+    errors: dict[str, str] = {}
+    parsed_ints: dict[str, int] = {}
+
+    for k, allowed in _QC_ENUM_FIELDS.items():
+        if submitted[k] not in allowed:
+            errors[k] = f"Must be one of: {', '.join(allowed)}."
+
+    for k in _QC_INT_FIELDS:
+        raw = submitted[k]
+        try:
+            v = int(raw)
+        except ValueError:
+            errors[k] = "Must be an integer."
+            continue
+        if v < 1:
+            errors[k] = "Must be 1 or greater."
+            continue
+        parsed_ints[k] = v
+
+    for k in _QC_STR_FIELDS:
+        if not submitted[k]:
+            errors[k] = "Required."
+
+    if errors:
+        models = await asyncio.to_thread(_get_anthropic_models)
+        return templates.TemplateResponse(
+            request,
+            "settings.html",
+            {
+                "values": submitted,
+                "errors": errors,
+                "saved": 0,
+                "anthropic_models": models,
+            },
+        )
+
+    config = load_qc_config()
+    if not config.has_section("qc_analyzer"):
+        config.add_section("qc_analyzer")
+    for k in _QC_ENUM_FIELDS:
+        config.set("qc_analyzer", k, submitted[k])
+    for k, v in parsed_ints.items():
+        config.set("qc_analyzer", k, str(v))
+    for k in _QC_STR_FIELDS:
+        config.set("qc_analyzer", k, submitted[k])
+
+    with open(QC_CONFIG_FILE, "w", encoding="utf-8") as f:
+        config.write(f)
+
+    return RedirectResponse(url="/settings?saved=1", status_code=303)
 
 
 if __name__ == "__main__":

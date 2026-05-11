@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="settings-page">
+
+    <div class="author-header">
+        <h2>Settings</h2>
+        <p class="author-subtitle">Tunable knobs that live in config.ini. Comments in config.ini are not preserved on save — use the help text below each field as the canonical reference for what a value does.</p>
+    </div>
+
+    {% if saved %}
+    <div class="settings-banner success" role="status">
+        Settings saved. New values take effect on the next run — no restart needed.
+    </div>
+    {% endif %}
+
+    {% if errors %}
+    <div class="settings-banner error" role="alert">
+        Some fields had errors. Fix the highlighted fields and save again.
+    </div>
+    {% endif %}
+
+    <form method="post" action="/settings/save" class="settings-form">
+
+        <section class="settings-section">
+            <h3>QC Analyzer</h3>
+            <p class="settings-section-aux">Phased OLG-coverage pipeline driven from the QC tab. Per-source program filters live in their own collapsible panel on the QC tab and are not duplicated here.</p>
+
+            <fieldset class="settings-group">
+                <legend>Investigation (judge phase)</legend>
+
+                <div class="form-group {% if errors.judge_engine %}has-error{% endif %}">
+                    <label for="judge_engine">Judge engine</label>
+                    <select id="judge_engine" name="judge_engine">
+                        <option value="claude-code" {% if values.judge_engine == 'claude-code' %}selected{% endif %}>Claude Code (subscription, resumable per finding)</option>
+                        <option value="api" {% if values.judge_engine == 'api' %}selected{% endif %}>API (Anthropic, per-token billing)</option>
+                    </select>
+                    <p class="form-help">Which engine runs the judge agentic loop. Claude Code uses your subscription and gives you a session_id per finding for <code>claude --resume</code>. API uses pay-per-token and is the older path — useful for A/B-comparing verdicts against Claude Code.</p>
+                    {% if errors.judge_engine %}<p class="form-error">{{ errors.judge_engine }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.judge_model %}has-error{% endif %}">
+                    <label for="judge_model">Judge model (API engine only)</label>
+                    <input type="text" id="judge_model" name="judge_model" value="{{ values.judge_model }}" list="anthropic-models" autocomplete="off">
+                    <p class="form-help">Anthropic model ID for the API-engine judge. Ignored when judge_engine = claude-code. Typical: <code>claude-sonnet-4-6</code>.</p>
+                    {% if errors.judge_model %}<p class="form-error">{{ errors.judge_model }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.max_judge_searches %}has-error{% endif %}">
+                    <label for="max_judge_searches">Max judge searches per finding</label>
+                    <input type="number" id="max_judge_searches" name="max_judge_searches" value="{{ values.max_judge_searches }}" min="1" max="20">
+                    <p class="form-help">Soft search budget the judge has after the seed queries. Higher = more thorough but slower / costlier. Current production value: 7.</p>
+                    {% if errors.max_judge_searches %}<p class="form-error">{{ errors.max_judge_searches }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.investigate_parallel %}has-error{% endif %}">
+                    <label for="investigate_parallel">Parallel judge workers</label>
+                    <input type="number" id="investigate_parallel" name="investigate_parallel" value="{{ values.investigate_parallel }}" min="1" max="16">
+                    <p class="form-help">How many findings to investigate concurrently. Mostly bounded by API rate limits (API engine) or CC subprocess overhead (Claude Code engine). 4 is the production default.</p>
+                    {% if errors.investigate_parallel %}<p class="form-error">{{ errors.investigate_parallel }}</p>{% endif %}
+                </div>
+            </fieldset>
+
+            <fieldset class="settings-group">
+                <legend>Search budgets</legend>
+
+                <div class="form-group {% if errors.olg_results_per_search %}has-error{% endif %}">
+                    <label for="olg_results_per_search">OLG results per judge search</label>
+                    <input type="number" id="olg_results_per_search" name="olg_results_per_search" value="{{ values.olg_results_per_search }}" min="1" max="20">
+                    <p class="form-help">Top-K returned to the judge for each iterative OLG search call.</p>
+                    {% if errors.olg_results_per_search %}<p class="form-error">{{ errors.olg_results_per_search }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.seed_results_per_query %}has-error{% endif %}">
+                    <label for="seed_results_per_query">Seed results per extractor query</label>
+                    <input type="number" id="seed_results_per_query" name="seed_results_per_query" value="{{ values.seed_results_per_query }}" min="1" max="20">
+                    <p class="form-help">Top-K per extractor seed query, fed to the judge as the starting evidence set before its own searches.</p>
+                    {% if errors.seed_results_per_query %}<p class="form-error">{{ errors.seed_results_per_query }}</p>{% endif %}
+                </div>
+            </fieldset>
+
+            <fieldset class="settings-group">
+                <legend>Models — extractor &amp; cross-checks</legend>
+
+                <div class="form-group {% if errors.extractor_model %}has-error{% endif %}">
+                    <label for="extractor_model">Extractor model</label>
+                    <input type="text" id="extractor_model" name="extractor_model" value="{{ values.extractor_model }}" list="anthropic-models" autocomplete="off">
+                    <p class="form-help">Distills each QC finding into policy issues + seed OLG queries. Typical: <code>claude-haiku-4-5-20251001</code>.</p>
+                    {% if errors.extractor_model %}<p class="form-error">{{ errors.extractor_model }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.cmr_check_model %}has-error{% endif %}">
+                    <label for="cmr_check_model">CMR cross-check model</label>
+                    <input type="text" id="cmr_check_model" name="cmr_check_model" value="{{ values.cmr_check_model }}" list="anthropic-models" autocomplete="off">
+                    <p class="form-help">Single-turn classifier — Covers / Silent / Differs. Typical: <code>claude-haiku-4-5-20251001</code>.</p>
+                    {% if errors.cmr_check_model %}<p class="form-error">{{ errors.cmr_check_model }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.fns_check_model %}has-error{% endif %}">
+                    <label for="fns_check_model">FNS cross-check model</label>
+                    <input type="text" id="fns_check_model" name="fns_check_model" value="{{ values.fns_check_model }}" list="anthropic-models" autocomplete="off">
+                    <p class="form-help">Single-turn classifier — Requires / Silent / Differs. Typical: <code>claude-haiku-4-5-20251001</code>.</p>
+                    {% if errors.fns_check_model %}<p class="form-error">{{ errors.fns_check_model }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.cfr_check_model %}has-error{% endif %}">
+                    <label for="cfr_check_model">CFR cross-check model</label>
+                    <input type="text" id="cfr_check_model" name="cfr_check_model" value="{{ values.cfr_check_model }}" list="anthropic-models" autocomplete="off">
+                    <p class="form-help">Single-turn classifier — Covers / Silent / Differs. Typical: <code>claude-haiku-4-5-20251001</code>.</p>
+                    {% if errors.cfr_check_model %}<p class="form-error">{{ errors.cfr_check_model }}</p>{% endif %}
+                </div>
+            </fieldset>
+        </section>
+
+        {% if anthropic_models %}
+        <datalist id="anthropic-models">
+            {% for m in anthropic_models %}
+            <option value="{{ m.id }}">{{ m.display_name }}</option>
+            {% endfor %}
+        </datalist>
+        {% endif %}
+
+        <div class="settings-actions">
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+            <a href="/settings" class="btn btn-outline">Discard Changes</a>
+        </div>
+    </form>
+
+</div>
+{% endblock %}
