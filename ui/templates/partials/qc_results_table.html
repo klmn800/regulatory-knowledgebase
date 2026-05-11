@@ -141,7 +141,7 @@
             <table class="qc-table" id="qc-results-table">
                 <thead>
                     <tr>
-                        <th style="width:35px;">#</th>
+                        <th style="width:55px; cursor:pointer; user-select:none;" onclick="qcSortByIndex(this)" data-sort-dir="asc" title="Click to sort by row number">#&nbsp;<span class="qc-sort-arrow">▲</span></th>
                         <th>Review #</th>
                         <th>Error Type</th>
                         <th>Coverage</th>
@@ -159,7 +159,7 @@
                 </thead>
                 <tbody>
                     {% for f in findings %}
-                    <tr class="clickable-row qc-result-row" data-coverage="{{ f.coverage | default('none') }}" onclick="qcToggleDetail('{{ f.detail_id }}')">
+                    <tr class="clickable-row qc-result-row" data-coverage="{{ f.coverage | default('none') }}" data-sort-disp="{{ (f.row_index or 0) * 1000 + (f.finding_index or 1) }}" onclick="qcToggleDetail('{{ f.detail_id }}')">
                         <td>{{ f.display_index }}</td>
                         <td>{% if f.finding_index == 1 %}{{ f.review_number }}{% endif %}</td>
                         <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{% if f.finding_index == 1 %}{{ f.error_type }}{% endif %}</td>
@@ -228,7 +228,7 @@
                         {% endif %}
                         <td style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.policy_issues }}</td>
                     </tr>
-                    <tr id="qc-detail-{{ f.detail_id }}" class="qc-detail-row" style="display:none;">
+                    <tr id="qc-detail-{{ f.detail_id }}" class="qc-detail-row" data-sort-disp="{{ (f.row_index or 0) * 1000 + (f.finding_index or 1) }}" style="display:none;">
                         <td colspan="10">
                             <div class="qc-detail-content">
                                 <h4>Policy Issues</h4>
@@ -339,5 +339,24 @@ function qcFilter(coverage, btn) {
 
     document.querySelectorAll('.qc-filter-btn').forEach(function(b) { b.classList.remove('active'); });
     if (btn) btn.classList.add('active');
+}
+
+function qcSortByIndex(th) {
+    var dir = th.dataset.sortDir === 'asc' ? 'desc' : 'asc';
+    th.dataset.sortDir = dir;
+    var arrow = th.querySelector('.qc-sort-arrow');
+    if (arrow) arrow.textContent = dir === 'asc' ? '▲' : '▼';
+
+    var tbody = document.querySelector('#qc-results-table tbody');
+    if (!tbody) return;
+    var mains = Array.prototype.slice.call(tbody.querySelectorAll('.qc-result-row'));
+    var pairs = mains.map(function(m) {
+        return { main: m, detail: m.nextElementSibling, key: parseInt(m.dataset.sortDisp || '0', 10) };
+    });
+    pairs.sort(function(a, b) { return dir === 'asc' ? a.key - b.key : b.key - a.key; });
+    pairs.forEach(function(p) {
+        tbody.appendChild(p.main);
+        if (p.detail && p.detail.classList.contains('qc-detail-row')) tbody.appendChild(p.detail);
+    });
 }
 </script>

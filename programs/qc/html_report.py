@@ -608,6 +608,10 @@ th {
     font-size: 0.6875rem; font-weight: 600; color: var(--text-muted);
     text-transform: uppercase; letter-spacing: 0.05em;
 }
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--text); }
+th.sortable .sort-arrow { font-size: 0.625rem; opacity: 0.65; margin-left: 0.125rem; }
+th.sortable:hover .sort-arrow { opacity: 1; }
 .main-row { cursor: pointer; }
 .main-row:hover { background: var(--bg-hover); }
 .main-row td {
@@ -1008,6 +1012,26 @@ function onSearchInput(input) {
     }, 200);
 }
 
+/* ── Sort by # column ────────────────────────────────── */
+function sortByDisp(th) {
+    var dir = th.dataset.sortDir === "asc" ? "desc" : "asc";
+    th.dataset.sortDir = dir;
+    var arrow = th.querySelector(".sort-arrow");
+    if (arrow) arrow.textContent = dir === "asc" ? "▲" : "▼";
+
+    var tbody = th.closest("table").querySelector("tbody");
+    if (!tbody) return;
+    var mains = Array.prototype.slice.call(tbody.querySelectorAll(".main-row"));
+    var pairs = mains.map(function(m) {
+        return { main: m, detail: m.nextElementSibling, key: parseInt(m.dataset.sortDisp || "0", 10) };
+    });
+    pairs.sort(function(a, b) { return dir === "asc" ? a.key - b.key : b.key - a.key; });
+    pairs.forEach(function(p) {
+        tbody.appendChild(p.main);
+        if (p.detail && p.detail.classList.contains("detail-row")) tbody.appendChild(p.detail);
+    });
+}
+
 /* ── Expand / collapse ───────────────────────────────── */
 function toggleRow(key) {
     var row = document.querySelector('.main-row[data-key="' + key + '"]');
@@ -1277,6 +1301,8 @@ def _render_finding_row(entry: dict, recurring_ids: set[tuple]) -> str:
     cov_fg, cov_bg = COVERAGE_STYLES.get(coverage, ("#374151", "#f3f4f6"))
     conf_color = CONFIDENCE_COLORS.get(confidence, "#6b7280")
 
+    sort_disp = (entry.get("row_index") or 0) * 1000 + (entry.get("finding_index") or 1)
+
     data_attrs = (
         f'data-key="{esc(key)}" '
         f'data-scope="{esc(entry.get("analysis_label", ""))}" '
@@ -1289,6 +1315,7 @@ def _render_finding_row(entry: dict, recurring_ids: set[tuple]) -> str:
         f'data-recurring="{"true" if is_recurring else "false"}" '
         f'data-flag="no" '
         f'data-programs="{esc("|".join(programs))}" '
+        f'data-sort-disp="{sort_disp}" '
         f'data-search="{esc(search_corpus)}"'
     )
 
@@ -1732,7 +1759,7 @@ def generate_html(analyses: list[dict],
         h.append('<thead><tr>')
         h.append('<th class="col-flag"></th>')
         h.append('<th class="col-analysis">Analysis</th>')
-        h.append('<th class="col-disp">#</th>')
+        h.append('<th class="col-disp sortable" onclick="sortByDisp(this)" data-sort-dir="asc" title="Click to sort by row number">#&nbsp;<span class="sort-arrow">▲</span></th>')
         h.append('<th class="col-cov">Coverage</th>')
         h.append('<th class="col-conf">Conf</th>')
         h.append('<th class="col-issue">Policy issue</th>')
