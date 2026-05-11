@@ -640,6 +640,7 @@ def run_extractor(user_message: str, client: anthropic.Anthropic,
         return client.messages.create(
             model=model,
             max_tokens=1500,
+            temperature=0,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
@@ -866,6 +867,7 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
         return client.messages.create(
             model=model,
             max_tokens=2000,
+            temperature=0,
             system=system_prompt,
             messages=messages,
             tools=[SEARCH_OLG_TOOL, FETCH_OLG_NEIGHBORS_TOOL, FETCH_OLG_PAGE_TOOL],
@@ -1885,6 +1887,7 @@ def _do_crosscheck_call(claude, model: str, system_prompt: str,
     return claude.messages.create(
         model=model,
         max_tokens=500,
+        temperature=0,
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
     )
