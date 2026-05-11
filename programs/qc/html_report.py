@@ -432,13 +432,19 @@ body {
 header { margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
 h1 { font-size: 1.5rem; color: var(--text-heading); margin-bottom: 0.125rem; }
 .subtitle { font-size: 0.875rem; color: var(--text-muted); }
-.theme-toggle {
+.theme-toggle, .header-action {
     background: var(--bg-input); border: 1px solid var(--border);
     border-radius: 0.5rem; padding: 0.375rem 0.75rem;
     font-size: 0.8125rem; color: var(--text-muted);
     cursor: pointer; margin-top: 0.25rem;
+    text-decoration: none; display: inline-block;
 }
-.theme-toggle:hover { background: var(--bg-input-hover); color: var(--text-primary); }
+.theme-toggle:hover, .header-action:hover {
+    background: var(--bg-input-hover); color: var(--text-primary);
+}
+.header-actions {
+    display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-start;
+}
 
 /* ── Stats row ─────────────────────────────────────────── */
 .summary {
@@ -1099,6 +1105,12 @@ document.addEventListener("DOMContentLoaded", function() {
     initTheme();
     initFlags();
     applyFilters();
+    // Hide download link on saved snapshots — the localhost route is
+    // unreachable from a file:// page, so the button would just 404.
+    if (window.location.protocol === "file:") {
+        var dl = document.getElementById("download-html-btn");
+        if (dl) dl.style.display = "none";
+    }
 });
 """
 
@@ -1293,7 +1305,6 @@ def _render_finding_row(entry: dict, recurring_ids: set[tuple]) -> str:
     # Case identity strip
     review_no = entry.get("review_number", "")
     tao = entry.get("tao", "")
-    error_amount = entry.get("error_amount", "")
     determination = entry.get("determination", "")
     error_type = entry.get("error_type", "")
     case_meta_parts = []
@@ -1305,8 +1316,6 @@ def _render_finding_row(entry: dict, recurring_ids: set[tuple]) -> str:
         case_meta_parts.append(("Determination", determination))
     if error_type:
         case_meta_parts.append(("Error type", error_type))
-    if error_amount:
-        case_meta_parts.append(("Error amount", f"${error_amount}"))
     if case_meta_parts:
         parts.append('<dl class="case-meta">')
         for lbl, val in case_meta_parts:
@@ -1518,8 +1527,17 @@ def generate_html(analyses: list[dict],
         f'Generated {datetime.now().strftime("%B %d, %Y")}</p>'
     )
     h.append('</div>')
+    h.append('<div class="header-actions">')
+    # JS-driven href so the download URL inherits whatever ?selected /
+    # ?names brought the user to this view. Hidden on file:// since a
+    # saved snapshot can't call back to the localhost route.
+    h.append('<a class="header-action" id="download-html-btn" '
+             'href="/qc/report/download" '
+             'onclick="this.href=\'/qc/report/download\'+window.location.search">'
+             '⬇ Download .html</a>')
     h.append('<button class="theme-toggle" id="theme-btn" onclick="toggleTheme()">'
              '☾ Dark mode</button>')
+    h.append('</div>')
     h.append("</header>")
 
     # ── Stats cards ──

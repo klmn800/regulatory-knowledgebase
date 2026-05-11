@@ -26,7 +26,9 @@ Output shape:
                          _check blocks.
   meta.json           — name, timestamps, phase flags, cost per stage,
                          filter_snapshot.
-  summary.csv         — flattened view, generated on demand.
+  summary.csv         — flattened view, refreshed at the tail of each
+                         phase (investigate / cross-checks) plus on
+                         download. Always reflects the latest results.
 """
 
 import configparser
@@ -320,7 +322,7 @@ def load_all_findings(analysis_dir: Path) -> list[dict]:
 
 
 _ROW_LEVEL_KEYS = (
-    "row_index", "review_number", "apid", "tao", "error_amount",
+    "row_index", "review_number", "apid", "tao",
     "determination", "error_type", "finding_narrative",
     "non_concur_reason", "phase",
 )
@@ -475,7 +477,7 @@ def generate_summary_csv(analysis_dir: Path) -> Path:
         "engine", "session_id", "elapsed_sec", "error",
         # Case identity (far right)
         "row_index", "finding_index", "review_number", "apid", "tao",
-        "error_amount", "determination", "error_type",
+        "determination", "error_type",
     ]
 
     def _join(value):
@@ -992,7 +994,6 @@ def run_extract(analysis_dir: Path, rows: list[dict],
             "review_number": row.get("Review Number", ""),
             "apid": row.get("APID", ""),
             "tao": row.get("TAO", ""),
-            "error_amount": row.get("Error Amount", ""),
             "determination": det,
             "error_type": error_type,
             "finding_narrative": findings_text,
@@ -1406,6 +1407,13 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
         }
         save_meta(analysis_dir, meta)
         _progress_mark_state(analysis_name, "done")
+        # Refresh summary.csv on disk so it's always present after a
+        # phase completes — callers no longer have to remember to
+        # click "Generate" / "Download" to materialize it.
+        try:
+            generate_summary_csv(analysis_dir)
+        except Exception:
+            pass
 
     return results
 
@@ -1635,6 +1643,12 @@ def run_source_check(source: str, analysis_dir: Path,
         "cost": round(stage_data["cost"], 4),
     }
     save_meta(analysis_dir, meta)
+    # See note above run_investigate's tail — keep summary.csv fresh
+    # so it's always on disk after any phase completes.
+    try:
+        generate_summary_csv(analysis_dir)
+    except Exception:
+        pass
 
     return results
 
