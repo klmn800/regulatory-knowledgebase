@@ -867,7 +867,6 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
         return client.messages.create(
             model=model,
             max_tokens=2000,
-            temperature=0,
             system=system_prompt,
             messages=messages,
             tools=[SEARCH_OLG_TOOL, FETCH_OLG_NEIGHBORS_TOOL, FETCH_OLG_PAGE_TOOL],
