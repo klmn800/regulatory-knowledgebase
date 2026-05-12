@@ -377,6 +377,62 @@ main {
     background: rgba(217, 119, 6, 0.05);
 }
 
+.qc-cost-breakdown {
+    margin: 0.75rem 0;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.02);
+    font-size: 0.85rem;
+}
+
+.qc-cost-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.45rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.qc-cost-aux {
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+}
+
+.qc-cost-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 130px 200px 110px;
+    gap: 0.6rem;
+    padding: 0.25rem 0;
+    align-items: baseline;
+}
+
+.qc-cost-phase {
+    font-weight: 600;
+}
+
+.qc-cost-amount {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.qc-cost-warn {
+    grid-column: 1 / -1;
+    margin-left: 110px;
+    color: var(--color-score-mid, #d97706);
+    font-size: 0.78rem;
+}
+
+.qc-cost-total {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.45rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid var(--color-border);
+    font-size: 0.95rem;
+}
+
 .qc-recurring-aux {
     font-size: 0.82rem;
     color: var(--color-text-muted);

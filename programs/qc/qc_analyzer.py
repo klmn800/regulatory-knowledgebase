@@ -458,6 +458,136 @@ def load_meta(analysis_dir: Path) -> dict | None:
     return None
 
 
+def reconstruct_qc_costs(analysis_dir: Path) -> dict:
+    """Compute QC analysis cost breakdown from authoritative per-call data.
+
+    The judge phase cost is RECONSTRUCTED from per-turn `judge_trace`
+    tokens stored on every finding. Those tokens come straight from
+    `response.usage` on each Anthropic API call, so they're the
+    authoritative billing record — independent of whatever `meta.cost.judge`
+    ends up holding (which has historically been clobbered on partial
+    re-runs or under-counted for reasons we haven't fully nailed down).
+
+    For the extractor and cross-checks we still read meta-recorded stats,
+    since those phases don't preserve per-call usage in the row JSONs.
+
+    Returns a dict shaped:
+        {
+          "extractor":  {"model","input_tokens","output_tokens","cost",
+                         "recorded_cost","duration_sec","rows_processed"},
+          "judge":      same shape, plus "engine" ("api"|"claude-code"),
+                        "findings_processed","turns";
+                        cost is reconstructed (API) or 0.0 (Claude Code).
+          "cmr_check":  same shape (omitted if phase not run),
+          "fns_check":  same,
+          "cfr_check":  same,
+          "total_cost": float (sum across phases),
+        }
+
+    Cost discrepancies (recorded vs reconstructed) for the judge phase
+    are surfaced by the caller — both numbers are returned so the UI
+    can flag mismatches.
+    """
+    from tools.cost_tracker import calculate_cost
+
+    meta = load_meta(analysis_dir) or {}
+    breakdown: dict = {}
+    total = 0.0
+
+    # --- Extractor (trust meta — single-turn Haiku calls, easy to track)
+    ext = meta.get("extract_stats")
+    if ext:
+        cost = float(ext.get("cost", 0.0) or 0.0)
+        breakdown["extractor"] = {
+            "model": ext.get("model", ""),
+            "input_tokens": ext.get("tokens_in", 0),
+            "output_tokens": ext.get("tokens_out", 0),
+            "cost": cost,
+            "recorded_cost": cost,
+            "duration_sec": ext.get("duration_sec", 0.0),
+            "rows_processed": ext.get("rows_processed", 0),
+        }
+        total += cost
+
+    # --- Judge: recompute from row JSON trace data when engine=api
+    inv = meta.get("investigate_stats") or {}
+    engine = meta.get("judge_engine", "")
+    judge_model = inv.get("model", "") or ""
+    recorded_judge_cost = float(inv.get("cost", 0.0) or 0.0)
+
+    if engine == "api":
+        judge_in = judge_out = 0
+        n_findings = n_turns = 0
+        results_dir = analysis_dir / "results"
+        if results_dir.exists():
+            for p in sorted(results_dir.glob("row_*.json")):
+                try:
+                    r = json.loads(p.read_text(encoding="utf-8"))
+                except Exception:
+                    continue
+                for f in r.get("findings", []):
+                    trace = f.get("judge_trace") or []
+                    has_real_turn = False
+                    for t in trace:
+                        toks = t.get("tokens") or {}
+                        ti = int(toks.get("input", 0) or 0)
+                        to = int(toks.get("output", 0) or 0)
+                        if ti or to:
+                            has_real_turn = True
+                        judge_in += ti
+                        judge_out += to
+                        n_turns += 1
+                    if has_real_turn:
+                        n_findings += 1
+        reconstructed = calculate_cost(judge_model, judge_in, judge_out) \
+            if judge_model else 0.0
+        breakdown["judge"] = {
+            "engine": "api",
+            "model": judge_model,
+            "input_tokens": judge_in,
+            "output_tokens": judge_out,
+            "cost": reconstructed,
+            "recorded_cost": recorded_judge_cost,
+            "duration_sec": inv.get("duration_sec", 0.0),
+            "rows_processed": inv.get("rows_processed", 0),
+            "findings_processed": n_findings,
+            "turns": n_turns,
+        }
+        total += reconstructed
+    elif inv:
+        breakdown["judge"] = {
+            "engine": "claude-code",
+            "model": judge_model or "(claude code default)",
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cost": 0.0,
+            "recorded_cost": 0.0,
+            "duration_sec": inv.get("duration_sec", 0.0),
+            "rows_processed": inv.get("rows_processed", 0),
+            "subscription": True,
+        }
+
+    # --- Cross-checks (trust meta — single-turn Haiku calls)
+    for source in ("cmr", "fns", "cfr"):
+        s = meta.get(f"{source}_check_stats")
+        if not s:
+            continue
+        cost = float(s.get("cost", 0.0) or 0.0)
+        breakdown[f"{source}_check"] = {
+            "model": s.get("model", ""),
+            "input_tokens": s.get("tokens_in", 0),
+            "output_tokens": s.get("tokens_out", 0),
+            "cost": cost,
+            "recorded_cost": cost,
+            "duration_sec": s.get("duration_sec", 0.0),
+            "rows_processed": s.get("rows_processed", 0),
+        }
+        total += cost
+
+    breakdown["total_cost"] = total
+    return breakdown
+
+
 def generate_agent_notes_md(analysis_dir: Path) -> Path | None:
     """Compile per-finding `agent_notes` into a single markdown file at
     the analysis root for easy copy-paste review.

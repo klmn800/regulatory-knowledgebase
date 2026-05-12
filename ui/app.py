@@ -70,6 +70,7 @@ from programs.qc.qc_analyzer import (
     flatten_findings,
     find_recurring_gaps,
     load_meta,
+    reconstruct_qc_costs,
     make_forked_name,
     downstream_summary,
     clear_downstream_meta,
@@ -84,19 +85,26 @@ from programs.qc.qc_analyzer import (
 
 def _qc_results_context(name: str, rows: list, meta: dict) -> dict:
     """Build the template context for qc_results_table.html, including the
-    recurring-gaps and agent-notes panel data. Centralized so every route
-    renders the table the same way."""
+    recurring-gaps, agent-notes, and reconstructed cost-breakdown data.
+    Centralized so every route renders the table the same way."""
     flat = flatten_findings(rows)
     agent_notes = [
         f for f in flat
         if (f.get("agent_notes") or "").strip()
     ]
+    try:
+        costs = reconstruct_qc_costs(get_analysis_dir(name))
+    except Exception:
+        # Never let cost reconstruction errors block the results page —
+        # the template handles a missing/empty costs object gracefully.
+        costs = {"total_cost": 0.0}
     return {
         "findings": flat,
         "name": name,
         "meta": meta,
         "recurring_gaps": find_recurring_gaps(flat),
         "agent_notes": agent_notes,
+        "costs": costs,
     }
 
 

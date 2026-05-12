@@ -310,14 +310,40 @@
             </table>
         </div>
 
-        {% if meta and meta.investigate_stats %}
-        {% set s = meta.investigate_stats %}
-        <div class="answer-meta">
-            <span>{{ s.timestamp[:16] | replace('T', ' ') }}</span>
-            <span>{{ s.duration_sec }}s ({{ s.rows_processed }} rows)</span>
-            <span>{{ '{:,}'.format(s.tokens_in) }} in / {{ '{:,}'.format(s.tokens_out) }} out tokens</span>
-            <span>${{ s.cost }}</span>
-            <span class="text-muted">{{ s.model }}</span>
+        {% if costs and costs.total_cost is defined %}
+        <div class="qc-cost-breakdown">
+            <div class="qc-cost-header">
+                <strong>Cost breakdown</strong>
+                <span class="qc-cost-aux">Judge cost is reconstructed from per-turn API usage stored in each finding's <code>judge_trace</code>. Other phases trust meta-recorded values. Claude Code judge runs are subscription-billed and show $0.00 here.</span>
+            </div>
+            {% set phase_order = [('extractor', 'Extractor'), ('judge', 'Judge'), ('cmr_check', 'CMR Check'), ('fns_check', 'FNS Check'), ('cfr_check', 'CFR Check')] %}
+            {% for key, label in phase_order %}
+            {% set c = costs[key] if costs and key in costs else None %}
+            {% if c %}
+            <div class="qc-cost-row">
+                <span class="qc-cost-phase">{{ label }}</span>
+                <span class="qc-cost-model text-muted">{{ c.model }}{% if c.engine == 'api' %} (API){% elif c.engine == 'claude-code' %} (Claude Code){% endif %}</span>
+                <span class="qc-cost-meta text-muted">{{ c.duration_sec }}s · {{ c.rows_processed }} rows</span>
+                <span class="qc-cost-tokens text-muted">{{ '{:,}'.format(c.input_tokens) }} in / {{ '{:,}'.format(c.output_tokens) }} out</span>
+                <span class="qc-cost-amount">
+                    {% if c.engine == 'claude-code' %}
+                        <span class="text-muted">subscription</span>
+                    {% else %}
+                        ${{ '%.4f' % c.cost }}
+                    {% endif %}
+                </span>
+                {% if c.recorded_cost is defined and c.recorded_cost is not none and (c.recorded_cost - c.cost) | abs > 0.01 %}
+                <span class="qc-cost-warn" title="meta.json's recorded value disagrees with reconstructed; meta may have been clobbered by a partial re-run">
+                    ⚠ meta recorded ${{ '%.4f' % c.recorded_cost }}
+                </span>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+            <div class="qc-cost-total">
+                <span>Total (API spend)</span>
+                <span><strong>${{ '%.4f' % costs.total_cost }}</strong></span>
+            </div>
         </div>
         {% endif %}
     </div>
