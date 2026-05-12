@@ -544,6 +544,32 @@ async def author_research_detail(request: Request, name: str, num: int):
     )
 
 
+@app.post("/author/{name}/research/{num}/resume", response_class=HTMLResponse)
+async def author_research_resume(request: Request, name: str, num: int):
+    """Resume a Claude Code research session. Only valid for engine='claude-code' runs."""
+    output_dir = get_output_dir(name)
+    view = load_version(output_dir, "research", num)
+    if not view or not view.get("session_id"):
+        return HTMLResponse("<p>No session ID found for this research version.</p>")
+    if view.get("engine") != "claude-code":
+        return HTMLResponse("<p>Resume is only supported for Claude Code research sessions.</p>")
+
+    from programs.author.research_claude_code import launch_research_resume
+    launch_research_resume(view["session_id"], name)
+
+    msg = (
+        f"## Session Resumed\n\n"
+        f"A terminal window has opened resuming research v{num:03d}.\n\n"
+        f"Push back on findings, ask for additional searches, or request a section expansion. "
+        f"The agent will overwrite `report.md` in place.\n\n"
+        f"Session: `{view['session_id'][:8]}...`"
+    )
+    return templates.TemplateResponse(
+        request, "partials/author_action_result.html",
+        {"message": msg},
+    )
+
+
 # ============================================================
 # AUTHOR — Drafts
 # ============================================================
@@ -1857,6 +1883,16 @@ _QC_OPTIONAL_STR_FIELDS = (
     "judge_cc_model",
 )
 
+# [author] section — research engine + per-engine model + search budget.
+# Mirrors the QC engine-toggle pattern: judge_model + judge_cc_model
+# become research_model + research_cc_model. Required vs optional follows
+# the same logic — API path needs a model (no implicit default), CC path
+# can run without one (CLI picks).
+_AUTHOR_ENUM_FIELDS = {"research_engine": ("api", "claude-code")}
+_AUTHOR_INT_FIELDS = ("research_max_searches",)
+_AUTHOR_STR_FIELDS = ("research_model",)
+_AUTHOR_OPTIONAL_STR_FIELDS = ("research_cc_model",)
+
 # [debug] section — hidden behind the testing-mode gate. Lay users never
 # see these; the qc_analyzer only honors the temperature overrides when
 # debug_mode is also true.
@@ -1869,13 +1905,21 @@ _DEBUG_OPTIONAL_FLOAT_FIELDS = (
 
 
 def _read_qc_settings() -> dict:
-    """Return current [qc_analyzer] + [debug] values for form pre-fill."""
+    """Return current [qc_analyzer] + [author] + [debug] values for form pre-fill."""
     config = load_qc_config()
     values = {}
     for k in _QC_ENUM_FIELDS:
         values[k] = config.get("qc_analyzer", k, fallback="")
     for k in _QC_INT_FIELDS + _QC_STR_FIELDS + _QC_OPTIONAL_STR_FIELDS:
         values[k] = config.get("qc_analyzer", k, fallback="")
+    for k in _AUTHOR_ENUM_FIELDS:
+        values[k] = config.get("author", k, fallback="claude-code")
+    for k in _AUTHOR_INT_FIELDS:
+        values[k] = config.get("author", k, fallback="12")
+    for k in _AUTHOR_STR_FIELDS:
+        values[k] = config.get("author", k, fallback="claude-sonnet-4-5-20250929")
+    for k in _AUTHOR_OPTIONAL_STR_FIELDS:
+        values[k] = config.get("author", k, fallback="claude-sonnet-4-6")
     for k in _DEBUG_BOOL_FIELDS:
         values[k] = config.get("debug", k, fallback="false")
     for k in _DEBUG_OPTIONAL_FLOAT_FIELDS:
@@ -1940,6 +1984,8 @@ async def settings_save(request: Request):
     submitted = {k: (form.get(k) or "").strip()
                  for k in (*_QC_ENUM_FIELDS, *_QC_INT_FIELDS,
                            *_QC_STR_FIELDS, *_QC_OPTIONAL_STR_FIELDS,
+                           *_AUTHOR_ENUM_FIELDS, *_AUTHOR_INT_FIELDS,
+                           *_AUTHOR_STR_FIELDS, *_AUTHOR_OPTIONAL_STR_FIELDS,
                            *_DEBUG_OPTIONAL_FLOAT_FIELDS)}
     # Checkbox: present in form => "true", absent => "false".
     for k in _DEBUG_BOOL_FIELDS:
@@ -1952,8 +1998,11 @@ async def settings_save(request: Request):
     for k, allowed in _QC_ENUM_FIELDS.items():
         if submitted[k] not in allowed:
             errors[k] = f"Must be one of: {', '.join(allowed)}."
+    for k, allowed in _AUTHOR_ENUM_FIELDS.items():
+        if submitted[k] not in allowed:
+            errors[k] = f"Must be one of: {', '.join(allowed)}."
 
-    for k in _QC_INT_FIELDS:
+    for k in _QC_INT_FIELDS + _AUTHOR_INT_FIELDS:
         raw = submitted[k]
         try:
             v = int(raw)
@@ -1965,7 +2014,7 @@ async def settings_save(request: Request):
             continue
         parsed_ints[k] = v
 
-    for k in _QC_STR_FIELDS:
+    for k in _QC_STR_FIELDS + _AUTHOR_STR_FIELDS:
         if not submitted[k]:
             errors[k] = "Required."
 
@@ -2004,12 +2053,23 @@ async def settings_save(request: Request):
         config.add_section("qc_analyzer")
     for k in _QC_ENUM_FIELDS:
         config.set("qc_analyzer", k, submitted[k])
-    for k, v in parsed_ints.items():
-        config.set("qc_analyzer", k, str(v))
+    for k in _QC_INT_FIELDS:
+        config.set("qc_analyzer", k, str(parsed_ints[k]))
     for k in _QC_STR_FIELDS:
         config.set("qc_analyzer", k, submitted[k])
     for k in _QC_OPTIONAL_STR_FIELDS:
         config.set("qc_analyzer", k, submitted[k])
+
+    if not config.has_section("author"):
+        config.add_section("author")
+    for k in _AUTHOR_ENUM_FIELDS:
+        config.set("author", k, submitted[k])
+    for k in _AUTHOR_INT_FIELDS:
+        config.set("author", k, str(parsed_ints[k]))
+    for k in _AUTHOR_STR_FIELDS:
+        config.set("author", k, submitted[k])
+    for k in _AUTHOR_OPTIONAL_STR_FIELDS:
+        config.set("author", k, submitted[k])
 
     if not config.has_section("debug"):
         config.add_section("debug")

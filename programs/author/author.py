@@ -31,6 +31,10 @@ CONFIG_FILE = PROJECT_ROOT / "config.ini"
 
 sys.path.insert(0, str(PROJECT_ROOT))
 from tools.synthesis import run_synthesis, SynthesisResult
+from programs.author.research_claude_code import (
+    run_research_claude_code,
+    launch_research_resume,
+)
 
 
 # ============================================================
@@ -81,23 +85,76 @@ def run_research(
     version_dir: Path,
     config: configparser.ConfigParser,
     sources: list[str] | None = None,
-) -> SynthesisResult:
-    """Run the research phase — deep RAG synthesis with structured output.
+) -> "dict | SynthesisResult":
+    """Dispatch the research phase to the configured engine.
 
-    The system research prompt (author_research.md) is always used via prompt_name.
-    task_instructions are optional user-provided focus/constraints that get prepended
-    to the assignment question so the researcher sees them.
+    Engine selection: `[author] research_engine` in config.ini, default
+    "claude-code". The two paths differ in blocking semantics:
 
-    Args:
-        assignment: The assignment text (stable project description).
-        task_instructions: User's per-run focus/keywords/constraints (may be empty).
-        version_dir: Where to write all outputs (report.md, evidence.json, meta.json, prompt.md).
-        config: App configuration.
-        sources: Which databases to search (default: all three).
+    - **claude-code** spawns a windowed Claude Code session and returns
+      a status dict immediately. The agent writes report.md / evidence.json
+      to version_dir asynchronously. UI keys off file presence to detect
+      completion.
+    - **api** runs the deep agentic synthesis loop and returns a fully
+      populated SynthesisResult once research is complete (blocking).
+
+    Both engines write to the same version_dir layout (report.md,
+    evidence.json, meta.json) so downstream Draft consumption is engine-
+    agnostic.
     """
     if sources is None:
         sources = ["olg", "cmr", "fns", "cfr"]
 
+    engine = config.get(
+        "author", "research_engine", fallback="claude-code"
+    ).strip().lower()
+
+    print(f"\n{'='*60}")
+    print(f"PHASE 1: RESEARCH (engine: {engine})")
+    print(f"{'='*60}")
+    print(f"  Assignment: {assignment[:100]}{'...' if len(assignment) > 100 else ''}")
+    if task_instructions:
+        print(f"  Focus: {task_instructions[:100]}{'...' if len(task_instructions) > 100 else ''}")
+    print(f"  Sources: {', '.join(sources)}")
+    print(f"  Output: {version_dir}")
+    print()
+
+    if engine == "claude-code":
+        result = run_research_claude_code(
+            assignment, task_instructions, version_dir, config, sources
+        )
+        print(f"  Spawned Claude Code session:")
+        print(f"    Session ID: {result['session_id']}")
+        print(f"    Model: {result['model']}")
+        print(f"    Search budget: {result['max_searches']}")
+        print()
+        print(f"  Research is running in a separate Claude Code window.")
+        print(f"  Reload the Research panel in the web UI to detect completion.")
+        return result
+
+    if engine == "api":
+        return _run_research_api(
+            assignment, task_instructions, version_dir, config, sources
+        )
+
+    raise ValueError(
+        f"Unknown [author] research_engine: {engine!r}. "
+        f"Expected 'claude-code' or 'api'."
+    )
+
+
+def _run_research_api(
+    assignment: str,
+    task_instructions: str,
+    version_dir: Path,
+    config: configparser.ConfigParser,
+    sources: list[str],
+) -> SynthesisResult:
+    """Original API-based research path — deep agentic synthesis via
+    tools/synthesis.py. Blocks until research is complete, returns the
+    populated SynthesisResult, and writes report.md / evidence.json /
+    meta.json to version_dir.
+    """
     model = config.get("author", "research_model",
                         fallback="claude-sonnet-4-5-20250929")
     max_searches = config.getint("author", "research_max_searches", fallback=12)
@@ -111,16 +168,8 @@ def run_research(
     else:
         question = assignment
 
-    print(f"\n{'='*60}")
-    print("PHASE 1: RESEARCH")
-    print(f"{'='*60}")
-    print(f"  Assignment: {assignment[:100]}{'...' if len(assignment) > 100 else ''}")
-    if task_instructions:
-        print(f"  Focus: {task_instructions[:100]}{'...' if len(task_instructions) > 100 else ''}")
-    print(f"  Sources: {', '.join(sources)}")
     print(f"  Model: {model}")
     print(f"  Max searches: {max_searches}")
-    print(f"  Output: {version_dir}")
     print()
 
     result = run_synthesis(
@@ -188,6 +237,8 @@ def run_research(
     # Save metadata
     meta = {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "engine": "api",
+        "status": "completed",
         "duration": round(result.duration_seconds, 1),
         "cost": round(result.cost, 4),
         "searches": len(result.search_queries),
@@ -511,10 +562,28 @@ def main():
     start = time.time()
 
     # Phase 1: Research
+    research_engine = config.get(
+        "author", "research_engine", fallback="claude-code"
+    ).strip().lower()
+    research_spawned_async = False
     if not args.draft_only:
         from ui.versioning import next_version_dir
         research_dir = next_version_dir(output_dir, "research")
         run_research(assignment, "", research_dir, config)
+        # Claude Code engine spawns a window and returns immediately;
+        # report.md does not exist yet. The full pipeline cannot proceed
+        # to Draft until the agent finishes — fall out of main() and let
+        # the user re-invoke with --draft-only when the window closes.
+        if research_engine == "claude-code":
+            research_spawned_async = True
+
+    if research_spawned_async and not args.research_only:
+        print(f"\n  Skipping Draft phase — research is still running in the Claude Code window.")
+        print(f"  After it completes, run:")
+        print(f"    python programs/author/author.py --name {args.name} --draft-only")
+        elapsed = time.time() - start
+        print(f"\n  Total duration: {elapsed:.1f}s")
+        return
 
     # Phase 2: Draft
     if not args.research_only:

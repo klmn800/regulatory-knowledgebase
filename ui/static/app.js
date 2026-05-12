@@ -308,6 +308,28 @@ function authorCancelPrompt(phase) {
     document.getElementById(phase + '-detail').innerHTML = '';
 }
 
+function authorResumeResearch(num) {
+    var name = _currentAuthorName || (document.getElementById('author-name') ? document.getElementById('author-name').value.trim() : '');
+    if (!name) return;
+
+    authorShowProgress([
+        "Looking up session ID...",
+        "Opening Claude Code terminal..."
+    ]);
+
+    fetch('/author/' + encodeURIComponent(name) + '/research/' + num + '/resume', { method: 'POST' })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            authorHideProgress();
+            document.getElementById('research-detail').innerHTML = html;
+            htmx.process(document.getElementById('research-detail'));
+        })
+        .catch(function(err) {
+            authorHideProgress();
+            document.getElementById('research-detail').innerHTML = '<p>Error: ' + err.message + '</p>';
+        });
+}
+
 /* ---- Drafts ---- */
 
 function authorViewDraft(num) {
@@ -863,15 +885,7 @@ function loadQcPptPanel(name) {
     if (!panel || !name) return;
     fetch('/qc/' + encodeURIComponent(name) + '/ppt')
         .then(function(resp) { return resp.text(); })
-        .then(function(html) {
-            panel.innerHTML = html;
-            htmx.process(panel);
-            qcPptUpdateSelectionSummary();
-            var cbs = panel.querySelectorAll('.qc-ppt-cls-cb');
-            cbs.forEach(function(cb) {
-                cb.addEventListener('change', qcPptUpdateSelectionSummary);
-            });
-        })
+        .then(function(html) { _qcPptSwapPanel(name, html); })
         .catch(function() { panel.innerHTML = ''; });
 }
 
@@ -919,6 +933,18 @@ function qcPptUpdateSelectionSummary() {
     }
 }
 
+function _qcPptSwapPanel(name, html) {
+    var panel = document.getElementById('qc-ppt-panel');
+    if (!panel) return;
+    panel.innerHTML = html;
+    htmx.process(panel);
+    qcPptUpdateSelectionSummary();
+    var cbs = panel.querySelectorAll('.qc-ppt-cls-cb');
+    cbs.forEach(function(cb) {
+        cb.addEventListener('change', qcPptUpdateSelectionSummary);
+    });
+}
+
 function qcPptGenerate() {
     var name = qcPptCurrentName();
     if (!name) { alert('Load an analysis first.'); return; }
@@ -927,11 +953,32 @@ function qcPptGenerate() {
         alert('Select at least one classification to include.');
         return;
     }
-    /* TODO Step 3: POST to /qc/{name}/ppt/generate with classifications +
-       instructions, write inputs.json, spawn Claude Code windowed session. */
-    alert('Generate not yet wired (Step 3).\n\nWould include: ' +
-          classifications.join(', ') + '\n\nInstructions: ' +
-          (document.getElementById('qc-ppt-instructions').value || '(none)'));
+
+    var instructions = document.getElementById('qc-ppt-instructions');
+    var instructionsText = instructions ? instructions.value : '';
+
+    var formData = new FormData();
+    formData.append('classifications', classifications.join(','));
+    formData.append('instructions', instructionsText);
+
+    var btn = document.getElementById('qc-ppt-generate-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Launching...'; }
+
+    fetch('/qc/' + encodeURIComponent(name) + '/ppt/generate',
+          { method: 'POST', body: formData })
+        .then(function(resp) {
+            if (!resp.ok) {
+                return resp.text().then(function(t) { throw new Error(t); });
+            }
+            return resp.text();
+        })
+        .then(function(html) {
+            _qcPptSwapPanel(name, html);
+        })
+        .catch(function(err) {
+            alert('Could not launch PPT generation: ' + err.message);
+            if (btn) { btn.disabled = false; btn.textContent = 'Generate PPT'; }
+        });
 }
 
 function qcPptViewVersion(num) {
@@ -949,17 +996,47 @@ function qcPptViewVersion(num) {
 }
 
 function qcPptResume(num) {
-    /* TODO Step 3: POST to /qc/{name}/ppt/{num}/resume to relaunch Claude
-       Code with the captured session_id.txt. */
-    alert('Resume not yet wired (Step 3). Would resume PPT run v' +
-          String(num).padStart(3, '0') + '.');
+    var name = qcPptCurrentName();
+    if (!name) return;
+    fetch('/qc/' + encodeURIComponent(name) + '/ppt/resume/' + num,
+          { method: 'POST' })
+        .then(function(resp) {
+            if (!resp.ok) {
+                return resp.text().then(function(t) { throw new Error(t); });
+            }
+            return resp.text();
+        })
+        .then(function(html) {
+            _qcPptSwapPanel(name, html);
+        })
+        .catch(function(err) {
+            alert('Could not resume PPT session: ' + err.message);
+        });
 }
 
 function qcPptRunAgain(num) {
-    /* TODO Step 3: same as Generate, but seeded from this version's
-       inputs.json (classifications + instructions pre-filled). */
-    alert('Run Again not yet wired (Step 3). Would clone v' +
-          String(num).padStart(3, '0') + ' inputs into a new run.');
+    var name = qcPptCurrentName();
+    if (!name) return;
+    if (!confirm('Run again with the same classifications and instructions as v'
+                 + String(num).padStart(3, '0') + '? This creates a new run.')) {
+        return;
+    }
+    var formData = new FormData();
+    formData.append('version_num', num);
+    fetch('/qc/' + encodeURIComponent(name) + '/ppt/run-again',
+          { method: 'POST', body: formData })
+        .then(function(resp) {
+            if (!resp.ok) {
+                return resp.text().then(function(t) { throw new Error(t); });
+            }
+            return resp.text();
+        })
+        .then(function(html) {
+            _qcPptSwapPanel(name, html);
+        })
+        .catch(function(err) {
+            alert('Could not start new PPT run: ' + err.message);
+        });
 }
 
 function qcToggleAll(masterCheckbox) {

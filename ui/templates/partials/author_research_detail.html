@@ -16,6 +16,9 @@
             {% endif %}
         </div>
         <div class="version-actions">
+            {% if view.engine == 'claude-code' and view.session_id %}
+            <button class="btn btn-sm btn-outline" onclick="authorResumeResearch({{ view.version_num }})">Resume</button>
+            {% endif %}
             <button class="btn btn-sm btn-outline"
                     onclick="authorRunResearchAgain({{ view.version_num }})"
                     data-sources="{{ view.meta.get('sources', ['olg','cmr','fns','cfr']) | join(',') }}">Run Again</button>
@@ -34,17 +37,24 @@
         <div class="answer-body">
             {{ view.report | markdown | safe }}
         </div>
+        {% elif view.engine == 'claude-code' %}
+        <p class="text-muted">Report not yet written. Claude Code may still be running in the terminal — or the window was closed before it finished.</p>
+        <p class="text-muted" style="margin-top: 0.5rem;">
+            <a href="#" onclick="authorViewResearch({{ view.version_num }}); return false;">Refresh</a> to check again, or click Resume above to continue the session.
+        </p>
         {% else %}
         <p class="text-muted">Report not yet available.</p>
         {% endif %}
 
-        {% if view.duration or view.cost or view.searches %}
+        {% if view.duration or view.cost or view.searches or view.session_id %}
         <div class="answer-meta">
+            {% if view.meta.get('engine') %}<span>{{ view.meta.engine }}</span>{% endif %}
             {% if view.meta.get('sources') %}<span>{{ view.meta.sources | join(', ') | upper }}</span>{% endif %}
             {% if view.duration %}<span>{{ view.duration }}s</span>{% endif %}
             {% if view.searches %}<span>{{ view.searches }} search{{ 'es' if view.searches != 1 }}</span>{% endif %}
             {% if view.cost %}<span>${{ view.cost }}</span>{% endif %}
             {% if view.model %}<span class="text-muted">{{ view.model }}</span>{% endif %}
+            {% if view.session_id %}<span>Session: <code>{{ view.session_id[:8] }}...</code></span>{% endif %}
         </div>
         {% endif %}
     </div>

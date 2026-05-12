@@ -227,9 +227,14 @@ def _load_version_data(version_dir: Path, phase: str) -> dict:
         evidence_file = version_dir / "evidence.json"
         data["has_evidence"] = evidence_file.exists()
 
-        data["duration"] = data["meta"].get("duration")
+        sid_file = version_dir / "session_id.txt"
+        data["session_id"] = sid_file.read_text(encoding="utf-8").strip() if sid_file.exists() else None
+
+        data["engine"] = data["meta"].get("engine")
+        data["status"] = data["meta"].get("status")
+        data["duration"] = data["meta"].get("duration") or data["meta"].get("duration_seconds")
         data["cost"] = data["meta"].get("cost")
-        data["searches"] = data["meta"].get("searches")
+        data["searches"] = data["meta"].get("searches") or data["meta"].get("searches_performed")
         data["model"] = data["meta"].get("model")
 
     elif phase == "drafts":

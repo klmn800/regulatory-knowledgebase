@@ -128,6 +128,46 @@
         {% endif %}
 
         <section class="settings-section">
+            <h3>Author</h3>
+            <p class="settings-section-aux">OLG authoring pipeline driven from the Author tab. Research is the first phase — it gathers evidence from OLG / CMR / FNS / CFR before the drafting agent writes content.</p>
+
+            <fieldset class="settings-group">
+                <legend>Research (phase 1)</legend>
+
+                <div class="form-group {% if errors.research_engine %}has-error{% endif %}">
+                    <label for="research_engine">Research engine</label>
+                    <select id="research_engine" name="research_engine">
+                        <option value="claude-code" {% if values.research_engine == 'claude-code' %}selected{% endif %}>Claude Code (subscription, resumable, windowed)</option>
+                        <option value="api" {% if values.research_engine == 'api' %}selected{% endif %}>API (Anthropic, per-token billing)</option>
+                    </select>
+                    <p class="form-help">Which engine runs the research agentic loop. Claude Code spawns a visible terminal window you can watch and resume with <code>claude --resume</code>; report.md and evidence.json land in the version dir asynchronously. API runs the deep synthesis loop in-process and blocks until research is complete.</p>
+                    {% if errors.research_engine %}<p class="form-error">{{ errors.research_engine }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.research_cc_model %}has-error{% endif %}">
+                    <label for="research_cc_model">Research model (Claude Code engine)</label>
+                    <input type="text" id="research_cc_model" name="research_cc_model" value="{{ values.research_cc_model }}" list="anthropic-models" autocomplete="off" placeholder="(leave blank to use Claude Code's default)">
+                    <p class="form-help">Passed to <code>claude --model &lt;id&gt;</code> when research_engine = claude-code. Accepts a CC alias (<code>sonnet</code>, <code>opus</code>, <code>haiku</code>) or a full model ID. Default <code>claude-sonnet-4-6</code>. Leave blank to inherit whatever your <code>claude</code> CLI is configured to use by default.</p>
+                    {% if errors.research_cc_model %}<p class="form-error">{{ errors.research_cc_model }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.research_model %}has-error{% endif %}">
+                    <label for="research_model">Research model (API engine only)</label>
+                    <input type="text" id="research_model" name="research_model" value="{{ values.research_model }}" list="anthropic-models" autocomplete="off">
+                    <p class="form-help">Anthropic model ID for the API-engine research synthesis. Ignored when research_engine = claude-code. Typical: <code>claude-sonnet-4-6</code>.</p>
+                    {% if errors.research_model %}<p class="form-error">{{ errors.research_model }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.research_max_searches %}has-error{% endif %}">
+                    <label for="research_max_searches">Max research searches</label>
+                    <input type="number" id="research_max_searches" name="research_max_searches" value="{{ values.research_max_searches }}" min="1" max="50">
+                    <p class="form-help">Soft search budget for the research agent across all sources. Higher = more thorough but slower. Default 12 — the agent paces itself within this cap and stops earlier when its stop criterion fires (each source covered, last searches surface nothing new, can answer confidently).</p>
+                    {% if errors.research_max_searches %}<p class="form-error">{{ errors.research_max_searches }}</p>{% endif %}
+                </div>
+            </fieldset>
+        </section>
+
+        <section class="settings-section">
             <h3>Debug / Testing</h3>
             <p class="settings-section-aux">Knobs intended for controlled experiments and A/B comparisons. Hidden from the rest of the page unless testing mode is on. Even when values are saved here, they only take effect at runtime while testing mode is enabled — toggling testing mode off makes the pipeline fall back to its in-code defaults without erasing your saved values.</p>
 
