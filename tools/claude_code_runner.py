@@ -23,12 +23,26 @@ Usage:
 """
 
 import json
+import os
 import shutil
 import subprocess
 import sys
 import threading
 import time
 from pathlib import Path
+
+
+def _merged_env(env: dict[str, str] | None) -> dict[str, str] | None:
+    """Merge caller-supplied env vars onto the current process env.
+
+    Returns None when `env` is None so subprocess.run / Popen falls
+    through to its default of inheriting os.environ. Returns a new
+    dict otherwise so caller mutations don't leak."""
+    if env is None:
+        return None
+    merged = dict(os.environ)
+    merged.update(env)
+    return merged
 
 
 _claude_available = shutil.which("claude") is not None
@@ -71,14 +85,21 @@ def _record_auto_failure(reason: str) -> None:
 
 
 def run_claude_task(
-    prompt: str,
-    result_file: Path,
+    prompt: str = "",
+    result_file: Path | None = None,
     timeout: int = 1800,
     cwd: Path = None,
     log_dir: Path = None,
     task_id: str = None,
     windowed: bool = False,
     parse_json: bool = True,
+    model: str | None = None,
+    session_id: str | None = None,
+    initial_msg: str | None = None,
+    wait_for_result: bool = True,
+    title: str | None = None,
+    resume: bool = False,
+    env: dict[str, str] | None = None,
 ) -> dict:
     """
     Run a task via Claude Code CLI and collect the result.
@@ -90,6 +111,8 @@ def run_claude_task(
     Args:
         prompt:      Full prompt text to send to Claude Code.
         result_file: Path where the session should write its JSON result.
+                     Unused (and may be None) when wait_for_result=False
+                     or resume=True.
         timeout:     Max seconds to wait for the session (default 1800 = 30 min).
         cwd:         Working directory for the subprocess (default: project root).
         log_dir:     Directory for prompt/session logs (default: no logging).
@@ -97,18 +120,70 @@ def run_claude_task(
         windowed:    If True, open in a visible console window (Windows).
                      Session output streams to the window instead of being
                      captured. Useful for watching sessions in real time.
+        model:       Optional model alias or ID forwarded to `claude --model`.
+                     Accepts CC aliases (sonnet, opus, haiku) or full IDs.
+                     None / empty string = leave it off and let CC pick its
+                     own default (governed by the user's `claude` config).
+        session_id:  If set, passes `--session-id <uuid>` so the session
+                     binds to this UUID (callers can `claude --resume <uuid>`
+                     later). Windowed mode only.
+        initial_msg: If set, the windowed CLI invocation uses this string
+                     as the bare command-line message instead of the
+                     `@prompt_file` form. The agent then reads the prompt
+                     itself (e.g. `claude --session-id X "Your task is in
+                     /path/to/prompt.md — read it and take it from there"`).
+        wait_for_result:
+                     If False, do NOT poll for `result_file` in windowed
+                     mode — spawn and return immediately with
+                     `{status: "spawned", session_id: <uuid>}`.
+                     Fire-and-forget for sessions the user owns.
+        title:       Custom .bat window title. Defaults to
+                     "Claude Code - {task_id}".
+        resume:      If True, the windowed invocation uses
+                     `claude --resume <session_id>` (no prompt, no
+                     `--session-id`). Implies wait_for_result=False.
+                     `session_id` must be set.
+        env:         Additional environment variables to set on the spawned
+                     subprocess. Merged into `os.environ` (caller wins on
+                     overlap). Used by orchestrators that need to inject
+                     guardrails the agent can't override (e.g. OLG_PROGRAMS
+                     whitelist read by rag/query.py at import).
 
     Returns:
         dict with keys:
-            result       — Parsed JSON from result_file, or None on failure.
-            session_id   — Claude Code session UUID (piped mode only), or None.
+            result       — Parsed JSON from result_file, or None on failure /
+                           fire-and-forget.
+            session_id   — Claude Code session UUID. In piped mode, the
+                           UUID CC chose; in windowed mode, the
+                           caller-supplied `session_id` (when set).
             session_log  — Full stdout from the CLI session (empty in windowed mode).
             elapsed      — Wall-clock seconds.
-            success      — True if result_file was written and parsed.
+            success      — True if result_file was written and parsed,
+                           or if wait_for_result=False / resume=True
+                           (those return on spawn).
             error        — Error message string, or None on success.
+            status       — Present (= "spawned") only when
+                           wait_for_result=False or resume=True.
     """
     if task_id is None:
         task_id = "task"
+
+    if resume:
+        # Resume mode: just open the windowed terminal on an existing
+        # session UUID. No prompt, no result file, no poll.
+        if not session_id:
+            raise ValueError("resume=True requires session_id")
+        if not windowed:
+            raise ValueError("resume=True requires windowed=True")
+        start = time.time()
+        return _run_windowed_resume(
+            session_id, cwd, log_dir, task_id, start, title, env
+        )
+
+    if result_file is None:
+        # All non-resume paths read or hand off a result_file. Catch the
+        # caller bug early instead of writing to None.
+        raise ValueError("result_file is required unless resume=True")
 
     result_file = Path(result_file)
 
@@ -127,14 +202,18 @@ def run_claude_task(
 
     if windowed:
         return _run_windowed(prompt_file, result_file, timeout, cwd,
-                             log_dir, task_id, start, parse_json)
+                             log_dir, task_id, start, parse_json, model,
+                             session_id=session_id, initial_msg=initial_msg,
+                             wait_for_result=wait_for_result, title=title,
+                             env=env)
     else:
         return _run_piped(prompt, result_file, timeout, cwd,
-                          log_dir, task_id, start, parse_json)
+                          log_dir, task_id, start, parse_json, model,
+                          env=env)
 
 
 def _run_piped(prompt, result_file, timeout, cwd, log_dir, task_id, start,
-               parse_json=True):
+               parse_json=True, model=None, env=None):
     """Run claude in pipe mode — stdout captured as JSON, not visible.
 
     Tries the cached permission mode first. If auto fails on this run,
@@ -143,7 +222,8 @@ def _run_piped(prompt, result_file, timeout, cwd, log_dir, task_id, start,
     """
     mode = get_permission_mode()
     result = _run_piped_once(prompt, mode, result_file, timeout, cwd,
-                             log_dir, task_id, start, parse_json)
+                             log_dir, task_id, start, parse_json, model,
+                             env=env)
 
     if mode == "auto" and not result["success"]:
         # Treat any failure on the first auto-mode invocation as a
@@ -153,7 +233,8 @@ def _run_piped(prompt, result_file, timeout, cwd, log_dir, task_id, start,
         fallback_start = time.time()
         fallback = _run_piped_once(prompt, "bypassPermissions", result_file,
                                    timeout, cwd, log_dir, task_id,
-                                   fallback_start, parse_json)
+                                   fallback_start, parse_json, model,
+                                   env=env)
         if fallback["success"]:
             _record_auto_failure(result.get("error") or "auto-mode subprocess failed")
             fallback["_used_fallback_mode"] = "bypassPermissions"
@@ -163,18 +244,22 @@ def _run_piped(prompt, result_file, timeout, cwd, log_dir, task_id, start,
 
 
 def _run_piped_once(prompt, mode, result_file, timeout, cwd, log_dir,
-                    task_id, start, parse_json=True):
+                    task_id, start, parse_json=True, model=None, env=None):
     """Single piped subprocess attempt with a specific permission mode."""
+    cmd = ["claude", "-p", "--output-format", "json",
+           "--permission-mode", mode]
+    if model:
+        cmd.extend(["--model", model])
     try:
         proc = subprocess.run(
-            ["claude", "-p", "--output-format", "json",
-             "--permission-mode", mode],
+            cmd,
             input=prompt,
             capture_output=True,
             text=True,
             encoding="utf-8",
             timeout=timeout,
             cwd=str(cwd),
+            env=_merged_env(env),
         )
         raw_stdout = proc.stdout or ""
         stderr = proc.stderr or ""
@@ -226,32 +311,111 @@ def _run_piped_once(prompt, mode, result_file, timeout, cwd, log_dir,
 
 
 def _run_windowed(prompt_file, result_file, timeout, cwd, log_dir, task_id, start,
-                  parse_json=True):
+                  parse_json=True, model=None, session_id=None,
+                  initial_msg=None, wait_for_result=True, title=None,
+                  env=None):
     """Run claude in a visible console window — user watches output live.
 
-    Uses the same pattern as the proven autofix system: launches claude
-    in interactive mode with @file prompt reference and cmd /k to keep
-    the window open. Polls for the result file to detect completion.
+    Two invocation shapes:
+      - Default (`initial_msg=None`): `claude @<prompt_file>` — agent reads
+        the prompt file directly. This is the original comparator/QC shape.
+      - `initial_msg=<str>`: `claude "<initial_msg>"` — agent receives the
+        short message as the opening user turn. The author-research pattern
+        uses this with the message pointing at a prompt file the agent reads.
+
+    When `session_id` is set, passes `--session-id <uuid>` so callers can
+    `claude --resume <uuid>` later. When `wait_for_result=False`, spawns
+    and returns immediately without polling for `result_file` — for
+    sessions the user owns (author research/draft).
     """
     prompt_path = str(prompt_file.resolve())
     bat_dir = log_dir or prompt_file.parent
     bat_file = bat_dir / f"run_{task_id}.bat"
-    bat_file.write_text(
-        f'@echo off\n'
-        f'cd /d {cwd}\n'
-        f'title Claude Code - {task_id}\n'
-        f'start "" cmd /k "claude --permission-mode {get_permission_mode()}'
-        f' @{prompt_path}"\n',
-        encoding="utf-8",
-    )
+    model_flag = f' --model {model}' if model else ''
+    session_flag = f' --session-id {session_id}' if session_id else ''
+    bat_title = title or f"Claude Code - {task_id}"
+
+    if initial_msg is not None:
+        # Quote-escape any embedded double-quotes so the .bat doesn't
+        # truncate the message at the first inner quote.
+        escaped_msg = initial_msg.replace('"', '\\"')
+        claude_cmd = (
+            f'claude --permission-mode {get_permission_mode()}'
+            f'{model_flag}{session_flag} "{escaped_msg}"'
+        )
+    else:
+        claude_cmd = (
+            f'claude --permission-mode {get_permission_mode()}'
+            f'{model_flag}{session_flag} @{prompt_path}'
+        )
+
+    if wait_for_result:
+        # Original polling shape: keep the launcher window open with cmd /k
+        # so subprocess.run returns when the user closes the launcher
+        # (or never, since polling drives completion).
+        bat_file.write_text(
+            f'@echo off\n'
+            f'cd /d {cwd}\n'
+            f'title {bat_title}\n'
+            f'start "" cmd /k "{claude_cmd}"\n',
+            encoding="utf-8",
+        )
+    else:
+        # Fire-and-forget: the user owns the resulting window. Open
+        # cmd /k directly so the title sticks and the window stays open
+        # after the session ends; orchestrator returns immediately.
+        bat_file.write_text(
+            f'@echo off\n'
+            f'cd /d {cwd}\n'
+            f'title {bat_title}\n'
+            f'{claude_cmd}\n'
+            f'echo.\n'
+            f'echo === Session complete ===\n'
+            f'pause\n',
+            encoding="utf-8",
+        )
+
+    if not wait_for_result:
+        # Spawn detached so the launcher process doesn't block. CC's
+        # own window is what the user interacts with.
+        try:
+            subprocess.Popen(
+                ["cmd", "/c", str(bat_file)],
+                cwd=str(cwd),
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+                env=_merged_env(env),
+            )
+        except Exception as e:
+            elapsed = time.time() - start
+            return {
+                "result": None,
+                "session_id": session_id,
+                "session_log": "",
+                "elapsed": elapsed,
+                "success": False,
+                "error": f"Could not spawn batch file: {e}",
+                "status": "error",
+            }
+        return {
+            "result": None,
+            "session_id": session_id,
+            "session_log": "(windowed mode — fire-and-forget; user owns the window)",
+            "elapsed": time.time() - start,
+            "success": True,
+            "error": None,
+            "status": "spawned",
+        }
 
     try:
-        subprocess.run([str(bat_file)], shell=True, cwd=str(cwd))
+        subprocess.run(
+            [str(bat_file)], shell=True, cwd=str(cwd),
+            env=_merged_env(env),
+        )
     except Exception as e:
         elapsed = time.time() - start
         return {
             "result": None,
-            "session_id": None,
+            "session_id": session_id,
             "session_log": "",
             "elapsed": elapsed,
             "success": False,
@@ -270,7 +434,7 @@ def _run_windowed(prompt_file, result_file, timeout, cwd, log_dir, task_id, star
         elapsed = time.time() - start
         return {
             "result": None,
-            "session_id": None,
+            "session_id": session_id,
             "session_log": "(windowed mode — output was in console window)",
             "elapsed": elapsed,
             "success": False,
@@ -284,8 +448,65 @@ def _run_windowed(prompt_file, result_file, timeout, cwd, log_dir, task_id, star
         elapsed,
         parse_json,
     )
-    result["session_id"] = None  # Not available in windowed mode
+    # Caller-supplied session_id is what's authoritative in windowed mode
+    # (we don't capture the UUID CC chooses on its own when none is passed).
+    result["session_id"] = session_id
     return result
+
+
+def _run_windowed_resume(session_id, cwd, log_dir, task_id, start, title, env):
+    """Open `claude --resume <session_id>` in a fresh console.
+
+    No prompt, no result file. The session is whatever the user does
+    inside the window. Used by the *_resume launchers (author research,
+    author draft, QC judge) when the orchestrator needs to drop the user
+    back into an existing CC session.
+    """
+    if cwd is None:
+        cwd = Path(__file__).resolve().parents[1]
+    bat_dir = log_dir or Path(cwd)
+    if log_dir:
+        Path(log_dir).mkdir(parents=True, exist_ok=True)
+    bat_file = Path(bat_dir) / f"resume_{task_id}.bat"
+    bat_title = title or f"Claude Code Resume - {task_id}"
+    bat_file.write_text(
+        f'@echo off\n'
+        f'cd /d {cwd}\n'
+        f'title {bat_title}\n'
+        f'echo.\n'
+        f'echo  Resuming session: {session_id}\n'
+        f'echo.\n'
+        f'claude --permission-mode {get_permission_mode()} --resume {session_id}\n'
+        f'echo.\n'
+        f'pause\n',
+        encoding="utf-8",
+    )
+    try:
+        subprocess.Popen(
+            ["cmd", "/c", str(bat_file)],
+            cwd=str(cwd),
+            creationflags=subprocess.CREATE_NEW_CONSOLE,
+            env=_merged_env(env),
+        )
+    except Exception as e:
+        return {
+            "result": None,
+            "session_id": session_id,
+            "session_log": "",
+            "elapsed": time.time() - start,
+            "success": False,
+            "error": f"Could not spawn resume batch file: {e}",
+            "status": "error",
+        }
+    return {
+        "result": None,
+        "session_id": session_id,
+        "session_log": "(windowed resume — user owns the window)",
+        "elapsed": time.time() - start,
+        "success": True,
+        "error": None,
+        "status": "spawned",
+    }
 
 
 def _read_result(result_file, session_log, elapsed, parse_json=True):

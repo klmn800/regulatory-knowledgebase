@@ -26,7 +26,6 @@ subsequent loads to detect completion via file presence.
 
 import configparser
 import json
-import subprocess
 import sys
 import time
 import uuid
@@ -38,6 +37,8 @@ DATA_DIR = PROJECT_ROOT / "output" / "author"
 SHARED_PROMPTS_DIR = PROJECT_ROOT / "prompts"
 
 sys.path.insert(0, str(PROJECT_ROOT))
+
+from tools.claude_code_runner import run_claude_task
 
 
 PROMPT_TEMPLATE_PATH = PROMPTS_DIR / "author_research_claude_code.md"
@@ -83,12 +84,27 @@ def _build_prompt(
     return body
 
 
+def _olg_programs_env(programs_by_source: dict | None) -> dict[str, str]:
+    """Build the env dict to inject the OLG program whitelist into the
+    spawned subprocess. Returns empty dict when no OLG filter was set.
+
+    The agent shells out to `python rag/query.py --source olg` from
+    inside the loop; only env-var enforcement is durable because the
+    env var is read in the subprocess at import time (agent can't
+    override). See rag/query.py:OLG_PROGRAMS_WHITELIST."""
+    olg_programs = (programs_by_source or {}).get("olg")
+    if not olg_programs:
+        return {}
+    return {"OLG_PROGRAMS": ",".join(olg_programs)}
+
+
 def run_research_claude_code(
     assignment: str,
     task_instructions: str,
     version_dir: Path,
     config: configparser.ConfigParser,
     sources: list[str] | None = None,
+    programs_by_source: dict[str, list[str]] | None = None,
 ) -> dict:
     """Spawn a windowed Claude Code session for the research phase.
 
@@ -109,6 +125,11 @@ def run_research_claude_code(
         sources:           Which sources to search (default all four). The
                            prompt names all four explicitly; this is mostly
                            informational for the meta record.
+        programs_by_source: Per-source program whitelist (e.g.
+                           {"olg": ["SNAP", "Cross-Program"]}). Only OLG
+                           is enforced today via the OLG_PROGRAMS env var
+                           the spawned subprocess reads at import. Other
+                           sources are informational in meta.json.
     """
     if sources is None:
         sources = ["olg", "cmr", "fns", "cfr"]
@@ -138,6 +159,15 @@ def run_research_claude_code(
     (version_dir / "full_prompt.md").write_text(full_prompt, encoding="utf-8")
     (version_dir / "searches").mkdir(exist_ok=True)
 
+    # full_prompt.md is the file the agent reads from (per-run path —
+    # no shared scratch file at DATA_DIR/.research_prompt.md anymore).
+    prompt_path = (version_dir / "full_prompt.md").resolve()
+    initial_msg = (
+        f"Your research task is in {prompt_path} — it has the assignment, "
+        f"output paths, search-tool instructions, and search budget. "
+        f"Read it and take it from there."
+    )
+
     meta = {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "engine": "claude-code",
@@ -146,50 +176,24 @@ def run_research_claude_code(
         "session_id": session_id,
         "max_searches": max_searches,
         "status": "in_progress",
+        "programs_by_source": programs_by_source or {},
     }
     (version_dir / "meta.json").write_text(
         json.dumps(meta, indent=2), encoding="utf-8"
     )
 
-    # Temp prompt file the agent reads from (shorter path than version_dir
-    # for the initial message; mirrors launch_draft's .draft_prompt.md
-    # convention).
-    prompt_file = DATA_DIR / ".research_prompt.md"
-    prompt_file.write_text(full_prompt, encoding="utf-8")
-    prompt_path = str(prompt_file.resolve())
-
-    initial_msg = (
-        f"Your research task is in {prompt_path} — it has the assignment, "
-        f"output paths, search-tool instructions, and search budget. "
-        f"Read it and take it from there."
-    )
-
-    model_flag = f"--model {cc_model} " if cc_model else ""
-
-    bat_file = DATA_DIR / ".run_research.bat"
-    bat_file.write_text(
-        f'@echo off\n'
-        f'cd /d {PROJECT_ROOT}\n'
-        f'title Claude Code Research - {name}\n'
-        f'echo.\n'
-        f'echo  Researching: {name}\n'
-        f'echo  Output dir: {version_dir}\n'
-        f'echo  Session ID: {session_id}\n'
-        f'echo  Model: {cc_model or "(CC default)"}\n'
-        f'echo  Search budget: {max_searches}\n'
-        f'echo.\n'
-        f'claude {model_flag}--permission-mode auto --session-id {session_id} "{initial_msg}"\n'
-        f'echo.\n'
-        f'echo  === Research session complete ===\n'
-        f'echo.\n'
-        f'pause\n',
-        encoding="utf-8",
-    )
-
-    subprocess.Popen(
-        ["cmd", "/c", str(bat_file)],
-        cwd=str(PROJECT_ROOT),
-        creationflags=subprocess.CREATE_NEW_CONSOLE,
+    run_claude_task(
+        result_file=version_dir / "report.md",
+        cwd=PROJECT_ROOT,
+        log_dir=version_dir,
+        task_id=f"research_{name}",
+        windowed=True,
+        wait_for_result=False,
+        model=cc_model or None,
+        session_id=session_id,
+        initial_msg=initial_msg,
+        title=f"Claude Code Research - {name}",
+        env=_olg_programs_env(programs_by_source),
     )
 
     return {
@@ -202,29 +206,40 @@ def run_research_claude_code(
     }
 
 
-def launch_research_resume(session_id: str, name: str) -> None:
+def launch_research_resume(
+    session_id: str,
+    name: str,
+    version_dir: Path | None = None,
+    programs_by_source: dict[str, list[str]] | None = None,
+) -> None:
     """Launch a Claude Code resume terminal for a research session.
+
+    Re-applies OLG_PROGRAMS env var so the agent's tool calls in the
+    resumed session remain bound by the original filter. If
+    programs_by_source isn't passed, falls back to meta.json in
+    version_dir (so callers without it still get correct enforcement).
 
     Note: --model is intentionally NOT passed on resume. The CLI inherits
     the model from the original session. If that turns out to be wrong
     in practice, add it here.
     """
-    bat_file = DATA_DIR / ".run_research_resume.bat"
-    bat_file.write_text(
-        f'@echo off\n'
-        f'cd /d {PROJECT_ROOT}\n'
-        f'title Claude Code Research Resume - {name}\n'
-        f'echo.\n'
-        f'echo  Resuming research session: {session_id}\n'
-        f'echo.\n'
-        f'claude --permission-mode auto --resume {session_id}\n'
-        f'echo.\n'
-        f'pause\n',
-        encoding="utf-8",
-    )
+    if programs_by_source is None and version_dir is not None:
+        meta_file = version_dir / "meta.json"
+        if meta_file.exists():
+            try:
+                meta = json.loads(meta_file.read_text(encoding="utf-8"))
+                programs_by_source = meta.get("programs_by_source") or None
+            except (json.JSONDecodeError, OSError):
+                programs_by_source = None
 
-    subprocess.Popen(
-        ["cmd", "/c", str(bat_file)],
-        cwd=str(PROJECT_ROOT),
-        creationflags=subprocess.CREATE_NEW_CONSOLE,
+    log_dir = version_dir if version_dir is not None else DATA_DIR
+    run_claude_task(
+        cwd=PROJECT_ROOT,
+        log_dir=log_dir,
+        task_id=f"research_resume_{name}",
+        windowed=True,
+        resume=True,
+        session_id=session_id,
+        title=f"Claude Code Research Resume - {name}",
+        env=_olg_programs_env(programs_by_source),
     )

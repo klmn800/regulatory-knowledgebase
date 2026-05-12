@@ -508,6 +508,10 @@ async def author_research_run(
     if not source_list:
         source_list = ["olg", "cmr", "fns", "cfr"]
 
+    # Per-source program selections (same shape as Ask tab)
+    form = await request.form()
+    programs_by_source = _programs_by_source_from_form(form, source_list)
+
     # Task instructions are the user-editable part (focus, keywords, constraints).
     # The system research prompt (author_research.md) is always injected by run_research.
     task_instructions = prompt.strip()
@@ -516,10 +520,17 @@ async def author_research_run(
     version_dir = next_version_dir(output_dir, "research")
 
     # Run research — task_instructions get saved as prompt.md in the version dir
-    result = await asyncio.to_thread(
-        author_run_research, assignment, task_instructions, version_dir,
-        load_author_config(), sources=source_list,
-    )
+    try:
+        await asyncio.to_thread(
+            author_run_research, assignment, task_instructions, version_dir,
+            load_author_config(), sources=source_list,
+            programs_by_source=programs_by_source,
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            request, "partials/answer_error.html",
+            {"error": f"Research failed: {e}"},
+        )
 
     # Return the detail view of the new version
     from ui.versioning import _parse_version_num
@@ -555,7 +566,18 @@ async def author_research_resume(request: Request, name: str, num: int):
         return HTMLResponse("<p>Resume is only supported for Claude Code research sessions.</p>")
 
     from programs.author.research_claude_code import launch_research_resume
-    launch_research_resume(view["session_id"], name)
+    try:
+        # Pass version_dir so the launcher can re-apply the original
+        # programs_by_source from meta.json on resume.
+        version_dir = Path(view["version_dir"]) if view.get("version_dir") else None
+        await asyncio.to_thread(
+            launch_research_resume, view["session_id"], name, version_dir,
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            request, "partials/answer_error.html",
+            {"error": f"Resume failed: {e}"},
+        )
 
     msg = (
         f"## Session Resumed\n\n"

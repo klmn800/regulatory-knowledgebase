@@ -258,6 +258,18 @@ function authorRunResearch() {
     formData.append('assignment', assignment);
     formData.append('sources', sources.join(','));
 
+    /* Collect per-source program selections (only for selected sources
+       that have a program filter). FNS is omitted by template. */
+    var programCbs = document.querySelectorAll('.research-program-cb:checked');
+    var selectedSources = {};
+    sources.forEach(function(s) { selectedSources[s] = true; });
+    programCbs.forEach(function(cb) {
+        var src = cb.getAttribute('data-source');
+        if (selectedSources[src]) {
+            formData.append('programs_' + src, cb.value);
+        }
+    });
+
     fetch('/author/' + encodeURIComponent(name) + '/research/run', { method: 'POST', body: formData })
         .then(function(resp) { return resp.text(); })
         .then(function(html) {

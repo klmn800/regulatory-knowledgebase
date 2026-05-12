@@ -33,10 +33,29 @@ DOMAIN_PREAMBLE_PATH = PROJECT_ROOT / "prompts" / "domain_preamble.md"
 
 
 def _build_prompt(row: dict, extractor_result: dict, seed_results: list[dict],
-                  result_file: Path, max_searches: int) -> str:
+                  result_file: Path, max_searches: int,
+                  olg_programs: list[str] | None = None) -> str:
     domain_preamble = DOMAIN_PREAMBLE_PATH.read_text(encoding="utf-8")
-    instructions = PROMPT_PATH.read_text(encoding="utf-8").replace(
-        "{max_searches}", str(max_searches)
+    if olg_programs:
+        # UX note for the agent: the filter is already enforced by the
+        # OLG_PROGRAMS env var on this subprocess (see rag/query.py at
+        # import). Telling the agent up front saves it from discovering
+        # the filter via empty TAFDC results.
+        program_filter_note = (
+            f"Search results are pre-filtered to these OLG programs: "
+            f"{', '.join(olg_programs)}. The filter is enforced at the "
+            f"`python rag/query.py` subprocess level — there is no need "
+            f"(and no way) to broaden past this whitelist with --program "
+            f"or --exclude-programs flags."
+        )
+    else:
+        program_filter_note = (
+            "Search results are not pre-filtered by OLG program."
+        )
+    instructions = (
+        PROMPT_PATH.read_text(encoding="utf-8")
+        .replace("{max_searches}", str(max_searches))
+        .replace("{program_filter_note}", program_filter_note)
     )
 
     seed_formatted = format_results_for_prompt(seed_results, "olg")
@@ -141,6 +160,7 @@ def run_judge_claude_code(
     max_searches: int = 7,
     timeout: int = 1800,
     model: str | None = None,
+    olg_programs: list[str] | None = None,
 ) -> tuple[dict, list[dict]]:
     """Run the judge phase for a single finding via Claude Code CLI.
 
@@ -162,6 +182,14 @@ def run_judge_claude_code(
         model:             Optional CC model alias/ID (e.g. "sonnet", "opus",
                            "claude-sonnet-4-6"). None / empty = let Claude
                            Code pick its own default.
+        olg_programs:      OLG program whitelist enforced on the spawned
+                           subprocess via the OLG_PROGRAMS env var (read
+                           by rag/query.py at import). When None or empty,
+                           no filter is applied — but for QC's SNAP-only
+                           scope the caller should always pass the
+                           `qc_analyzer.olg_include` list. See
+                           qc_olg_program_filter_leak.md for the leak
+                           this closes.
     """
     sessions_dir = analysis_dir / "judge_sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
@@ -169,9 +197,12 @@ def run_judge_claude_code(
     result_file = sessions_dir / f"{task_id}.json"
 
     prompt = _build_prompt(row, extractor_result, seed_results,
-                           result_file, max_searches)
+                           result_file, max_searches,
+                           olg_programs=olg_programs)
 
     extractor_queries = extractor_result.get("search_queries", [])
+
+    env = {"OLG_PROGRAMS": ",".join(olg_programs)} if olg_programs else None
 
     task_result = run_claude_task(
         prompt=prompt,
@@ -182,6 +213,7 @@ def run_judge_claude_code(
         task_id=task_id,
         windowed=False,
         model=model,
+        env=env,
     )
 
     if not task_result["success"]:

@@ -85,6 +85,7 @@ def run_research(
     version_dir: Path,
     config: configparser.ConfigParser,
     sources: list[str] | None = None,
+    programs_by_source: dict[str, list[str]] | None = None,
 ) -> "dict | SynthesisResult":
     """Dispatch the research phase to the configured engine.
 
@@ -101,6 +102,11 @@ def run_research(
     Both engines write to the same version_dir layout (report.md,
     evidence.json, meta.json) so downstream Draft consumption is engine-
     agnostic.
+
+    `programs_by_source` is the user-selected per-source filter from the
+    UI ({source: [program, ...]}). On the API path it threads through
+    `run_synthesis`. On the CC path it sets the OLG_PROGRAMS env var on
+    the spawned subprocess (durable guardrail — agent can't broaden past it).
     """
     if sources is None:
         sources = ["olg", "cmr", "fns", "cfr"]
@@ -116,12 +122,17 @@ def run_research(
     if task_instructions:
         print(f"  Focus: {task_instructions[:100]}{'...' if len(task_instructions) > 100 else ''}")
     print(f"  Sources: {', '.join(sources)}")
+    if programs_by_source:
+        for src, progs in programs_by_source.items():
+            if progs:
+                print(f"  Programs ({src}): {', '.join(progs)}")
     print(f"  Output: {version_dir}")
     print()
 
     if engine == "claude-code":
         result = run_research_claude_code(
-            assignment, task_instructions, version_dir, config, sources
+            assignment, task_instructions, version_dir, config, sources,
+            programs_by_source=programs_by_source,
         )
         print(f"  Spawned Claude Code session:")
         print(f"    Session ID: {result['session_id']}")
@@ -134,7 +145,8 @@ def run_research(
 
     if engine == "api":
         return _run_research_api(
-            assignment, task_instructions, version_dir, config, sources
+            assignment, task_instructions, version_dir, config, sources,
+            programs_by_source=programs_by_source,
         )
 
     raise ValueError(
@@ -149,6 +161,7 @@ def _run_research_api(
     version_dir: Path,
     config: configparser.ConfigParser,
     sources: list[str],
+    programs_by_source: dict[str, list[str]] | None = None,
 ) -> SynthesisResult:
     """Original API-based research path — deep agentic synthesis via
     tools/synthesis.py. Blocks until research is complete, returns the
@@ -175,6 +188,7 @@ def _run_research_api(
     result = run_synthesis(
         question=question,
         sources=sources,
+        programs_by_source=programs_by_source,
         deep=True,
         max_searches=max_searches,
         prompt_name="author_research",
@@ -244,6 +258,7 @@ def _run_research_api(
         "searches": len(result.search_queries),
         "model": result.model,
         "sources": sources,
+        "programs_by_source": programs_by_source or {},
     }
     (version_dir / "meta.json").write_text(
         json.dumps(meta, indent=2), encoding="utf-8"

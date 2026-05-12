@@ -26,7 +26,7 @@ python rag/query.py "search term" --source olg --json --top 5
 
 The `--json` flag returns structured JSON to stdout. Each result has `id`, `score`, `page_title`, `section_heading`, `url`, and `text_preview` fields. The `id` is what you pass to the next two tools.
 
-You may also pass `--exclude-programs "TAFDC,EAEDC"` to filter out non-SNAP-only pages while keeping Cross-Program content, or `--program SNAP` for a stricter SNAP-only filter (be aware this excludes Cross-Program pages that may cover SNAP topics).
+{program_filter_note}
 
 For broader topic discovery, use `--collection pages` instead of the default `--collection sections`.
 

@@ -10,6 +10,27 @@
             <label class="checkbox-label"><input type="checkbox" class="research-source-cb" value="cfr" checked> CFR</label>
         </div>
     </div>
+    <details class="program-filter-details">
+        <summary>Filter programs <small>(uncheck a program to drop it from results for that source)</small></summary>
+        <div class="program-groups">
+            {% for key, src in SOURCES.items() if src.has_program_filter %}
+            <fieldset class="program-group research-program-group" data-source="{{ key }}">
+                <legend>{{ src.short_label }}</legend>
+                {% for prog in PROGRAM_REGISTRY[key]["all"] %}
+                <label class="checkbox-label">
+                    <input type="checkbox"
+                           class="research-program-cb"
+                           data-source="{{ key }}"
+                           name="programs_{{ key }}"
+                           value="{{ prog }}"
+                           {{ 'checked' if prog in PROGRAM_REGISTRY[key]["default_checked"] }}>
+                    {{ prog }}
+                </label>
+                {% endfor %}
+            </fieldset>
+            {% endfor %}
+        </div>
+    </details>
     <div class="form-group">
         <label>Research Focus <span class="text-muted">(what to look for, keywords, constraints)</span></label>
         <textarea id="author-prompt-textarea" rows="6" class="prompt-textarea"

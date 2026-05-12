@@ -1708,6 +1708,7 @@ def _investigate_one_finding(
             finding_index=finding_index,
             max_searches=max_judge_searches,
             model=(judge_cc_model or None),
+            olg_programs=olg_programs,
         )
     else:
         judge_result, judge_trace = run_judge(

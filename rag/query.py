@@ -48,6 +48,7 @@ Configuration:
 import argparse
 import configparser
 import json
+import os
 import sys
 import textwrap
 import time
@@ -82,6 +83,20 @@ HYBRID_SPARSE_WEIGHT = 0.4       # RRF weight for sparse — dense is already
                                  # Sparse needs to be a "rescue" channel for
                                  # adversarial cases, not equal voice.
 VALID_RETRIEVAL_MODES = ("dense", "sparse", "hybrid")
+
+# Orchestrator-set OLG program whitelist (NOT user config). When this
+# script is run as a subprocess from inside an agent loop (QC Claude Code
+# judge, Author Claude Code research), the spawning orchestrator sets
+# OLG_PROGRAMS so the agent's shell-out `python rag/query.py --source olg`
+# can't broaden past the configured filter. Read once at import; the
+# subprocess is short-lived, so env-var-at-import is the natural scope.
+# Intersection semantics: agent --program / --exclude-programs / --programs
+# can narrow within this whitelist, but anything outside is dropped.
+_OLG_PROGRAMS_ENV = os.environ.get("OLG_PROGRAMS", "").strip()
+OLG_PROGRAMS_WHITELIST: list[str] | None = (
+    [p.strip() for p in _OLG_PROGRAMS_ENV.split(",") if p.strip()]
+    if _OLG_PROGRAMS_ENV else None
+)
 
 
 def load_config() -> configparser.ConfigParser:
@@ -1509,6 +1524,42 @@ Examples:
     exclude = None
     if args.exclude_programs:
         exclude = [p.strip() for p in args.exclude_programs.split(",")]
+
+    # OLG_PROGRAMS guardrail (see module-level constant): intersect the
+    # agent-passed filter with the orchestrator's whitelist so the
+    # agent can narrow but never broaden.
+    if OLG_PROGRAMS_WHITELIST is not None and args.source == "olg":
+        whitelist = set(OLG_PROGRAMS_WHITELIST)
+        if programs:
+            programs = [p for p in programs if p in whitelist]
+        elif args.program:
+            programs = [args.program] if args.program in whitelist else []
+            args.program = None
+        else:
+            base = whitelist - set(exclude or [])
+            programs = sorted(base)
+            exclude = None
+        # Empty intersection ≠ "no filter at all". The agent asked for
+        # something outside the whitelist — short-circuit to a zero-
+        # results response (don't fall through to an unfiltered search).
+        if not programs:
+            empty = {
+                "query": args.query,
+                "source": "olg",
+                "collection": args.collection,
+                "filters": {"olg_programs_guardrail": "no_match"},
+                "mode": "dense",
+                "result_count": 0,
+                "results": [],
+            }
+            if args.output_json:
+                print(json.dumps(empty, indent=2, ensure_ascii=False))
+            else:
+                print(
+                    "No matching results — agent filter is outside the "
+                    "OLG_PROGRAMS whitelist."
+                )
+            return
 
     run_query(
         query=args.query,
