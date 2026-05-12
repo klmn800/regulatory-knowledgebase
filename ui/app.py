@@ -1849,15 +1849,29 @@ _QC_OPTIONAL_STR_FIELDS = (
     "judge_cc_model",
 )
 
+# [debug] section — hidden behind the testing-mode gate. Lay users never
+# see these; the qc_analyzer only honors the temperature overrides when
+# debug_mode is also true.
+_DEBUG_BOOL_FIELDS = ("debug_mode",)
+_DEBUG_OPTIONAL_FLOAT_FIELDS = (
+    "extractor_temperature",
+    "judge_api_temperature",
+    "cross_check_temperature",
+)
+
 
 def _read_qc_settings() -> dict:
-    """Return current [qc_analyzer] values, suitable for form pre-fill."""
+    """Return current [qc_analyzer] + [debug] values for form pre-fill."""
     config = load_qc_config()
     values = {}
     for k in _QC_ENUM_FIELDS:
         values[k] = config.get("qc_analyzer", k, fallback="")
     for k in _QC_INT_FIELDS + _QC_STR_FIELDS + _QC_OPTIONAL_STR_FIELDS:
         values[k] = config.get("qc_analyzer", k, fallback="")
+    for k in _DEBUG_BOOL_FIELDS:
+        values[k] = config.get("debug", k, fallback="false")
+    for k in _DEBUG_OPTIONAL_FLOAT_FIELDS:
+        values[k] = config.get("debug", k, fallback="")
     return values
 
 
@@ -1917,10 +1931,15 @@ async def settings_save(request: Request):
     form = await request.form()
     submitted = {k: (form.get(k) or "").strip()
                  for k in (*_QC_ENUM_FIELDS, *_QC_INT_FIELDS,
-                           *_QC_STR_FIELDS, *_QC_OPTIONAL_STR_FIELDS)}
+                           *_QC_STR_FIELDS, *_QC_OPTIONAL_STR_FIELDS,
+                           *_DEBUG_OPTIONAL_FLOAT_FIELDS)}
+    # Checkbox: present in form => "true", absent => "false".
+    for k in _DEBUG_BOOL_FIELDS:
+        submitted[k] = "true" if form.get(k) else "false"
 
     errors: dict[str, str] = {}
     parsed_ints: dict[str, int] = {}
+    parsed_floats: dict[str, str] = {}  # store as normalized strings
 
     for k, allowed in _QC_ENUM_FIELDS.items():
         if submitted[k] not in allowed:
@@ -1941,6 +1960,23 @@ async def settings_save(request: Request):
     for k in _QC_STR_FIELDS:
         if not submitted[k]:
             errors[k] = "Required."
+
+    # Optional floats: empty string = "no override" (don't write a value).
+    # Anthropic accepts temperature in [0, 1]; reject anything outside.
+    for k in _DEBUG_OPTIONAL_FLOAT_FIELDS:
+        raw = submitted[k]
+        if not raw:
+            parsed_floats[k] = ""
+            continue
+        try:
+            v = float(raw)
+        except ValueError:
+            errors[k] = "Must be a number (e.g. 0, 0.5, 1) or blank."
+            continue
+        if v < 0 or v > 1:
+            errors[k] = "Must be between 0 and 1 (Anthropic API range)."
+            continue
+        parsed_floats[k] = str(v)
 
     if errors:
         models = await asyncio.to_thread(_get_anthropic_models)
@@ -1966,6 +2002,13 @@ async def settings_save(request: Request):
         config.set("qc_analyzer", k, submitted[k])
     for k in _QC_OPTIONAL_STR_FIELDS:
         config.set("qc_analyzer", k, submitted[k])
+
+    if not config.has_section("debug"):
+        config.add_section("debug")
+    for k in _DEBUG_BOOL_FIELDS:
+        config.set("debug", k, submitted[k])
+    for k, v in parsed_floats.items():
+        config.set("debug", k, v)
 
     with open(QC_CONFIG_FILE, "w", encoding="utf-8") as f:
         config.write(f)

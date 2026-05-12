@@ -625,9 +625,32 @@ def build_extractor_input(row: dict) -> str:
     return "\n\n".join(parts)
 
 
+def _resolve_temperature(config: configparser.ConfigParser | None,
+                          key: str, baseline: float | None) -> float | None:
+    """Return the API temperature for a call site.
+
+    Honors [debug] overrides only when [debug] debug_mode = true. When
+    debug mode is off, missing, or the override is blank/invalid, the
+    in-code `baseline` is returned. A baseline of None means "do not pass
+    temperature to the API" (the call uses the Anthropic default, ~1.0).
+    """
+    if config is None or not config.has_section("debug"):
+        return baseline
+    if not config.getboolean("debug", "debug_mode", fallback=False):
+        return baseline
+    raw = config.get("debug", key, fallback="").strip()
+    if not raw:
+        return baseline
+    try:
+        return float(raw)
+    except ValueError:
+        return baseline
+
+
 def run_extractor(user_message: str, client: anthropic.Anthropic,
                   model: str, system_prompt: str,
-                  cost_tracker: Tracker | None = None) -> dict:
+                  cost_tracker: Tracker | None = None,
+                  temperature: float | None = 0.0) -> dict:
     """Call 1: Extract policy issues and search queries from a QC finding.
 
     Returns a dict with a `findings` list. Each finding has policy_issues
@@ -637,13 +660,15 @@ def run_extractor(user_message: str, client: anthropic.Anthropic,
 
     @with_rate_limit_retry()
     def _do_extractor_call():
-        return client.messages.create(
-            model=model,
-            max_tokens=1500,
-            temperature=0,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
-        )
+        kwargs = {
+            "model": model,
+            "max_tokens": 1500,
+            "system": system_prompt,
+            "messages": [{"role": "user", "content": user_message}],
+        }
+        if temperature is not None:
+            kwargs["temperature"] = temperature
+        return client.messages.create(**kwargs)
 
     try:
         response = _do_extractor_call()
@@ -778,7 +803,8 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
               max_page_fetches: int = 3,
               results_per_search: int = 5,
               cost_tracker: Tracker | None = None,
-              olg_programs: list[str] | None = None) -> tuple[dict, list[dict]]:
+              olg_programs: list[str] | None = None,
+              temperature: float | None = None) -> tuple[dict, list[dict]]:
     """Call 2: Agentic OLG coverage assessment with iterative search.
 
     Returns (result, judge_trace) — the final classification dict plus an
@@ -864,13 +890,16 @@ def run_judge(row: dict, extractor_result: dict, seed_results: list[dict],
 
     @with_rate_limit_retry()
     def _do_judge_call():
-        return client.messages.create(
-            model=model,
-            max_tokens=2000,
-            system=system_prompt,
-            messages=messages,
-            tools=[SEARCH_OLG_TOOL, FETCH_OLG_NEIGHBORS_TOOL, FETCH_OLG_PAGE_TOOL],
-        )
+        kwargs = {
+            "model": model,
+            "max_tokens": 2000,
+            "system": system_prompt,
+            "messages": messages,
+            "tools": [SEARCH_OLG_TOOL, FETCH_OLG_NEIGHBORS_TOOL, FETCH_OLG_PAGE_TOOL],
+        }
+        if temperature is not None:
+            kwargs["temperature"] = temperature
+        return client.messages.create(**kwargs)
 
     for turn in range(max_turns):
         try:
@@ -1282,6 +1311,9 @@ def run_extract(analysis_dir: Path, rows: list[dict],
 
     extractor_model = config.get("qc_analyzer", "extractor_model")
     extractor_prompt = load_prompt("qc_extractor", with_preamble=True)
+    extractor_temperature = _resolve_temperature(
+        config, "extractor_temperature", 0.0
+    )
 
     api_key = config.get("api", "anthropic_api_key")
     claude = anthropic.Anthropic(api_key=api_key)
@@ -1301,6 +1333,7 @@ def run_extract(analysis_dir: Path, rows: list[dict],
         extractor_result = run_extractor(
             extractor_input, claude, extractor_model, extractor_prompt,
             cost_tracker=cost_tracker,
+            temperature=extractor_temperature,
         )
 
         # Normalize findings list: ensure each has policy_issues +
@@ -1511,6 +1544,7 @@ def _investigate_one_finding(
     analysis_dir: Path | None = None,
     row_index: int | None = None,
     finding_index: int | None = None,
+    judge_api_temperature: float | None = None,
 ) -> dict:
     """Run seed search + judge for one finding. Returns the field updates
     to merge into the finding dict.
@@ -1555,6 +1589,7 @@ def _investigate_one_finding(
             results_per_search=olg_results_per_search,
             cost_tracker=locked_tracker,
             olg_programs=olg_programs,
+            temperature=judge_api_temperature,
         )
 
     return {
@@ -1626,6 +1661,9 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
     judge_cc_model = config.get("qc_analyzer", "judge_cc_model",
                                 fallback="").strip()
     judge_prompt = load_prompt("qc_judge", with_preamble=True)
+    judge_api_temperature = _resolve_temperature(
+        config, "judge_api_temperature", None
+    )
 
     api_key = config.get("api", "anthropic_api_key")
     claude = anthropic.Anthropic(api_key=api_key)
@@ -1720,6 +1758,7 @@ def run_investigate(analysis_dir: Path, row_indices: list[int] = None,
                 analysis_dir=analysis_dir,
                 row_index=row_idx,
                 finding_index=finding_idx,
+                judge_api_temperature=judge_api_temperature,
             )
             return row_idx, finding_idx, updates, None
         except Exception as e:  # noqa: BLE001 — surface error in result
@@ -1876,20 +1915,23 @@ SOURCE_CHECK_CONFIG = {
 
 @with_rate_limit_retry()
 def _do_crosscheck_call(claude, model: str, system_prompt: str,
-                        user_message: str):
+                        user_message: str,
+                        temperature: float | None = 0.0):
     """Single Anthropic message call for a cross-check row.
 
     Wrapped with retry so transient rate-limit / overload errors don't kill
     a multi-row check. Per QC F7 — cross-checks previously had zero retry
     coverage.
     """
-    return claude.messages.create(
-        model=model,
-        max_tokens=500,
-        temperature=0,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_message}],
-    )
+    kwargs = {
+        "model": model,
+        "max_tokens": 500,
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_message}],
+    }
+    if temperature is not None:
+        kwargs["temperature"] = temperature
+    return claude.messages.create(**kwargs)
 
 
 def run_source_check(source: str, analysis_dir: Path,
@@ -1926,6 +1968,9 @@ def run_source_check(source: str, analysis_dir: Path,
     model = config.get("qc_analyzer", spec["model_config_key"],
                        fallback="claude-haiku-4-5-20251001")
     prompt = load_prompt(spec["prompt_name"], with_preamble=True)
+    cross_check_temperature = _resolve_temperature(
+        config, "cross_check_temperature", 0.0
+    )
 
     api_key = config.get("api", "anthropic_api_key")
     claude = anthropic.Anthropic(api_key=api_key)
@@ -1983,7 +2028,10 @@ def run_source_check(source: str, analysis_dir: Path,
                 finding, row, formatted, source.upper()
             )
 
-            response = _do_crosscheck_call(claude, model, prompt, user_message)
+            response = _do_crosscheck_call(
+                claude, model, prompt, user_message,
+                temperature=cross_check_temperature,
+            )
             cost_tracker.record(cost_stage, model, response.usage)
 
             text = response.content[0].text.strip()

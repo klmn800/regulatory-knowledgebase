@@ -39,6 +39,13 @@
                     {% if errors.judge_engine %}<p class="form-error">{{ errors.judge_engine }}</p>{% endif %}
                 </div>
 
+                <div class="form-group {% if errors.judge_cc_model %}has-error{% endif %}">
+                    <label for="judge_cc_model">Judge model (Claude Code engine)</label>
+                    <input type="text" id="judge_cc_model" name="judge_cc_model" value="{{ values.judge_cc_model }}" list="anthropic-models" autocomplete="off" placeholder="(leave blank to use Claude Code's default)">
+                    <p class="form-help">Passed to <code>claude --model &lt;id&gt;</code> when judge_engine = claude-code. Accepts a CC alias (<code>sonnet</code>, <code>opus</code>, <code>haiku</code>) or a full model ID. Leave blank to inherit whatever your <code>claude</code> CLI is configured to use by default.</p>
+                    {% if errors.judge_cc_model %}<p class="form-error">{{ errors.judge_cc_model }}</p>{% endif %}
+                </div>
+
                 <div class="form-group {% if errors.judge_model %}has-error{% endif %}">
                     <label for="judge_model">Judge model (API engine only)</label>
                     <input type="text" id="judge_model" name="judge_model" value="{{ values.judge_model }}" list="anthropic-models" autocomplete="off">
@@ -120,6 +127,48 @@
         </datalist>
         {% endif %}
 
+        <section class="settings-section">
+            <h3>Debug / Testing</h3>
+            <p class="settings-section-aux">Knobs intended for controlled experiments and A/B comparisons. Hidden from the rest of the page unless testing mode is on. Even when values are saved here, they only take effect at runtime while testing mode is enabled — toggling testing mode off makes the pipeline fall back to its in-code defaults without erasing your saved values.</p>
+
+            <fieldset class="settings-group">
+                <legend>Testing mode</legend>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="debug_mode" name="debug_mode" value="true" {% if values.debug_mode == 'true' %}checked{% endif %} onchange="toggleDebugFields(this)">
+                        Enable testing mode
+                    </label>
+                    <p class="form-help">When on, the temperature overrides below are applied to every relevant API call. When off, the qc_analyzer uses its in-code defaults: extractor &amp; cross-checks at <code>temperature=0</code>, judge (API engine) at the Anthropic default (~1.0). Claude Code judge runs at whatever the CLI defaults to and isn't affected by these overrides.</p>
+                </div>
+            </fieldset>
+
+            <fieldset class="settings-group" id="debug-temperature-fields" {% if values.debug_mode != 'true' %}style="display:none"{% endif %}>
+                <legend>Temperature overrides</legend>
+
+                <div class="form-group {% if errors.extractor_temperature %}has-error{% endif %}">
+                    <label for="extractor_temperature">Extractor temperature</label>
+                    <input type="number" id="extractor_temperature" name="extractor_temperature" value="{{ values.extractor_temperature }}" min="0" max="1" step="0.05" placeholder="(blank = use default of 0)">
+                    <p class="form-help">Greedy decoding (0) is best for structured extraction. Higher values introduce variation — useful for N-of-K ensemble experiments only. Range 0–1.</p>
+                    {% if errors.extractor_temperature %}<p class="form-error">{{ errors.extractor_temperature }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.judge_api_temperature %}has-error{% endif %}">
+                    <label for="judge_api_temperature">Judge temperature (API engine)</label>
+                    <input type="number" id="judge_api_temperature" name="judge_api_temperature" value="{{ values.judge_api_temperature }}" min="0" max="1" step="0.05" placeholder="(blank = Anthropic default ~1.0)">
+                    <p class="form-help">Applies only when judge_engine = API. Blank intentionally matches what Claude Code defaults to (apples-to-apples engine comparison). Set to 0 if you want a deterministic API judge but accept the comparison-asymmetry tradeoff.</p>
+                    {% if errors.judge_api_temperature %}<p class="form-error">{{ errors.judge_api_temperature }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.cross_check_temperature %}has-error{% endif %}">
+                    <label for="cross_check_temperature">Cross-check temperature</label>
+                    <input type="number" id="cross_check_temperature" name="cross_check_temperature" value="{{ values.cross_check_temperature }}" min="0" max="1" step="0.05" placeholder="(blank = use default of 0)">
+                    <p class="form-help">Applies to CMR / FNS / CFR single-turn classifiers. Like the extractor, greedy decoding is the default. Range 0–1.</p>
+                    {% if errors.cross_check_temperature %}<p class="form-error">{{ errors.cross_check_temperature }}</p>{% endif %}
+                </div>
+            </fieldset>
+        </section>
+
         <div class="settings-actions">
             <button type="submit" class="btn btn-primary">Save Settings</button>
             <a href="/settings" class="btn btn-outline">Discard Changes</a>
@@ -127,4 +176,12 @@
     </form>
 
 </div>
+
+<script>
+function toggleDebugFields(cb) {
+    var fs = document.getElementById('debug-temperature-fields');
+    if (!fs) return;
+    fs.style.display = cb.checked ? '' : 'none';
+}
+</script>
 {% endblock %}
