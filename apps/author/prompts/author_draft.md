@@ -21,7 +21,7 @@ Your job is to draft the OLG page content based on the research, following the s
    python rag/query.py "search term" --source olg --top 10 --full
    python rag/query.py "search term" --source olg --exclude-programs "TAFDC,EAEDC" --top 10
    ```
-5. **Check where this page fits.** If you need to understand the OLG's structure — where related pages live, what sections exist, or where a new page would logically go — read `programs/author/references/olg_toc.md`. It's a table of contents for the entire OLG. You don't need to read it for every assignment, but it's there when placement or cross-referencing matters.
+5. **Check where this page fits.** If you need to understand the OLG's structure — where related pages live, what sections exist, or where a new page would logically go — read `apps/author/references/olg_toc.md`. It's a table of contents for the entire OLG. You don't need to read it for every assignment, but it's there when placement or cross-referencing matters.
 6. **Draft the page content.** Write the full OLG page in markdown format, following the style guide.
 
 ## If Asked to Revise

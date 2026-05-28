@@ -2,9 +2,9 @@
 """Generate HTML report from FNS vs OLG comparator results.
 
 Usage:
-    python programs/comparator/report.py                # Auto-detect CSVs, output to output/comparator/
-    python programs/comparator/report.py -o report.html # Custom output path
-    python programs/comparator/report.py --open         # Generate and open in browser
+    python apps/comparator/report.py                # Auto-detect CSVs, output to output/comparator/
+    python apps/comparator/report.py -o report.html # Custom output path
+    python apps/comparator/report.py --open         # Generate and open in browser
 """
 
 import csv

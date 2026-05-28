@@ -127,7 +127,7 @@ FastAPI + HTMX web interface at `http://127.0.0.1:8001`. Run with `python ui/app
 
 Key files: `ui/app.py` (FastAPI routes), `ui/search.py` (source registry), `ui/history.py` (SQLite persistence), `ui/versioning.py` (author output versioning), `tools/synthesis.py` (RAG synthesis with `prompt_name` and `config_overrides` support).
 
-### Comparator (`programs/comparator/comparator.py`)
+### Comparator (`apps/comparator/comparator.py`)
 
 Purpose-built research agent comparing FNS requirements against OLG coverage. Four-layer pipeline:
 
@@ -140,7 +140,7 @@ Purpose-built research agent comparing FNS requirements against OLG coverage. Fo
 
 All 5 FNS policy chapters complete: Ch7 (68), Ch8 (50), Ch9 (28), Ch10 (62), Ch11 (62) = 270 sections. Results in `output/comparator/results/` with per-chapter CSVs. `--parallel 5` cuts runtime ~3x. See [docs/comparator.md](docs/comparator.md).
 
-### OLG Authoring Pipeline (`programs/author/author.py`)
+### OLG Authoring Pipeline (`apps/author/author.py`)
 
 Three-phase pipeline: **Research → Author → Format**
 
@@ -150,7 +150,7 @@ Three-phase pipeline: **Research → Author → Format**
 | Author | Claude Code CLI (visible terminal, session resumable) | $0 (subscription) | `draft.md`, `session_id.txt` |
 | Format | python-docx (deterministic, no LLM) | $0 | `output.docx` |
 
-CLI: `python programs/author/author.py "assignment" --name name`. Flags: `--research-only`, `--draft-only`, `--resume`, `--no-docx`, `--assignment-file`.
+CLI: `python apps/author/author.py "assignment" --name name`. Flags: `--research-only`, `--draft-only`, `--resume`, `--no-docx`, `--assignment-file`.
 
 Web UI: Author tab with buttons for each phase. Draft spawns a Claude Code terminal window for live observation. Clicking a phase button shows existing output with version navigation (left/right arrows) and a "Run Again" button; draft views include a Resume button wired to the version-specific session ID.
 
@@ -160,13 +160,13 @@ Output directory: `output/author/{name}/`
 
 Key supporting files:
 - `prompts/author_research.md` — Structured research output prompt
-- `programs/author/prompts/author_draft.md` — OLG-voice drafting instructions
-- `programs/author/references/olg_style_guide.md` — Evidence-based style guide (committed)
-- `programs/author/references/2026 OLG Template.docx` — Word template with OLG styles (gitignored)
+- `apps/author/prompts/author_draft.md` — OLG-voice drafting instructions
+- `apps/author/references/olg_style_guide.md` — Evidence-based style guide (committed)
+- `apps/author/references/2026 OLG Template.docx` — Word template with OLG styles (gitignored)
 
 Both prompts include a self-improvement directive: agents suggest changes to style guide, tools, and references in Author's Notes.
 
-### QC Analyzer (`programs/qc/qc_analyzer.py`)
+### QC Analyzer (`apps/qc/qc_analyzer.py`)
 
 Reads a QC reviewer's CSV of error findings, extracts the abstract policy issues, evaluates whether the OLG covers each one, and cross-checks CMR / FNS / 7 CFR for gaps. Phased pipeline driven by the QC tab in the web UI.
 
@@ -182,9 +182,9 @@ Reads a QC reviewer's CSV of error findings, extracts the abstract policy issues
 
 **Re-extract safety**: re-running extract on an analysis with downstream phases populated (judge / cross-checks) returns an in-page modal listing what would be wiped, with three options: Fork to new analysis (copies `upload.csv` to a new timestamped dir, preserves the original), Re-extract here (destructive, wipes downstream phase flags), or Cancel.
 
-### HTML Report (`programs/comparator/report.py`)
+### HTML Report (`apps/comparator/report.py`)
 
-Single-page HTML from comparator CSVs. Dark mode, favorites, expandable details, filter by chapter/classification/findings. Session ID click copies `claude --resume <UUID>`. Run: `python programs/comparator/report.py --open`.
+Single-page HTML from comparator CSVs. Dark mode, favorites, expandable details, filter by chapter/classification/findings. Session ID click copies `claude --resume <UUID>`. Run: `python apps/comparator/report.py --open`.
 
 ## Commands
 
@@ -223,19 +223,19 @@ python rag/query.py "income" --source cfr --exclude-programs "Administration,QC"
 
 ### Authoring
 ```bash
-python programs/author/author.py "Consolidate all VC-1 scripts" --name vc1_scripts
-python programs/author/author.py "Find VC-1 scripts" --name vc1_scripts --research-only
-python programs/author/author.py --name vc1_scripts --draft-only
-python programs/author/author.py --name vc1_scripts --resume
-python programs/author/author.py --name vc1_scripts --no-docx
-python programs/author/author.py --assignment-file assignment.txt --name my_assignment
+python apps/author/author.py "Consolidate all VC-1 scripts" --name vc1_scripts
+python apps/author/author.py "Find VC-1 scripts" --name vc1_scripts --research-only
+python apps/author/author.py --name vc1_scripts --draft-only
+python apps/author/author.py --name vc1_scripts --resume
+python apps/author/author.py --name vc1_scripts --no-docx
+python apps/author/author.py --assignment-file assignment.txt --name my_assignment
 ```
 
 ### Comparator
 ```bash
-python programs/comparator/comparator.py --chapter 10 --engine claude-code --parallel 5
-python programs/comparator/comparator.py --compile --chapter 10
-python programs/comparator/report.py --open
+python apps/comparator/comparator.py --chapter 10 --engine claude-code --parallel 5
+python apps/comparator/comparator.py --compile --chapter 10
+python apps/comparator/report.py --open
 ```
 
 ### Embedding
@@ -291,14 +291,14 @@ policy_navigator/
 │
 ├── raw/                             ← source PDFs, HAR files (gitignored)
 │
-├── tools/                           ← shared capabilities used by programs
+├── tools/                           ← shared capabilities used by apps
 │   ├── synthesis.py
 │   ├── claude_code_runner.py
 │   └── docx_writer.py
 │
 ├── prompts/                         ← shared prompts (domain_preamble, synthesis, author_research)
 │
-├── programs/
+├── apps/
 │   ├── comparator/                  ← comparator.py, report.py, prompts/
 │   ├── author/                      ← author.py, prompts/, references/
 │   ├── qc/                          ← qc_analyzer.py, prompts/, inputs/
@@ -331,7 +331,7 @@ policy_navigator/
 - **Python API pattern**: `search()` for one-off convenience, `create_client(source)` + `search_with_client()` for agent loops that need to avoid re-initialization.
 - **Source-agnostic RAG modules**: `embedder.py` and `query.py` use `_resolve_source_paths()` / `_resolve_source_config()` — adding a new source requires one dict per resolver function.
 - All modules use `configparser` for settings, `argparse` for CLI, and `pathlib` for paths.
-- **Path resolution**: Scripts in `rag/*/` use `PROJECT_ROOT = Path(__file__).resolve().parents[2]`. Scripts in `rag/`, `tools/`, and `ui/` use `PROJECT_ROOT = Path(__file__).resolve().parents[1]`. Scripts in `programs/*/` use `PROJECT_ROOT = Path(__file__).resolve().parents[2]`.
+- **Path resolution**: Scripts in `rag/*/` use `PROJECT_ROOT = Path(__file__).resolve().parents[2]`. Scripts in `rag/`, `tools/`, and `ui/` use `PROJECT_ROOT = Path(__file__).resolve().parents[1]`. Scripts in `apps/*/` use `PROJECT_ROOT = Path(__file__).resolve().parents[2]`.
 - **Engine split for LLM work**: API for structured/cheap tasks (synthesis, triage). Claude Code CLI for expensive/resumable work (comparator L2, authoring drafts). python-docx for deterministic formatting.
 
 ## Key Design Decisions
@@ -345,7 +345,7 @@ policy_navigator/
 7. **Comparator is source-pair-agnostic**: Designed to compare any two sources (OLG vs CMR, CMR vs FNS, OLG vs FNS), not hardcoded to one pair.
 8. **Authoring engine split**: Research via API (structured SynthesisResult, cheap, integrated with existing RAG). Drafting via Claude Code CLI (free on subscription, session resumable via UUID, can do additional searches). Formatting via python-docx (deterministic, uses real OLG template styles).
 9. **Web UI uses HTMX**: Server-rendered HTML partials, no heavy JS framework. FastAPI backend runs synthesis in thread pool to avoid blocking. Author draft phase spawns a visible Claude Code terminal instead of running headless.
-10. **Directory structure follows dependency flow**: `programs/ → tools/ → rag/ → index/`. Programs are top-level workflows, tools are shared capabilities, rag is the retrieval layer, index is stored data. Prompts shared across programs live in `prompts/`; program-specific prompts live in `programs/*/prompts/`.
+10. **Directory structure follows dependency flow**: `apps/ → tools/ → rag/ → index/`. Apps are top-level workflows, tools are shared capabilities, rag is the retrieval layer, index is stored data. Prompts shared across apps live in `prompts/`; app-specific prompts live in `apps/*/prompts/`. (The term **app** refers to the four user-facing applications — comparator, author, qc, search. The word "program" is reserved for chunk metadata — SNAP, EAEDC, Hearings, etc.)
 
 ## Important File Locations
 
@@ -363,10 +363,10 @@ policy_navigator/
 - **CMR source PDFs**: `raw/cmr/*.pdf` (18 files)
 - **CFR source PDFs**: `raw/cfr/*.pdf` (7 files)
 - **Shared prompts**: `prompts/domain_preamble.md`, `prompts/synthesis.md`, `prompts/author_research.md`
-- **Comparator prompts**: `programs/comparator/prompts/`
-- **Author prompts**: `programs/author/prompts/author_draft.md`
-- **QC prompts**: `programs/qc/prompts/`
-- **Author references**: `programs/author/references/` (style guide, templates, sample pages)
+- **Comparator prompts**: `apps/comparator/prompts/`
+- **Author prompts**: `apps/author/prompts/author_draft.md`
+- **QC prompts**: `apps/qc/prompts/`
+- **Author references**: `apps/author/references/` (style guide, templates, sample pages)
 - **Pipeline documentation**: `docs/olg_pipeline.md`, `docs/fns_pipeline.md`, `docs/cmr_pipeline.md`, `docs/cfr_pipeline.md`, `docs/comparator.md`
 
 ### User Preferences

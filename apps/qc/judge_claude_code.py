@@ -278,7 +278,7 @@ def run_judge_claude_code(
 def launch_judge_resume(session_id: str, label: str) -> None:
     """Launch a Claude Code resume terminal for a QC judge session.
 
-    Mirrors programs/author/author.py:launch_resume — writes a single
+    Mirrors apps/author/author.py:launch_resume — writes a single
     shared .bat under the analysis output area and spawns it in a new
     console window.
     """

@@ -1,4 +1,4 @@
-<!-- Sibling prompt: programs/author/prompts/author_research_claude_code.md
+<!-- Sibling prompt: apps/author/prompts/author_research_claude_code.md
      (Claude Code engine path). If you edit substantive guidance here,
      mirror it there. Engine mechanics differ; research substance should
      not. -->

@@ -1700,7 +1700,7 @@ def _investigate_one_finding(
     )
 
     if judge_engine == "claude-code":
-        from programs.qc.judge_claude_code import run_judge_claude_code
+        from apps.qc.judge_claude_code import run_judge_claude_code
         judge_result, judge_trace = run_judge_claude_code(
             original_row, extractor_result, seed_results,
             analysis_dir=analysis_dir,

@@ -43,7 +43,7 @@ from ui.versioning import (
     load_version_list,
 )
 from tools.synthesis import run_synthesis
-from programs.author.author import (
+from apps.author.author import (
     load_config as load_author_config,
     get_output_dir,
     get_default_research_prompt,
@@ -57,7 +57,7 @@ from programs.author.author import (
 )
 from tools.docx_reader import has_tracked_changes, read_docx, to_markdown
 from tools.docx_writer import generate_docx
-from programs.qc.qc_analyzer import (
+from apps.qc.qc_analyzer import (
     load_config as load_qc_config,
     CONFIG_FILE as QC_CONFIG_FILE,
     get_analysis_dir,
@@ -565,7 +565,7 @@ async def author_research_resume(request: Request, name: str, num: int):
     if view.get("engine") != "claude-code":
         return HTMLResponse("<p>Resume is only supported for Claude Code research sessions.</p>")
 
-    from programs.author.research_claude_code import launch_research_resume
+    from apps.author.research_claude_code import launch_research_resume
     try:
         # Pass version_dir so the launcher can re-apply the original
         # programs_by_source from meta.json on resume.
@@ -1307,7 +1307,7 @@ async def qc_source_check(
 @app.get("/qc/finding/{name}/{row_index}")
 async def qc_finding_json(name: str, row_index: int):
     """Download an individual finding JSON."""
-    from programs.qc.qc_analyzer import load_finding as _load_finding
+    from apps.qc.qc_analyzer import load_finding as _load_finding
     analysis_dir = get_analysis_dir(name)
     finding = _load_finding(analysis_dir, row_index)
     if not finding:
@@ -1319,8 +1319,8 @@ async def qc_finding_json(name: str, row_index: int):
           response_class=HTMLResponse)
 async def qc_judge_resume(name: str, row_index: int, finding_index: int):
     """Open a terminal resuming the Claude Code judge session for a finding."""
-    from programs.qc.qc_analyzer import load_finding as _load_finding
-    from programs.qc.judge_claude_code import launch_judge_resume
+    from apps.qc.qc_analyzer import load_finding as _load_finding
+    from apps.qc.judge_claude_code import launch_judge_resume
 
     analysis_dir = get_analysis_dir(name)
     row = _load_finding(analysis_dir, row_index)
@@ -1376,7 +1376,7 @@ async def qc_download(name: str):
 # QC PPT panel + orchestration
 # ------------------------------------------------------------
 
-from programs.qc.ppt_generator import (
+from apps.qc.ppt_generator import (
     ensure_pptx_built as _ppt_ensure_built,
     generate_ppt as _ppt_generate,
     resume_ppt as _ppt_resume,
@@ -1770,7 +1770,7 @@ async def convert_format(
     config = load_author_config()
     template_path = config.get(
         "author", "template_docx",
-        fallback="programs/author/references/2026 OLG Template.docx",
+        fallback="apps/author/references/2026 OLG Template.docx",
     )
     template_file = PROJECT_ROOT / template_path
 
@@ -1803,7 +1803,7 @@ async def convert_download(stem: str):
 # QC HTML report — live render + downloadable self-contained file
 # ------------------------------------------------------------
 
-from programs.qc.html_report import (
+from apps.qc.html_report import (
     generate_html as _qc_html_generate,
     list_analysis_names as _qc_html_list_names,
     load_analyses as _qc_html_load_analyses,

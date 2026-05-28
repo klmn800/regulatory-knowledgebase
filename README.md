@@ -16,9 +16,9 @@ All four sources are fully parsed, chunked, embedded, and searchable via a share
 | Capability | What | How to use it |
 |-----------|------|---------------|
 | **Search** | Ask policy questions, get synthesized answers with citations | Web UI or `rag/query.py` CLI |
-| **Compare** | Find gaps between federal rules and OLG coverage | `programs/comparator/comparator.py` CLI |
-| **Author** | Research, draft, and format new OLG pages | Web UI or `programs/author/author.py` CLI |
-| **Report** | Browse comparator findings in a filterable HTML report | `programs/comparator/report.py --open` |
+| **Compare** | Find gaps between federal rules and OLG coverage | `apps/comparator/comparator.py` CLI |
+| **Author** | Research, draft, and format new OLG pages | Web UI or `apps/author/author.py` CLI |
+| **Report** | Browse comparator findings in a filterable HTML report | `apps/comparator/report.py --open` |
 
 ---
 
@@ -51,16 +51,16 @@ python rag/query.py "work requirements" --source cmr --program SNAP
 python rag/query.py "income limits" --exclude-programs "TAFDC,EAEDC"
 
 # Author an OLG page
-python programs/author/author.py "Consolidate all VC-1 scripts" --name vc1_scripts
-python programs/author/author.py --name vc1_scripts --research-only
-python programs/author/author.py --name vc1_scripts --draft-only
-python programs/author/author.py --name vc1_scripts --resume
+python apps/author/author.py "Consolidate all VC-1 scripts" --name vc1_scripts
+python apps/author/author.py --name vc1_scripts --research-only
+python apps/author/author.py --name vc1_scripts --draft-only
+python apps/author/author.py --name vc1_scripts --resume
 
 # Run comparator
-python programs/comparator/comparator.py --chapter 10 --engine claude-code --parallel 5
+python apps/comparator/comparator.py --chapter 10 --engine claude-code --parallel 5
 
 # Generate HTML report from comparator results
-python programs/comparator/report.py --open
+python apps/comparator/report.py --open
 ```
 
 ---
@@ -87,7 +87,7 @@ FastAPI backend with HTMX frontend. No heavy JS framework -- server-rendered HTM
 - **Deep mode**: Agentic loop with iterative RAG searches (up to 8 rounds)
 - Search history persisted to SQLite with full evidence snapshots
 
-### Comparator (`programs/comparator/comparator.py`)
+### Comparator (`apps/comparator/comparator.py`)
 
 Four-layer pipeline comparing FNS requirements against OLG coverage:
 
@@ -100,7 +100,7 @@ Four-layer pipeline comparing FNS requirements against OLG coverage:
 
 All 5 FNS policy chapters complete (270 sections analyzed). Results in `index/comparator/results/` with per-chapter CSVs. See [docs/comparator.md](docs/comparator.md).
 
-### OLG Authoring Pipeline (`programs/author/author.py`)
+### OLG Authoring Pipeline (`apps/author/author.py`)
 
 Three-phase pipeline that takes a policy assignment and produces a formatted OLG page:
 
@@ -130,21 +130,21 @@ Assignment (text)
 The web UI launches the Claude Code drafting phase in a visible terminal window so you can watch it work and debug if needed.
 
 **Reference materials** (gitignored, must be provided):
-- `programs/author/references/2026 OLG Template.docx` -- Word template with OLG styles
-- `programs/author/references/OLG Writer's Manual.docx` -- Writing rules
-- `programs/author/references/sample_pages/` -- Example OLG pages for style analysis
+- `apps/author/references/2026 OLG Template.docx` -- Word template with OLG styles
+- `apps/author/references/OLG Writer's Manual.docx` -- Writing rules
+- `apps/author/references/sample_pages/` -- Example OLG pages for style analysis
 
 **Style guide** (committed):
-- `programs/author/references/olg_style_guide.md` -- Evidence-based guide extracted from the manual + 9 sample pages. Covers voice, structure, formatting, terminology, and page types.
+- `apps/author/references/olg_style_guide.md` -- Evidence-based guide extracted from the manual + 9 sample pages. Covers voice, structure, formatting, terminology, and page types.
 
 Output goes to `output/author/{name}/` with all deliverables. UI-triggered runs create versioned subdirectories (`research/001_...`, `drafts/001_...`, `formats/001_...`) preserving full history with assignment text and metadata. Top-level files always hold the latest version.
 
-### HTML Report (`programs/comparator/report.py`)
+### HTML Report (`apps/comparator/report.py`)
 
 Single-page HTML report generated from comparator CSVs. Features: dark mode, favorites, expandable detail rows, filter by chapter/classification/findings. Session ID click copies the full `claude --resume <UUID>` command.
 
 ```bash
-python programs/comparator/report.py --open
+python apps/comparator/report.py --open
 ```
 
 ### RAG Core (`rag/`)
@@ -183,7 +183,7 @@ policy_navigator/
 │   ├── claude_code_runner.py #   Claude Code CLI wrapper
 │   └── docx_writer.py        #   markdown -> styled .docx
 │
-├── programs/                 # Purpose-built programs
+├── apps/                 # Purpose-built programs
 │   ├── author/               #   OLG authoring pipeline
 │   │   ├── author.py
 │   │   ├── prompts/          #     author-specific prompt templates

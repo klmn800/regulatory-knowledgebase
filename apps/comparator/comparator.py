@@ -659,7 +659,7 @@ def run_layer2(fns_section: dict, layer1_result: dict,
                     search_response = search_with_client(
                         query, olg_clients,
                         collection="sections",
-                        program="SNAP",
+                        exclude_programs=["TAFDC", "EAEDC"],
                         top_n=max_results,
                     )
                     formatted = format_results_for_prompt(

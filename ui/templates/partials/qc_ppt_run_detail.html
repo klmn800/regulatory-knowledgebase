@@ -45,16 +45,52 @@
         </details>
         {% endif %}
 
+        {% if view.format_status in ('invalid_outline', 'format_error') %}
+        <div class="qc-error-banner" role="alert">
+            <div class="qc-error-banner-header">
+                <strong>
+                    {% if view.format_status == 'invalid_outline' %}
+                    outline.json failed validation
+                    {% else %}
+                    .pptx generation failed
+                    {% endif %}
+                </strong>
+            </div>
+            <p>The Claude Code session wrote outline.json, but it can't be turned into a deck until the issues below are fixed. Use Resume to send the errors back to Claude Code, or open outline.json directly and edit on disk before reloading the panel.</p>
+            {% if view.format_error %}
+            <details open>
+                <summary>Error detail</summary>
+                <pre class="qc-error-pre">{{ view.format_error }}</pre>
+            </details>
+            {% endif %}
+        </div>
+        {% endif %}
+
         {% if view.has_pptx %}
         <p>
             <a href="/qc/{{ name }}/ppt/{{ view.version_num }}/download">
                 Download {{ name }}_v{{ '%03d' % view.version_num }}.pptx
             </a>
+            {% if view.format_warnings %}
+            <span class="text-muted" style="font-size:0.78rem; margin-left:0.5rem;">
+                ({{ view.format_warnings | length }} validator warning{{ '' if view.format_warnings | length == 1 else 's' }})
+            </span>
+            {% endif %}
         </p>
+        {% if view.format_warnings %}
+        <details class="qc-ppt-instructions-block">
+            <summary>Validator warnings</summary>
+            <ul style="margin:0.25rem 0 0 1rem; font-size:0.78rem;">
+                {% for w in view.format_warnings %}
+                <li>{{ w }}</li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% endif %}
         {% elif view.has_outline %}
-        <p class="text-muted">Outline written but .pptx not yet generated.</p>
+        <p class="text-muted">Outline written but .pptx not yet built. Reload the panel to retry the format step.</p>
         {% else %}
-        <p class="text-muted">Run is in progress or hasn't completed. The Claude Code window may still be open.</p>
+        <p class="text-muted">Run is in progress or hasn't completed. The Claude Code window may still be open — reload this panel after it finishes.</p>
         {% endif %}
 
         {% if view.session_id %}

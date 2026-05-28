@@ -1,7 +1,7 @@
 """
 QC analysis HTML report — single-file, self-contained, dark-mode-aware.
 
-Mirrors `programs/comparator/report.py` in shape: embedded CSS + JS,
+Mirrors `apps/comparator/report.py` in shape: embedded CSS + JS,
 generate_html() returns a full HTML document, main() writes it to disk.
 
 Cross-analysis is the headline value-add. Default scope = all analyses
@@ -35,7 +35,7 @@ from urllib.parse import urlparse
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from programs.qc.qc_analyzer import (
+from apps.qc.qc_analyzer import (
     ANALYSIS_DIR,
     find_recurring_gaps,
     flatten_findings,

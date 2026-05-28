@@ -9,10 +9,10 @@ Three independent tools:
 Each function takes explicit paths — no implicit "latest" or top-level copies.
 
 Usage:
-    python programs/author/author.py "Consolidate VC-1 scripts" --name vc1_scripts
-    python programs/author/author.py "Find VC-1 scripts" --name vc1_scripts --research-only
-    python programs/author/author.py --name vc1_scripts --draft-only
-    python programs/author/author.py --name vc1_scripts --resume
+    python apps/author/author.py "Consolidate VC-1 scripts" --name vc1_scripts
+    python apps/author/author.py "Find VC-1 scripts" --name vc1_scripts --research-only
+    python apps/author/author.py --name vc1_scripts --draft-only
+    python apps/author/author.py --name vc1_scripts --resume
 """
 
 import argparse
@@ -31,7 +31,7 @@ CONFIG_FILE = PROJECT_ROOT / "config.ini"
 
 sys.path.insert(0, str(PROJECT_ROOT))
 from tools.synthesis import run_synthesis, SynthesisResult
-from programs.author.research_claude_code import (
+from apps.author.research_claude_code import (
     run_research_claude_code,
     launch_research_resume,
 )
@@ -296,7 +296,7 @@ def compose_draft_prompt(
     """
     # Load style guide
     style_guide_path = config.get("author", "style_guide",
-                                   fallback="programs/author/references/olg_style_guide.md")
+                                   fallback="apps/author/references/olg_style_guide.md")
     style_guide = load_text(PROJECT_ROOT / style_guide_path)
 
     # Load research reports from selected versions
@@ -484,7 +484,7 @@ def run_format(
         return None
 
     template_path = config.get("author", "template_docx",
-                                fallback="programs/author/references/2026 OLG Template.docx")
+                                fallback="apps/author/references/2026 OLG Template.docx")
     template_file = PROJECT_ROOT / template_path
 
     if not template_file.exists():
@@ -595,7 +595,7 @@ def main():
     if research_spawned_async and not args.research_only:
         print(f"\n  Skipping Draft phase — research is still running in the Claude Code window.")
         print(f"  After it completes, run:")
-        print(f"    python programs/author/author.py --name {args.name} --draft-only")
+        print(f"    python apps/author/author.py --name {args.name} --draft-only")
         elapsed = time.time() - start
         print(f"\n  Total duration: {elapsed:.1f}s")
         return
@@ -646,7 +646,7 @@ def main():
 
         if not args.no_docx:
             print("\n  Run format after the draft is complete:")
-            print(f"    python programs/author/author.py --name {args.name} --format-draft {draft_dir}")
+            print(f"    python apps/author/author.py --name {args.name} --format-draft {draft_dir}")
 
     elapsed = time.time() - start
     print(f"\n  Total duration: {elapsed:.1f}s")
