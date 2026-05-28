@@ -26,8 +26,15 @@ All four sources are fully parsed, chunked, embedded, and searchable via a share
 
 ```bash
 pip install -r requirements.txt
-# Copy config.ini.example to config.ini and add your API keys
+# Copy config.ini.example to config.ini and add your Voyage + Anthropic API keys
+cp config.ini.example config.ini
 ```
+
+> **This repository ships code only — no policy data.** The source documents
+> and the built index are not distributed. To run the tools end to end you must
+> supply your own sources (see [`raw/README.md`](raw/README.md)) and build the
+> index (see [`index/README.md`](index/README.md)). Without an index, the search
+> and comparison tools have nothing to query.
 
 ### Web UI (recommended)
 
@@ -37,7 +44,7 @@ python ui/app.py
 ```
 
 Three tabs:
-- **Ask** -- Type a policy question, get a synthesized answer with evidence from OLG/CMR/FNS
+- **Ask** -- Type a policy question, get a synthesized answer with evidence from OLG/CMR/FNS/CFR
 - **Author** -- Enter an assignment, run the research/draft/format pipeline with buttons. Each run is versioned with navigable history.
 - **History** -- Browse past searches
 
@@ -48,6 +55,7 @@ Three tabs:
 python rag/query.py "income verification" --source olg
 python rag/query.py "income deduction" --source fns --top 10 --full
 python rag/query.py "work requirements" --source cmr --program SNAP
+python rag/query.py "summer EBT eligibility" --source cfr
 python rag/query.py "income limits" --exclude-programs "TAFDC,EAEDC"
 
 # Author an OLG page
@@ -73,9 +81,10 @@ Each source follows **Parse > Chunk > Embed > Query**:
 
 | Source | Parser | Documents | Chunks |
 |--------|--------|-----------|--------|
-| OLG | `rag/olg/scraper.py` + `parser.py` | 1,202 pages | 6,785 sections |
-| FNS | `rag/fns/parser.py` | 14 chapters | 722 sections |
-| CMR | `rag/cmr/parser.py` | 18 chapters | 1,275 sections |
+| OLG | `rag/olg/scraper.py` + `parser.py` | 1,164 pages | 6,511 sections |
+| FNS | `rag/fns/parser.py` | 14 chapters | 860 sections |
+| CMR | `rag/cmr/parser.py` | 18 chapters | 1,415 sections |
+| CFR | `rag/cfr/parser.py` | 7 parts | 1,623 sections |
 
 Two-tier chunking: broad documents for topic discovery, granular chunks for specific answers. Context prefixes baked into embeddings capture hierarchical position (e.g., `SNAP > Application Processing > Expedited Benefits`).
 
@@ -98,7 +107,7 @@ Four-layer pipeline comparing FNS requirements against OLG coverage:
 | L2 | Deep investigation: agentic search, 3-7 queries | Claude Code CLI |
 | L3 | CMR cross-check for confirmed gaps | Haiku API |
 
-All 5 FNS policy chapters complete (270 sections analyzed). Results in `index/comparator/results/` with per-chapter CSVs. See [docs/comparator.md](docs/comparator.md).
+All 5 FNS policy chapters complete (270 sections analyzed). Results in `output/comparator/results/` with per-chapter CSVs. See [docs/comparator.md](docs/comparator.md).
 
 ### OLG Authoring Pipeline (`apps/author/author.py`)
 
@@ -151,7 +160,7 @@ python apps/comparator/report.py --open
 
 | Module | Role |
 |--------|------|
-| `rag/query.py` | Unified search. CLI + Python API. `--source olg\|fns\|cmr`, program filtering, similarity scoring. |
+| `rag/query.py` | Unified search. CLI + Python API. `--source olg\|fns\|cmr\|cfr`, program filtering, similarity scoring. |
 | `rag/embedder.py` | Batch embedding via Voyage AI. Token-aware batching, resume, cost estimation. |
 
 ### Shared Tools (`tools/`)
@@ -168,22 +177,23 @@ python apps/comparator/report.py --open
 
 ```
 policy_navigator/
-├── config.ini               # API keys, model settings (gitignored)
+├── config.ini               # API keys, model settings (gitignored; copy from config.ini.example)
+├── config.ini.example       # template config with placeholder keys
 ├── requirements.txt
 │
 ├── rag/                      # RAG pipeline (parse/chunk/embed/query)
-│   ├── query.py              #   unified search (--source olg|fns|cmr)
+│   ├── query.py              #   unified search (--source olg|fns|cmr|cfr)
 │   ├── embedder.py           #   batch embedding pipeline
 │   ├── olg/                  #   scraper, parser, extractor, chunker
 │   ├── fns/                  #   parser, chunker
 │   └── cmr/                  #   parser, chunker
 │
-├── tools/                    # Shared tools used by programs
+├── tools/                    # Shared tools used by apps
 │   ├── synthesis.py          #   RAG synthesis (standard + deep)
 │   ├── claude_code_runner.py #   Claude Code CLI wrapper
 │   └── docx_writer.py        #   markdown -> styled .docx
 │
-├── apps/                 # Purpose-built programs
+├── apps/                     # Purpose-built apps
 │   ├── author/               #   OLG authoring pipeline
 │   │   ├── author.py
 │   │   ├── prompts/          #     author-specific prompt templates
@@ -206,17 +216,19 @@ policy_navigator/
 │   ├── static/               #   CSS + JS
 │   └── templates/            #   Jinja2 + HTMX
 │
-├── index/                    # Parsed/chunked/vector data (mostly gitignored)
+├── index/                    # Parsed/chunked/vector data (gitignored; see index/README.md)
 │   ├── olg/                  #   scraped pages, chunks
 │   ├── fns/                  #   parsed sections, chunks
 │   ├── cmr/                  #   parsed sections, chunks
-│   ├── chroma_db/            #   shared vector store (6 collections)
-│   └── comparator/           #   comparison results, CSVs
+│   ├── cfr/                  #   parsed sections, chunks
+│   └── chroma_db/            #   shared vector store (8 collections)
 │
-├── output/                   # Program deliverables (gitignored)
-│   └── author/               #   authoring pipeline outputs
+├── output/                   # Tool deliverables (gitignored; see output/README.md)
+│   ├── comparator/           #   FNS-vs-OLG gap analysis
+│   ├── author/               #   authoring pipeline outputs
+│   └── qc_analysis/          #   QC error gap analyses (contains case data)
 │
-├── raw/                      # PDFs, HAR files (gitignored)
+├── raw/                      # Source PDFs, HAR files (gitignored; see raw/README.md)
 └── docs/                     # Architecture docs
 ```
 
@@ -227,8 +239,8 @@ Single `config.ini` at project root (gitignored). Key sections:
 | Section | What it configures |
 |---------|--------------------|
 | `[api]` | Voyage AI and Anthropic API keys |
-| `[embedding]` | Model (`voyage-3`), batch size, rate limits |
-| `[chromadb]` | Persist directory, collection names (6 total) |
+| `[embedding]` | Query model (`voyage-context-3`), batch size, rate limits |
+| `[chromadb]` | Persist directory, collection names (8 total) |
 | `[synthesis]` | Search engine model, token limits, search budget |
 | `[author]` | Research model, template path, style guide path |
 | `[comparator]` | Layer models, thresholds, chapter list |
@@ -237,7 +249,7 @@ Single `config.ini` at project root (gitignored). Key sections:
 
 ## Tech Stack
 
-- **Embeddings**: Voyage AI `voyage-3` (1,024 dimensions)
+- **Embeddings**: Voyage AI -- `voyage-4-large` (broad tier) + `voyage-context-3` (section tier)
 - **Vector store**: ChromaDB (embedded mode, no server)
 - **LLM**: Claude via Anthropic API (synthesis, comparator L0/L1/L3) and Claude Code CLI (comparator L2, authoring)
 - **Web**: FastAPI + HTMX + Jinja2
@@ -252,3 +264,12 @@ Single `config.ini` at project root (gitignored). Key sections:
 - [CFR Pipeline](docs/cfr_pipeline.md)
 - [Comparator](docs/comparator.md)
 - [Search Engine Architecture](docs/search_engine_architecture.md)
+
+## License
+
+No license -- all rights reserved. This is a personal portfolio project, published
+for viewing and reference only. You may not reuse, modify, or redistribute the code
+without permission.
+
+The policy sources it indexes (7 CFR, FNS Handbook 310, 106 CMR, and the DTA Online
+Guide) belong to their respective publishers and are not included in this repository.

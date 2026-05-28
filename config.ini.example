@@ -1,0 +1,101 @@
+# Copy this file to config.ini and fill in your API keys.
+# config.ini is gitignored and never committed.
+
+[api]
+voyage_api_key = YOUR_VOYAGE_API_KEY_HERE
+anthropic_api_key = YOUR_ANTHROPIC_API_KEY_HERE
+
+[embedding]
+# Query-time embedding model. Production embeds the broad tier with
+# voyage-4-large and the section tier with voyage-context-3.
+model = voyage-context-3
+batch_size = 64
+max_tokens_per_batch = 0
+rate_limit_delay = 0.2
+
+[chromadb]
+persist_dir = index/chroma_db
+olg_page_collection = pages
+olg_section_collection = sections
+fns_chapter_collection = fns_chapters
+fns_section_collection = fns_sections
+cmr_chapter_collection = cmr_chapters
+cmr_section_collection = cmr_sections
+cfr_part_collection = cfr_parts
+cfr_section_collection = cfr_sections
+
+[fns]
+pdf_path = raw/FNS Handbook 310.pdf
+content_start_page = 18
+content_end_page = 298
+# Pages with side-by-side example boxes needing column-aware extraction.
+side_by_side_pages = 43,48,49,50,51,55,56,57,59,60,61,79,95,101,102,124,126,128,129,160,161,162,164,212,213,214,217,221,223,224,225,229,230,232,233,235,252,253,254,263,268,269,285,287,288,289,296
+
+[cmr]
+pdf_dir = raw/cmr
+doubled_pdfs = jud-lib-106cmr704.pdf
+
+[comparator]
+layer0_model = claude-haiku-4-5-20251001
+layer1_model = claude-haiku-4-5-20251001
+layer2_model = claude-haiku-4-5-20251001
+layer3_model = claude-haiku-4-5-20251001
+olg_similarity_threshold = 0.30
+olg_max_results = 10
+cmr_max_results = 5
+cfr_max_results = 5
+max_searches = 10
+fns_chapters_to_compare = 7,8,9,10,11
+escalate_confidence = MEDIUM,LOW
+
+[synthesis]
+model = claude-sonnet-4-5-20250929
+max_tokens = 1500
+max_searches = 8
+results_per_search = 5
+
+[author]
+research_model = claude-sonnet-4-5-20250929
+research_max_searches = 12
+research_results_per_search = 8
+research_max_tokens = 8192
+claude_code_timeout = 600
+template_docx = apps/author/references/2026 OLG Template.docx
+style_guide = apps/author/references/olg_style_guide.md
+research_engine = claude-code
+research_cc_model = claude-opus-4-7
+
+[qc_analyzer]
+extractor_model = claude-haiku-4-5-20251001
+judge_model = claude-sonnet-4-5-20250929
+judge_engine = claude-code
+judge_cc_model = claude-opus-4-7
+max_judge_searches = 7
+max_neighbor_fetches = 8
+max_page_fetches = 3
+olg_results_per_search = 5
+seed_results_per_query = 5
+investigate_parallel = 4
+cmr_check_model = claude-haiku-4-5-20251001
+fns_check_model = claude-haiku-4-5-20251001
+cfr_check_model = claude-haiku-4-5-20251001
+# Per-source program filters: include is the active whitelist, exclude is informational.
+olg_include = SNAP, Cross-Program, BP, Pathways, Harper, Self-Service, Domestic Violence, Policies & Procedures, SUN Bucks, General
+olg_exclude = TAFDC, EAEDC, COVID, Notices/Forms, Scheduled Mailings, Forms, microcontent
+fns_include = SNAP, QC_Process
+fns_exclude =
+cmr_include = SNAP, Hearings, Program Integrity, SSP
+cmr_exclude = EA
+cfr_include = SNAP, QC, Issuance, Disaster, Summer-EBT
+cfr_exclude = Administration
+
+[presentation]
+model = claude-haiku-4-5-20251001
+max_tokens = 4096
+max_slides = 20
+
+[debug]
+debug_mode = false
+extractor_temperature =
+judge_api_temperature =
+cross_check_temperature =
