@@ -49,6 +49,19 @@ apps/author/references/sample_pages/
 # Personal notes
 big-to-do-list.txt
 
+# Local-only: kept on disk, not published
+Deprecated/
+docs/_archive/
+docs/comparator_ui_brainstorm.md
+tools/presentation.py
+tools/benchmark_retrieval.py
+tools/build_sparse_index.py
+tools/fns_column_cleanup.py
+tools/fns_dedup_examples.py
+tools/fns_validate_chunks.py
+tools/sparse_token_audit.py
+tools/production_swap.py
+
 # Python
 __pycache__/
 *.pyc
