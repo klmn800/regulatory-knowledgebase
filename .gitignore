@@ -22,7 +22,9 @@ index/chroma_db/
 index/sparse/
 
 # Outputs — all of them. The system is portable, the results aren't.
-output/
+# (placeholder README tracked so the directory exists on a fresh clone)
+output/*
+!output/README.md
 
 # OLG scrape-derived metadata (DTA's site structure)
 index/olg/policy_manifest.json
@@ -31,7 +33,9 @@ index/olg/policy_urls.txt
 index/olg/scrape_report.txt
 
 # Raw source files (large, not ours to redistribute)
-raw/
+# (placeholder README tracked so the directory exists on a fresh clone)
+raw/*
+!raw/README.md
 
 # QC reports anywhere in the tree (PII risk)
 *-QC-Report*.csv
