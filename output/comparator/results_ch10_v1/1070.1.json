@@ -1,7 +1,0 @@
-{
-    "classification": "partial_match",
-    "confidence": "HIGH",
-    "note": "The OLG Nonhousehold Members page states that disqualified members' income and resources ARE considered (unlike other nonhousehold members), but never specifies the FNS 1070.1 rule that income from IPV-disqualified, fleeing felon, and work requirement sanctioned members must be counted in its ENTIRETY. The ABAWD Work Rules Disqualification Process page details a pro-rata income calculation for ABAWD-disqualified members, which aligns with FNS 1070.2 (not 1070.1). The IPV Overview states benefits must not increase from an IPV disqualification and references the SNAP Attributed Amount, but the Attributed Amount/Riverside Rule addresses Economic Assistance sanctions, not the 'count entirely' methodology for the disqualified member's own income. The household size reduction rule for eligibility income tests (reducing HH size by the number of disqualified individuals) is not explicitly stated anywhere in the OLG. Note: MA exercises the state option to NOT apply the felony drug conviction disqualification, so that element of 1070.1 is inapplicable.",
-    "olg_pages_found": ["Nonhousehold Members", "ABAWD Work Rules Disqualification Process", "Intentional Program Violation Overview", "SNAP Disqualifications and Sanctions", "SNAP Attributed Amount (Riverside Rule)", "Case Manager Responsibilities"],
-    "searches_performed": 7
-}

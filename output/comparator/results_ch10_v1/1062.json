@@ -1,7 +1,0 @@
-{
-    "classification": "not_applicable",
-    "confidence": "HIGH",
-    "note": "FNS 1062 describes QC reviewer procedures for determining unearned income variances (Steps A-E: compare verified amounts to worksheet, correct for errors, determine excludability). These are audit methodology for QC reviewers, not caseworker policy. The only caseworker-relevant element — the $125 reporting threshold for unearned income changes — is well-covered in the OLG across multiple pages including Change Reporting Overview (Income-Related Changes), Simplified Reporting Interim Report, and Simplified Reporting Examples. The OLG's QC Compliance page addresses client cooperation with QC reviews but does not (and should not) contain QC reviewer variance determination procedures.",
-    "olg_pages_found": ["Change Reporting – Overview", "Simplified Reporting – Interim Report", "Simplified Reporting – Examples", "Quality Control Compliance", "Unearned Income Overview"],
-    "searches_performed": 4
-}

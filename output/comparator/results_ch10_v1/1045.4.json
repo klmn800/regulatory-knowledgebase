@@ -1,7 +1,0 @@
-{
-    "classification": "partial_match",
-    "confidence": "HIGH",
-    "note": "The OLG identifies pensions and retirement benefits as a type of unearned income (Unearned Income Overview page) and provides BEACON procedures for entering pension data as both assets and income. It notes SVES/SDX verification and instructs staff to use electronic databases as the primary verification source. However, the OLG does not address three key FNS requirements: (1) proactively questioning households about pension eligibility based on employment history — FNS requires reviewers to use employment history to identify possible pension entitlement, but the OLG only addresses pensions when already reported; (2) union benefits are not mentioned anywhere in the OLG as an income type or verification target; (3) the FNS standard for handling negative allegations about pensions (accept denial unless evidence to the contrary, but explore when circumstances suggest entitlement) has no OLG equivalent for this income type. The OLG covers what to do when pension income is reported but lacks the proactive investigation and exploration framework FNS requires.",
-    "olg_pages_found": ["Unearned Income Overview", "Entering Pension Data in BEACON", "Entering, Changing, and Ending Other (Unearned) Income Data", "Simplified Reporting - Recertification", "Change Reporting - Recertification", "Employment Status Page"],
-    "searches_performed": 5
-}

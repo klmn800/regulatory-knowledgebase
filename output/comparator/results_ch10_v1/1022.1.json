@@ -1,7 +1,0 @@
-{
-    "classification": "partial_match",
-    "confidence": "HIGH",
-    "note": "The OLG covers self-employment income verification on the 'Types of Earned Income > Verification of Income' page, listing three categories: business records, tax returns, and 'other appropriate documents showing gross income and the total business expenses.' FNS 1022.1 specifies five distinct document types: recent tax returns, paid payment invoices, receipts for business expenses, household statement about past earnings/expenses, and household statement about estimated earnings/expenses. The OLG's 'other appropriate documents' catch-all could encompass paid invoices and receipts, but does not explicitly name them, and notably omits household statements about past or estimated earnings as acceptable verification for self-employment income. The OLG does reference accepting written self-declarations in other contexts (e.g., Simplified Reporting Q13 for anticipated SE income changes), but the core self-employment verification section does not list household statements as an option. The requirement to follow certification policy for allowable business expenses IS well covered — the OLG has an extensive 'Allowable Costs of Doing Business' section and a separate 'Expenses Not Allowed' section with detailed BEACON entry procedures.",
-    "olg_pages_found": ["Types of Earned Income", "Self-Employment SNAP", "Simplified Reporting – Examples"],
-    "searches_performed": 4
-}

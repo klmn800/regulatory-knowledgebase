@@ -1,7 +1,0 @@
-{
-    "classification": "partial_match",
-    "confidence": "HIGH",
-    "note": "The OLG partially covers this FNS requirement through scattered content but lacks a unified 'other earned income' category. For odd jobs/cash work, the Self-Employment SNAP page includes a babysitting-for-cash example (Kwame) that correctly classifies cash income without business expenses as wages rather than self-employment. However, the Types of Earned Income page does not list 'other earned income' as a category or explicitly enumerate income from odd jobs, lawn care, paper routes, or similar casual work as FNS does. For training allowances, the OLG extensively covers the noncountable side (training stipends, E&T reimbursements) on the Noncountable Income and Treatment of Payments to E&T Clients pages, and notes that 'training stipends must not be confused with wages received for job training.' However, the OLG does not explicitly address the FNS concept of countable training allowances from vocational/rehabilitative programs that are neither reimbursements nor federally excluded — the specific earned income type FNS Section 1023 defines. A worker encountering a non-excluded, non-reimbursement training allowance would lack clear OLG guidance on classifying it as earned income.",
-    "olg_pages_found": ["Types of Earned Income", "Self-Employment SNAP", "Noncountable Income", "The Treatment of Certain Payments Made to Clients Participating in Employment and Training Services Reimbursements"],
-    "searches_performed": 5
-}

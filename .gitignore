@@ -21,38 +21,30 @@ index/cfr/section_chunks_context.json
 index/chroma_db/
 index/sparse/
 
-# Comparator outputs (session logs are large, lock files are temp)
-output/comparator/sessions/
-output/comparator/.~lock.*
-output/comparator/*.ods
-output/comparator/*.csv
-output/comparator/*.html
+# Outputs — all of them. The system is portable, the results aren't.
+output/
 
-# Author outputs (generated per assignment)
-output/author/
-
-# Search history and exports (user-specific, regeneratable)
-output/search_history.db
-output/search_exports/
-
-# QC analysis (lock files + per-batch output dirs)
-output/qc_analysis/.~lock.*
-output/qc_analysis/Test/
-
-# Convert tab output (user-uploaded docs + generated docx)
-output/convert/
-output/converted/
+# OLG scrape-derived metadata (DTA's site structure)
+index/olg/policy_manifest.json
+index/olg/policy_toc.json
+index/olg/policy_urls.txt
+index/olg/scrape_report.txt
 
 # Raw source files (large, not ours to redistribute)
 raw/
 
+# QC reports anywhere in the tree (PII risk)
+*-QC-Report*.csv
+*-QC-Report*.xlsx
+docs/qc_*review/
+
 # QC inputs (CSV data files)
-programs/qc/inputs/
+apps/qc/inputs/
 Deprecated/qc_cli_artifacts/inputs/
 
 # Reference materials (copyrighted DTA documents, not ours to redistribute)
-programs/author/references/*.docx
-programs/author/references/sample_pages/
+apps/author/references/*.docx
+apps/author/references/sample_pages/
 
 # Personal notes
 big-to-do-list.txt

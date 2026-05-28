@@ -1,7 +1,0 @@
-{
-    "classification": "not_applicable",
-    "confidence": "HIGH",
-    "note": "FNS 1061.2 applies only to 'households participating based on retrospective eligibility,' which means Monthly Reporting households that use prior-month (budget month) income for eligibility determination. Massachusetts does not operate a Monthly Reporting system — it uses Simplified Reporting with prospective budgeting exclusively. Both 106 CMR 364.320 (Anticipating Income) and the OLG income pages frame all income determination as prospective, using anticipated income based on past indicators. No OLG or CMR content references retrospective budgeting, budget month income, or Monthly Reporting households. Since Massachusetts has no retrospective eligibility households, this FNS requirement has no Massachusetts policy counterpart and does not represent a gap in the OLG.",
-    "olg_pages_found": [],
-    "searches_performed": 6
-}

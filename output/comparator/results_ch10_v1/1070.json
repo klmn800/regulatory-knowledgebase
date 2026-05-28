@@ -1,7 +1,0 @@
-{
-    "classification": "partial_match",
-    "confidence": "HIGH",
-    "note": "The OLG covers income treatment for several specific categories of ineligible household members but lacks the unified framework FNS 1070 provides. For ABAWD-disqualified members, the OLG (ABAWD Work Rules Disqualification Process) has detailed proration procedures with examples. For ineligible noncitizens, the OLG (Calculation Rules and Attribution of Income for Mixed Noncitizen Households) provides a thorough combination calculation method. For ineligible students, the OLG explicitly states their income must not be included. However, the OLG does not have a single page explaining the general principle that income handling varies by ineligibility reason. Notably, FNS 1070.1's rule that income from IPV/drug conviction/fleeing felon/workfare-disqualified members must be counted entirely is only implied through the IPV Overview's statement that 'a household's benefit level must not be increased as a result of an IPV disqualification' — it is never stated as an explicit income-counting rule. Income proration for SSN-disqualified members is also not clearly documented in the OLG.",
-    "olg_pages_found": ["Nonhousehold Members", "ABAWD Work Rules Disqualification Process", "Calculation Rules and Attribution of Income for Mixed Noncitizen Households", "Students", "Intentional Program Violation Overview", "SNAP Attributed Amount (Riverside Rule)", "Social Security Number"],
-    "searches_performed": 6
-}

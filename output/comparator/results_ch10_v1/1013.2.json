@@ -1,7 +1,0 @@
-{
-    "classification": "partial_match",
-    "confidence": "HIGH",
-    "note": "The OLG covers the 'reasonably certain' standard for anticipated income under 'Types of Earned Income > Anticipated Income,' stating that uncertain income must not be counted and that any portion known with reasonable certainty is countable. However, this guidance is located exclusively under Earned Income — there is no equivalent anticipated income framework for unearned income types. The Unearned Income pages cover BEACON prospective amount calculation procedures but do not articulate the underlying 'reasonably certain' policy standard. FNS 1013.2 requires a case-by-case determination across all income types and cross-references Section 223 (change reporting earliest date provisions) for determining when income can be reasonably anticipated; the OLG does not make this connection or provide a general cross-income-type determination framework.",
-    "olg_pages_found": ["Types of Earned Income (Anticipated Income section)", "Types of Earned Income (Income from Steady Employment section)", "Entering, Changing, and Ending Other (Unearned) Income Data (Prospective Tab)", "Entering, Changing, and Ending Earned Income in BEACON (Prospective Tab)", "Simplified Reporting - Interim Report (anticipated income change procedures)", "Change Reporting - Overview (Income-Related Changes)"],
-    "searches_performed": 5
-}

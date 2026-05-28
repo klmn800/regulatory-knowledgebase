@@ -1,7 +1,0 @@
-{
-    "classification": "match",
-    "confidence": "HIGH",
-    "note": "The OLG's Categorical Eligibility page thoroughly covers the core policy requirement that CE households are eligible for SNAP regardless of income. The OLG explicitly states CE households 'automatically passed a SNAP gross income test, net income test and/or asset test' and details benefit outcomes at all income levels (regular benefit, minimum benefit for 1-2 person HH, $0 for 3+ person HH). It also covers when households lose CE status ('When a Household Becomes Non-Categorically Eligible'), who cannot be CE (IPV, work program failure, elder/disabled over 200%), and BEACON automation of CE determination. The remaining FNS text — QC reviewers cannot remove CE conferment, allotment test always required, reporting incorrectly classified CE cases — describes QC audit methodology with no caseworker equivalent. The OLG's QC Compliance page addresses client cooperation with QC reviews but appropriately does not replicate QC reviewer instructions.",
-    "olg_pages_found": ["Categorical Eligibility", "Quality Control Compliance", "How SNAP Benefits are Calculated", "What is SNAP?"],
-    "searches_performed": 5
-}

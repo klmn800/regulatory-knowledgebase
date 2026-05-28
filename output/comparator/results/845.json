@@ -1,9 +1,0 @@
-{
-    "classification": "not_applicable",
-    "confidence": "HIGH",
-    "note": "FNS 845 describes QC review procedures for determining which household to audit when a sampled case has separated into multiple SNAP households before the review date. It specifies selection rules based on whether the state assigns case numbers by SSN or other means, involving majority-of-members tests and head-of-household fallbacks. These are entirely QC sampling and audit methodology procedures with no caseworker policy equivalent. No OLG coverage is expected or needed \u2014 DTA workers process household separations as composition changes (covered under Household Composition and application processing pages), but the question of which resulting household a QC reviewer should select for audit is not a caseworker concern.",
-    "olg_pages_found": [],
-    "searches_performed": 0,
-    "_elapsed": 21.916253328323364,
-    "_session_id": "93f26687-d54f-4526-950a-6ff6f6eebbfe"
-}

@@ -1,7 +1,0 @@
-{
-    "classification": "partial_match",
-    "confidence": "HIGH",
-    "note": "The OLG identifies 'Assistance Payments such as TAFDC, EAEDC, or other assistance programs based on need' as a type of unearned income (Unearned Income Overview page) and provides a general directive that 'Staff must always use the electronic databases available as the primary source of verification for unearned income' (DUA, External SSA Data Screen, SAVE, MobiusView). However, the OLG does not specify the FNS-required verification methods for PA/GA income specifically — namely, verification 'through contact with the paying agency (including screenshots from the paying agency) or from official correspondence from the agency.' Since DTA itself administers TAFDC and EAEDC, BEACON likely has this data internally, but the OLG does not explicitly document that BEACON's internal records satisfy the PA/GA verification requirement, nor does it list acceptable verification documents for PA/GA income as it does for other income types (e.g., earned income lists pay stubs, employer statements; lump sum lists benefit letters, check copies). This is a gap in the written guide's specificity for PA/GA verification standards.",
-    "olg_pages_found": ["Unearned Income Overview", "Types of Earned Income", "Categorical Eligibility", "External Databases", "Verifications Policy and Procedures - TAFDC"],
-    "searches_performed": 5
-}

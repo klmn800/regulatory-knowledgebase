@@ -1,7 +1,0 @@
-{
-    "classification": "partial_match",
-    "confidence": "HIGH",
-    "note": "The OLG covers unearned income types and directs staff to use electronic databases (SDX, BENDEX, DUA, External SSA Data Screen, SAVE, MobiusView) as the primary verification source, with clients asked for documents only when there is discrepant information. However, unlike earned income — which has a dedicated 'Verification of Income' section listing acceptable documents (pay stubs, pay envelopes, employer statements) — unearned income has no equivalent comprehensive verification standards section. The OLG does not specify what acceptable documentary evidence looks like for unearned income types not available through electronic databases (e.g., annuities, strikers' benefits, rental income, contributions). The FNS emphasis on 'exploration of all income sources' as important for 'determining household management of expenses' has no OLG counterpart. Verification rules for unearned income are scattered across IR and recertification pages ($125 threshold, VC-1 procedures) rather than consolidated in the unearned income section itself.",
-    "olg_pages_found": ["Unearned Income Overview", "Entering, Changing, and Ending Other (Unearned) Income Data", "Simplified Reporting – Interim Report", "Simplified Reporting – Recertification", "Change Reporting – Recertification", "Simplified Reporting – Examples", "Entering Child Support Income - SNAP", "SNAP Disability Requirements and Verifications"],
-    "searches_performed": 5
-}

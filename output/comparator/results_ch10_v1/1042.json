@@ -1,7 +1,0 @@
-{
-    "classification": "partial_match",
-    "confidence": "HIGH",
-    "note": "The OLG has comprehensive sponsor deeming policy on the 'Sponsor Deeming' page, covering definitions, requirements, verification (name/address/income of sponsors must be verified), income calculation methodology, exemptions, reimbursement, and termination. The 'Verification of Immigration Status' section mentions that SAVE provides sponsor information, partially addressing the USCIS verification angle. However, three significant gaps exist: (1) The FNS requirement to contact USCIS when a household alleges no sponsor is not addressed — the OLG only mentions SAVE for general immigration status verification, not for the specific 'denies having a sponsor' scenario. (2) The FNS requirement to 'explore the possibility of income in excess of the amount deemed from a sponsor' has no OLG equivalent. (3) Most critically, the BEACON procedures page ('Entering Sponsor Deeming Data') explicitly states 'The Procedures Below are not Currently in Use' and instructs workers 'you must not explore sponsorship for noncategorically eligible households' until BEACON is programmed for sponsor deeming calculations. This page has not been updated since March 2012, meaning sponsor deeming procedures have been suspended for over 14 years despite the policy pages remaining in place.",
-    "olg_pages_found": ["Sponsor Deeming", "Entering Sponsor Deeming Data", "Verification of Immigration Status - SNAP", "Noncitizen Introduction - SNAP"],
-    "searches_performed": 4
-}

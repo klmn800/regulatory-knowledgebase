@@ -1,9 +1,0 @@
-{
-    "classification": "not_applicable",
-    "confidence": "HIGH",
-    "note": "FNS 722.1 is a QC review methodology section that instructs federal auditors on how to classify variances (include vs. exclude) when reviewing initial certification month cases. Specifically: (1) exclude variances from unreported changes in the initial month, (2) include variances from voluntarily reported changes only if the state had 10+ days to act before certification, (3) treat unreported changes between interview and notice of eligibility as if they became known on the notice date. None of these rules create caseworker obligations \u2014 they define how QC reviewers retrospectively evaluate whether a case was processed correctly. Workers process changes as they come in per standard application processing rules; they do not need to know the QC variance inclusion/exclusion framework. OLG searches for initial month changes, 10-day processing windows, and variance treatment returned only recertification-related content, confirming no worker-facing equivalent exists or is needed.",
-    "olg_pages_found": [],
-    "searches_performed": 3,
-    "_elapsed": 154.8254120349884,
-    "_session_id": "d08fa3ad-1bb7-4aa7-bd4d-de0d5bab0dc7"
-}

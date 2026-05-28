@@ -1,7 +1,0 @@
-{
-    "classification": "match",
-    "confidence": "HIGH",
-    "note": "FNS Section 1020 is a header-only section titled 'VERIFICATION REQUIREMENTS - EARNED INCOME' with no substantive policy text. Its only subsection (1020.1) describes credit checks as an optional QC reviewer tool, not a caseworker requirement. The OLG covers earned income verification requirements thoroughly across multiple pages: 'Types of Earned Income > Verification of Income' requires gross wages and hours worked, lists acceptable documents (pay stubs, pay envelopes, employer statements), addresses self-employment verification, and provides procedures when verification cannot be obtained. Additional coverage exists for IR verification procedures, recertification verification, Work Number matching, and determining hours when not on wage stubs. The OLG's earned income verification coverage is comprehensive for the topic this FNS header introduces.",
-    "olg_pages_found": ["Types of Earned Income", "Simplified Reporting – Interim Report", "Change Reporting – Recertification", "Simplified Reporting – Recertification", "Unclear Information"],
-    "searches_performed": 2
-}
