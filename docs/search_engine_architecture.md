@@ -139,7 +139,7 @@ policy_navigator/
 │   ├── templates/                ← Jinja2 templates
 │   └── static/                   ← CSS, minimal JS
 │
-├── programs/
+├── apps/
 │   └── comparator/
 │       └── comparator.py         ← Existing comparator
 │

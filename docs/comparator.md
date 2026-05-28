@@ -124,31 +124,31 @@ Prompt: `prompts/layer3_validation.md`
 
 ```bash
 # Full comparison run (Claude Code engine)
-python programs/comparator/comparator.py --chapter 10 --engine claude-code
+python apps/comparator/comparator.py --chapter 10 --engine claude-code
 
 # Parallel execution (5 concurrent L2 workers)
-python programs/comparator/comparator.py --chapter 10 --engine claude-code --parallel 5
+python apps/comparator/comparator.py --chapter 10 --engine claude-code --parallel 5
 
 # Full comparison run (API engine)
-python programs/comparator/comparator.py --chapter 10 --engine api
+python apps/comparator/comparator.py --chapter 10 --engine api
 
 # Specific sections only
-python programs/comparator/comparator.py --chapter 10 --sections "1013.4,1036,1044" --engine claude-code
+python apps/comparator/comparator.py --chapter 10 --sections "1013.4,1036,1044" --engine claude-code
 
 # Windowed mode (visible console windows, for debugging)
-python programs/comparator/comparator.py --chapter 10 --engine claude-code --windowed
+python apps/comparator/comparator.py --chapter 10 --engine claude-code --windowed
 
 # Pre-classify sections (Layer 0 only)
-python programs/comparator/comparator.py --classify --chapter 10
+python apps/comparator/comparator.py --classify --chapter 10
 
 # Dry run (show what would be processed)
-python programs/comparator/comparator.py --chapter 10 --dry-run
+python apps/comparator/comparator.py --chapter 10 --dry-run
 
 # Compile result JSONs into CSV
-python programs/comparator/comparator.py --compile --chapter 10
+python apps/comparator/comparator.py --compile --chapter 10
 
 # Resume an interrupted run
-python programs/comparator/comparator.py --chapter 10 --engine claude-code --resume
+python apps/comparator/comparator.py --chapter 10 --engine claude-code --resume
 ```
 
 ## Output Files
@@ -179,7 +179,7 @@ This restores the full conversation context -- all searches performed, OLG pages
 
 | File | Role |
 |------|------|
-| `programs/comparator/comparator.py` | Main comparator engine (all layers, CSV output) |
+| `apps/comparator/comparator.py` | Main comparator engine (all layers, CSV output) |
 | `tools/claude_code_runner.py` | Claude Code CLI subprocess wrapper |
 | `rag/query.py` | Shared search interface (OLG, FNS, CMR) |
 | `prompts/domain_preamble.md` | Domain context shared across all prompts |

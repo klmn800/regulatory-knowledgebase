@@ -26,7 +26,7 @@ comparator bridges both systems but neither depends on the other for core functi
 
 - **Shared ChromaDB**: FNS collections (`fns_chapters`, `fns_sections`) live alongside OLG
   collections (`pages`, `sections`) in `index/chroma_db/`
-- **Comparator** in `programs/comparator/comparator.py` imports OLG query API when needed
+- **Comparator** in `apps/comparator/comparator.py` imports OLG query API when needed
 - **No dependency from OLG → FNS**: The OLG RAG works standalone. Only the comparator
   crosses the boundary.
 
@@ -170,7 +170,7 @@ comparator bridges both systems but neither depends on the other for core functi
 
 ## Phase 3: Comparator Agent (NOT STARTED)
 
-Now planned as a **source-pair-agnostic** comparison tool in `programs/comparator/comparator.py`, not FNS-specific. See the comparator discussion in CLAUDE.md.
+Now planned as a **source-pair-agnostic** comparison tool in `apps/comparator/comparator.py`, not FNS-specific. See the comparator discussion in CLAUDE.md.
 
 ---
 
@@ -233,7 +233,7 @@ policy_navigator/
 │   ├── embedder.py             ← Chunks → Voyage AI → ChromaDB (shared)
 │   └── query.py                ← Search interface (shared)
 │
-├── programs/
+├── apps/
 │   └── comparator/
 │       └── comparator.py       ← FNS vs OLG comparison agent (Phase 3)
 │

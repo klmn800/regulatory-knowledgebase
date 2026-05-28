@@ -1,5 +1,28 @@
 # Apps Cleanup — Execution Plan
 
+> **ARC CLOSED 2026-05-12 — superseded by a principles-first reset.**
+>
+> **Where to go for the live plan**: `docs/design_principles.md` (top-level) for the guiding principles. `docs/apps_alignment/` (or successor folder) for the new execution plan.
+>
+> **What landed in code under this arc** (preserved, not reverted):
+> - Synthesis migration (2026-05-06, committed) — all four shared modules wired in: `tools/retry.py`, `tools/cost_tracker.py`, `tools/result_formatters.py`, `tools/policy_tools.py`. `SynthesisResult.error: str | None` added.
+> - QC migration (2026-05-07, committed) — `qc_analyzer.py` 1,658 → 992 lines. CLI deleted. Cross-checks parameterized. Judge trace folded into per-finding JSON. Per-source program filters via config + UI panel. Per-run timestamped folders. Judge result has explicit error field.
+> - Comparator migration (2026-05-07, committed) — `comparator.py` 1,757 → 1,700 lines. All four shared modules wired in. L3 parameterized to one function across CMR + CFR. L2 search budget separated from turn budget (`max_searches = 10`). Latent bugs fixed (CSV per-row cost columns, L0 fallback field-name mismatch, full-loop exhaustion search count).
+> - Author migration (2026-05-12, coded but uncommitted at arc close) — dual-engine research path (`programs/author/research_claude_code.py`), env-var program-filter enforcement at `rag/query.py` import time, extended `tools/claude_code_runner.py` with toggle params, QC B1 filter-leak fix bundled. Working-tree state is the new baseline.
+>
+> **Why this arc closed**: framing drift. The plan was scoped as "factor only duplicates" (the B decision in `cross_app_findings.md`), which delivered code hygiene but did not pursue the user's actual goal — **identify the winning pattern and replicate it across apps**. Two principles the plan didn't name:
+>
+> 1. **Dual-engine (CC + API) for every research/investigation agent.** Author got dual-engine because the user built it; the plan didn't promote it to a pattern others should adopt.
+> 2. **RAG-as-library, tools-as-public-surface, apps-as-composers.** The plan factored literal duplicate constants (`SEARCH_OLG_TOOL` defined twice) but kept each app's tool list separate. Capability gaps between apps (e.g., one agent can fetch full pages, another can't) are invisible to this framing.
+>
+> Decisions made under the narrower framing — especially the B decision and the per-app target states — are out of date. The QC + comparator migrations are "first-pass aligned with old framing; follow-up arc needed" (e.g., QC investigator should be dual-engine, comparator L2 tools should come from a canonical registry). The Author migration design (D1–D5) mostly survives because dual-engine is already its shape.
+>
+> **What carries forward**: the audit data (findings F1–F26 per app, CA-1 through CA-15) is preserved diagnostic information — those gaps in the code are still real. They get re-prioritized under new principles, not deleted. The four shared modules in `tools/` stay. The decisions table below is preserved as historical record.
+>
+> **Where this folder lives now**: this entire `docs/apps_cleanup/` folder is being moved to `docs/_archive/apps_cleanup/` to reduce confusion with the new arc. Treat everything below this banner as historical.
+>
+> ---
+
 Created 2026-05-06. Cleanup audits complete (QC, comparator, search, author, synthesis). This document turns audit findings into concrete shapes for the upcoming cleanup execution.
 
 **Strategy** (per user 2026-05-06): plan how all four apps need to change first, then apply to QC analyzer first. Goal is alignment — avoid building QC one way and the other three slightly differently. Per-app migration starts only after this plan is signed off.
@@ -22,8 +45,8 @@ Created 2026-05-06. Cleanup audits complete (QC, comparator, search, author, syn
 | QC architecture pass | ✅ **Complete (2026-05-07)** — three additional decisions resolved (#9 program filters, #10 folder layout, #11 trace storage). Sub-steps refined; specific filter lists locked in. |
 | QC migration | ✅ **Complete (2026-05-07)** — all 5 sub-steps done. `qc_analyzer.py` 1,658 → 992 lines (-40%). Commits: `f5cf65c`, `6ad0141`, `d3ab4ed`, `f2c8d3a`, `a9d3dfc`, `d8886ea`, `48367fe`, `5edb987`. See "QC migration outcome" section below. |
 | Comparator migration | ✅ **Complete (2026-05-07)** — all 4 sub-steps done. `comparator.py` 1,757 → 1,700 lines (−57 net). Commits: `93a3789`, `e017546`, `81fc5a2`, `b363f50`. See "Comparator migration outcome" section below. |
-| **Next: Search migration** | **Smaller surface — most logic already in `tools/synthesis.py`. New session.** |
-| Migrate search → author | After comparator validates the shapes |
+| **Next: Author migration** | **In progress (2026-05-12).** Surface grew: Phase 1 now dual-engine (CC default + API). Sub-step shape: research → draft → tail. Bundles QC B1 filter-leak fix (same `query.py` env-var touch). |
+| Search migration | Deferred after Author. Smaller surface — most logic already in `tools/synthesis.py`. |
 
 ## QC migration sub-steps (added 2026-05-06, refined 2026-05-07)
 
@@ -316,18 +339,49 @@ After QC and comparator:
 
 ### Author
 
-After QC, comparator, search. **Author warrants a focused 1-2 day cleanup pass** (per user 2026-05-06) — bundle these actions together rather than scatter them.
+**Status (2026-05-12)**: in progress; user pulled author ahead of search. Three sub-steps using Shape 1 (research → draft → tail).
 
-1. **Delete the CLI entirely (decision #6)**. Remove the `if __name__ == "__main__"` block, argparse setup, all CLI-specific flags (`--research-only`, `--draft-only`, `--resume`, `--no-docx`, `--assignment-file`). Eliminates the source of CLI/UI drift. Update README references. The phase functions (`run_research`, `launch_draft`, `format_output`) remain as the canonical UI-callable entry points.
-2. **CA-13 Claude Code subprocess unification**: extend `tools/claude_code_runner.py` to accept `session_id` (passes `--session-id`) and resume mode. Migrate `launch_draft` and `launch_resume` to call `run_claude_task`. Eliminates author B1 (shared scratch file race), F7 (intra-module .bat duplication), and activates F15's dead `claude_code_timeout` config key.
-3. **Author F2** (research phase has no program filter): wire `programs_by_source` into `run_research`. Surfaces TAFDC/EAEDC noise on SNAP-specific assignments. Inherits the cross-cutting principle from decision #4: filter selection must be explicit (UI control), not a silent default. Author exercises 5 of 9 synthesis params already; add a 6th (`programs_by_source`).
-4. **Author F13** (Author's Notes guidance duplicated across two prompts): consolidate to one canonical instruction.
-5. Author research result handling: check `result.error` (synthesis contract change above).
-6. Docstring sweep.
+**Current state has changed since the 2026-05-06 audit**:
+- Phase 1 (Research) is now **dual-engine**: `[author] research_engine` ∈ {`claude-code` (default), `api`}. Claude Code path lives in `programs/author/research_claude_code.py` (230 lines, added between audit and migration start).
+- **4 hand-rolled `.bat` launchers** instead of 2: `launch_draft`, `launch_resume`, `run_research_claude_code`, `launch_research_resume`. None use `tools/claude_code_runner.py`.
+- **6 shared scratch files** in `DATA_DIR` (was 3): `.draft_prompt.md`, `.run_draft.bat`, `.run_resume.bat`, `.research_prompt.md`, `.run_research.bat`, `.run_research_resume.bat`. Race-prone footprint doubled.
+- `SynthesisResult.error` handling **already wired** for the API research path (raises). UI routes still bare-handed.
+
+**Decisions taken 2026-05-12** (D1–D4 + bundled QC fix):
+
+- **D1**: Extend `tools/claude_code_runner.py` with toggle parameters rather than build a separate helper. New params: `session_id: str | None` (passes `--session-id <uuid>`), `initial_msg: str | None` (short command-line message vs `@prompt_file` pattern), `wait_for_result: bool = True` (False = fire-and-forget, no `result_file` polling), `title: str | None` (window title). Existing comparator L2 and QC judge call sites unchanged (defaults preserve current behavior).
+- **D2**: Research program-filter UI is user-controlled (matches Ask tab), not opinionated. Per-source program checkboxes in `partials/author_prompt_editor.html` (research branch). Selection persists to `meta.json` per version so reruns and audit can see the scope used.
+- **D3**: For the CC research engine, program filter is enforced at the `rag/query.py` level via an `OLG_PROGRAMS` env var (or similarly named — reuses the captured QC fix mechanism). Agent shells out to `query.py` from inside the loop; env var is read in the subprocess at import time so the agent cannot broaden past the configured whitelist. API engine passes filter through `run_synthesis` params (existing plumbing).
+- **D4**: Sub-step shape is research → draft → tail.
+- **Bundled (D5)**: QC B1 filter-leak fix lands as part of this arc. Same `rag/query.py` touch enforces the filter for QC's Claude Code judge spawn site too. Closes `qc_olg_program_filter_leak.md`. Same code; ~3 extra lines at the QC spawn site.
+
+**Sub-step plan (Shape 1)**:
+
+1. **Sub-step 1 — Research migration (both engines)**
+   - Extend `tools/claude_code_runner.py` with the D1 toggles. Existing call sites unchanged.
+   - Add `OLG_PROGRAMS` env-var enforcement to `rag/query.py` at import (D3 mechanism). One env var, hard intersection with `--program` / `--exclude-programs` agent flags.
+   - Migrate `run_research_claude_code` + `launch_research_resume` to call the extended runner. Drop `.research_prompt.md` / `.run_research.bat` / `.run_research_resume.bat` scratch files (replaced by runner's per-call paths).
+   - Wire per-source program filter UI into research: form param `programs_by_source` on `/author/{name}/research/run`, checkboxes in `partials/author_prompt_editor.html` (research branch) iterating `SOURCES` + `PROGRAM_REGISTRY`. Persist to `meta.json`. API path passes through `run_synthesis(programs_by_source=...)`; CC path sets the env var at spawn.
+   - Apply QC B1 fix: bake active include-list into `qc_judge_claude_code.md` prompt template (UX) and set env var at the QC judge spawn site in `qc_analyzer.py`. Drop "you may also pass" wording.
+   - `try/except` on `/author/{name}/research/run` and `/author/{name}/research/{num}/resume` — render error partial on failure.
+
+2. **Sub-step 2 — Draft migration**
+   - Migrate `launch_draft` + `launch_resume` to call the extended runner (same toggles).
+   - Drop `.draft_prompt.md` / `.run_draft.bat` / `.run_resume.bat` scratch files.
+   - Dedupe Author's Notes guidance (F13): keep canonical version in `programs/author/prompts/author_draft.md`; remove inline append in `compose_draft_prompt`.
+   - `try/except` on `/author/{name}/drafts/run` and `/author/{name}/drafts/{num}/resume`.
+
+3. **Sub-step 3 — Tail cleanup**
+   - Delete the CLI entirely (decision #6): `main()` function, argparse setup, all CLI flags. Update README references.
+   - Wire or remove dead `claude_code_timeout` config (F15) — likely wire through to `run_claude_task(timeout=...)` now that the runner is the canonical launcher.
+   - `try/except` on `/author/{name}/formats/run`.
+   - Docstring sweep across `author.py`, `research_claude_code.py`, `tools/claude_code_runner.py` (runner gains new param docs).
+   - Orphan sweep (any helpers stranded by sub-steps 1–2).
 
 **Deferred for author**:
 - F5/F6 (partial consolidation) — feature-shaped, not pure cleanup
 - F11 (JSON data endpoints replacing HTML-parsing JS) — feature-shaped
+- F4 route try/except is applied opportunistically per sub-step (research routes in sub-step 1, draft routes in sub-step 2, format route in sub-step 3) rather than as its own sub-step
 
 ## Decisions resolved
 
@@ -364,10 +418,10 @@ Order chosen to minimize churn — extract a shape, validate it on QC, *then* pr
 5. ✅ **Build `tools/cost_tracker.py`** — DONE 2026-05-06. `MODEL_PRICING` + `calculate_cost` extracted; new parameterized `Tracker` class for QC/comparator. Unknown-model fallback warns once per process with file path + Anthropic pricing URL, falls through to Sonnet rates (decision #3). Synthesis migrated.
 6. ✅ **Build `tools/result_formatters.py`** — DONE 2026-05-06. Single `format_results_for_prompt` with kwargs (`include_url`, `include_breadcrumb`, `score_format`). FNS branch fix (synthesis F22): now emits `(part X of Y)`. Synthesis migrated.
 7. ✅ **Build `tools/policy_tools.py`** — DONE 2026-05-06. `make_search_tool(sources)` factory + `make_lookup_fns_section_tool()`. Convenience constants `SEARCH_POLICY_TOOL` and `SEARCH_OLG_TOOL`. Tool description neutral per decision #7. Synthesis migrated; F15 manual deepcopy collapsed to one factory call.
-8. **QC migration** ← NEXT. Sequenced into 5 sub-steps (see "QC migration sub-steps" near the top of this doc). Sub-step 1 = delete CLI pipeline. This is the "QC up and running" milestone.
-9. **Comparator migration**: same module imports + B1 verified (auto-fixed by step 5) + F24 retry coverage + CA-10 budget config.
-10. **Search migration**: CA-14 history persistence + F2 kill + (`/ask` error handling already done in step 4) + F5/B1 CFR template fix + decision #1 (`init_clients` degrade-gracefully banner).
-11. **Author migration**: delete CLI (decision #6) + CA-13 Claude Code unification + F2 program filter + F13 prompt dedup. Focused 1-2 day pass.
+8. ✅ **QC migration** — DONE 2026-05-07. 5 sub-steps, 8 commits, `qc_analyzer.py` 1,658 → 992 lines.
+9. ✅ **Comparator migration** — DONE 2026-05-07. 4 sub-steps, `comparator.py` 1,757 → 1,700 lines.
+10. **Author migration** ← NEXT (2026-05-12, surface grew since audit — see Author target-state section). 3 sub-steps: research → draft → tail. Extends `tools/claude_code_runner.py` with toggle params; adds env-var program-filter enforcement to `rag/query.py`; bundles QC B1 filter-leak fix at the same `query.py` touch.
+11. **Search migration**: CA-14 history persistence + F2 kill + (`/ask` error handling already done in step 4) + F5/B1 CFR template fix + decision #1 (`init_clients` degrade-gracefully banner).
 12. **Tail**: CA-5 + CA-15 docstring sweep across all five files. CA-12 progress JS helper.
 
 After step 8 you have a clean QC analyzer running on shared modules. Steps 9-11 propagate the same shapes to the other three apps without re-deciding anything.

@@ -69,7 +69,7 @@ output/author/{name}/
 | File | Role |
 |------|------|
 | `ui/versioning.py` | Version directory primitives — create, list, load versions per phase |
-| `programs/author/author.py` | Phase execution logic — `run_research()`, `compose_draft_prompt()`, `launch_draft()`, `run_format()` |
+| `apps/author/author.py` | Phase execution logic — `run_research()`, `compose_draft_prompt()`, `launch_draft()`, `run_format()` |
 | `ui/app.py` (author section) | FastAPI endpoints — REST-style routes for all three phases |
 | `ui/static/app.js` (author section) | Client-side JS — tab switching, version browsing, prompt editing, research selection |
 
@@ -93,9 +93,9 @@ output/author/{name}/
 | File | What it is | Editable in UI? |
 |------|-----------|-----------------|
 | `prompts/author_research.md` | System prompt for the research agent — how to search, output format, citation rules | No — always injected automatically |
-| `programs/author/prompts/author_draft.md` | Default draft instructions — how to write OLG content, revision process, improvement suggestions | Yes — shown in the draft prompt textarea |
-| `programs/author/references/olg_style_guide.md` | Evidence-based OLG writing style guide | No — injected into the full draft prompt |
-| `programs/author/references/olg_toc.md` | OLG table of contents (for structure/placement reference) | No — referenced by draft agent |
+| `apps/author/prompts/author_draft.md` | Default draft instructions — how to write OLG content, revision process, improvement suggestions | Yes — shown in the draft prompt textarea |
+| `apps/author/references/olg_style_guide.md` | Evidence-based OLG writing style guide | No — injected into the full draft prompt |
+| `apps/author/references/olg_toc.md` | OLG table of contents (for structure/placement reference) | No — referenced by draft agent |
 
 ### Config
 
@@ -107,8 +107,8 @@ The `[author]` section in `config.ini`:
 | `research_max_searches` | Search budget per research run | `12` |
 | `research_results_per_search` | Results per search query | `8` |
 | `research_max_tokens` | Max output tokens for research | `4096` |
-| `style_guide` | Path to OLG style guide | `programs/author/references/olg_style_guide.md` |
-| `template_docx` | Path to OLG Word template | `programs/author/references/2026 OLG Template.docx` |
+| `style_guide` | Path to OLG style guide | `apps/author/references/olg_style_guide.md` |
+| `template_docx` | Path to OLG Word template | `apps/author/references/2026 OLG Template.docx` |
 | `claude_code_timeout` | Timeout for CLI draft sessions | `600` |
 
 ## How Prompts Are Assembled
@@ -207,19 +207,19 @@ The CLI in `author.py` still works for headless/scripted runs:
 
 ```bash
 # Full pipeline (research + draft terminal)
-python programs/author/author.py "Consolidate VC-1 scripts" --name vc1_scripts
+python apps/author/author.py "Consolidate VC-1 scripts" --name vc1_scripts
 
 # Research only
-python programs/author/author.py "Find VC-1 scripts" --name vc1_scripts --research-only
+python apps/author/author.py "Find VC-1 scripts" --name vc1_scripts --research-only
 
 # Draft only (uses existing research)
-python programs/author/author.py --name vc1_scripts --draft-only
+python apps/author/author.py --name vc1_scripts --draft-only
 
 # Resume a draft session
-python programs/author/author.py --name vc1_scripts --resume
+python apps/author/author.py --name vc1_scripts --resume
 
 # Assignment from file
-python programs/author/author.py --assignment-file assignment.txt --name my_task
+python apps/author/author.py --assignment-file assignment.txt --name my_task
 ```
 
 CLI runs create versioned directories in the same structure as the UI, so outputs are visible from either interface.

@@ -241,11 +241,11 @@ CFR section metadata includes a `hierarchy_intros: {}` dict field (used during c
 - Search export (`/search/export/{search_id}`) renders CFR citations as `7 CFR § 273.9 Income and deductions`
 - Author research checkbox panel includes CFR; default sources are `[olg, cmr, fns, cfr]`
 
-### Comparator L3 cross-check (`programs/comparator/comparator.py`)
+### Comparator L3 cross-check (`apps/comparator/comparator.py`)
 
 CFR is added as an additional L3 cross-check **alongside** the existing CMR L3 — not replacing it. Each confirmed gap finding now carries verdicts from both:
 
-- New prompt: `programs/comparator/prompts/layer3_cfr_validation.md`
+- New prompt: `apps/comparator/prompts/layer3_cfr_validation.md`
 - Classifications: `cfr_requires` / `cfr_allows` / `cfr_differs` / `cfr_silent` / `handbook_only`
 - New functions: `query_cfr()`, `format_cfr_results_for_prompt()`, `run_layer3_cfr()`
 - Pipeline: in the L3 phase, after CMR L3, run CFR L3 if `cfr_clients` is initialized
@@ -255,11 +255,11 @@ CFR is added as an additional L3 cross-check **alongside** the existing CMR L3 �
 
 The "comparator with CFR as the subject" alternative (replacing FNS as the input axis to find gaps in OLG against ALL federal SNAP regs) was deferred — bigger scope, defer until concrete need.
 
-### QC analyzer cross-check (`programs/qc/qc_analyzer.py`)
+### QC analyzer cross-check (`apps/qc/qc_analyzer.py`)
 
 Strict mirror of `run_cmr_check` / `run_fns_check`:
 
-- New prompt: `programs/qc/prompts/qc_cfr_check.md`
+- New prompt: `apps/qc/prompts/qc_cfr_check.md`
 - Classifications: `cfr_covers_topic` / `cfr_silent` / `cfr_differs`
 - `run_cfr_check()` iterates Partial/Gap findings, queries CFR with `program=SNAP`, stores result as `_cfr_check`
 - Sets `meta.phases.cfr_checked`
