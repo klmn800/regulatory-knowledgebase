@@ -1,5 +1,5 @@
 """
-Scraper for DTA Online Policy Guide pages.
+Scraper for the source online policy guide pages.
 
 Reads the page manifest (produced by extractor.py), fetches each URL,
 parses the HTML with parser.py, and saves structured JSON output to
@@ -36,6 +36,7 @@ Usage:
 """
 
 import argparse
+import configparser
 import json
 import os
 import re
@@ -60,16 +61,18 @@ OUTPUT_DIR = INDEX_DIR / "scraped_pages"
 PROGRESS_FILE = INDEX_DIR / "scrape_progress.json"
 REPORT_FILE = INDEX_DIR / "scrape_report.txt"
 
-BASE_URL = (
-    "https://eohhs.ehs.state.ma.us"
-    "/DTA/PolicyOnline/BEACON5/!SSL!/WebHelp/"
-)
+_config = configparser.ConfigParser()
+_config.read(PROJECT_ROOT / "config.ini")
+
+# Base URL of the WebHelp site to scrape — kept in config.ini (gitignored),
+# not hardcoded, so the source site isn't baked into the repo.
+BASE_URL = _config.get("olg", "base_url", fallback="")
 
 REQUEST_DELAY = 1.5       # seconds between requests
 MAX_RETRIES = 3           # retry count for transient errors
 BACKOFF_BASE = 2.0        # exponential backoff multiplier
 REQUEST_TIMEOUT = 15      # seconds per HTTP request
-USER_AGENT = "DTAPolicyScraper/1.0 (RAG pipeline; respectful crawling)"
+USER_AGENT = "PolicyScraper/1.0 (RAG pipeline; respectful crawling)"
 
 
 # ============================================================
@@ -330,7 +333,7 @@ def generate_report(progress: dict, pages: list[dict], elapsed: float) -> str:
 
     lines = [
         "=" * 60,
-        "DTA Online Guide Scrape Report",
+        "Online Guide Scrape Report",
         f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         "=" * 60,
         "",
@@ -515,7 +518,7 @@ def run_scraper(
 def main():
     """Parse command-line arguments and run the scraper."""
     arg_parser = argparse.ArgumentParser(
-        description="Scrape DTA Online Policy Guide pages for RAG pipeline.",
+        description="Scrape source online policy guide pages for RAG pipeline.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

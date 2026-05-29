@@ -1,5 +1,5 @@
 """
-HTML Parser for DTA Online Policy Guide pages.
+HTML Parser for the source online policy guide pages.
 
 Takes raw HTML from MadCap Flare WebHelp pages and extracts structured
 content suitable for downstream RAG chunking.
@@ -30,7 +30,7 @@ Usage:
 
 import re
 from bs4 import BeautifulSoup, NavigableString, Tag
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 
 # ============================================================
@@ -39,7 +39,7 @@ from urllib.parse import urljoin
 
 def parse_page(html: str, page_url: str = "") -> dict:
     """
-    Parse a single DTA Online Guide HTML page into structured data.
+    Parse a single Online Guide HTML page into structured data.
 
     Args:
         html: Raw HTML string of the full page.
@@ -168,7 +168,7 @@ _UI_ARTIFACT_PATTERNS = [
     r"\bPrint\s+Topic\b",
     r"\bPrint\s+this\s+page\b",
     r"\bLoading\.\.\.",
-    # "Recently added" banner DTA injects on revised pages — pure UI cruft,
+    # "Recently added" banner the site injects on revised pages — pure UI cruft,
     # not policy content. The optional second clause hedges against minor
     # phrasing variants (e.g. truncated form on shorter pages).
     r"This topic has been recently added to the Online Guide(?:\s+or has been substantially or completely revised)?",
@@ -679,9 +679,6 @@ def _parse_rows_with_spans(rows: list[Tag]) -> list[list[str]]:
 # INTERNAL LINK EXTRACTION
 # ============================================================
 
-_LINK_BASE_DOMAIN = "eohhs.ehs.state.ma.us"
-
-
 def _extract_links_from_element(element: Tag, page_url: str) -> list[dict]:
     """
     Extract internal links from within a single element. Same domain rules
@@ -690,6 +687,8 @@ def _extract_links_from_element(element: Tag, page_url: str) -> list[dict]:
     """
     links = []
     seen = set()
+    # Internal = same domain as the page being parsed (derived, not hardcoded).
+    base_domain = urlparse(page_url).netloc if page_url else ""
 
     for a_tag in element.find_all("a", href=True):
         href = a_tag["href"]
@@ -700,7 +699,7 @@ def _extract_links_from_element(element: Tag, page_url: str) -> list[dict]:
         else:
             resolved = href
         resolved = resolved.split("#")[0]
-        if _LINK_BASE_DOMAIN not in resolved:
+        if not base_domain or base_domain not in resolved:
             continue
         if resolved in seen:
             continue
@@ -722,7 +721,8 @@ def _extract_internal_links(topic_div: Tag, page_url: str) -> list[dict]:
     """
     links = []
     seen_hrefs = set()
-    base_domain = "eohhs.ehs.state.ma.us"
+    # Internal = same domain as the page being parsed (derived, not hardcoded).
+    base_domain = urlparse(page_url).netloc if page_url else ""
 
     for a_tag in topic_div.find_all("a", href=True):
         href = a_tag["href"]
@@ -741,7 +741,7 @@ def _extract_internal_links(topic_div: Tag, page_url: str) -> list[dict]:
         resolved = resolved.split("#")[0]
 
         # Only keep links to the same domain (internal links)
-        if base_domain not in resolved:
+        if not base_domain or base_domain not in resolved:
             continue
 
         # Deduplicate

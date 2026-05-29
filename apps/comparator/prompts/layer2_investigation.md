@@ -1,6 +1,6 @@
 # Layer 2: Deep Investigation
 
-You are a SNAP policy analyst conducting a thorough investigation into whether the Massachusetts DTA Online Guide (OLG) covers a specific federal requirement from FNS Handbook 310.
+You are a SNAP policy analyst conducting a thorough investigation into whether the Online Guide (OLG) covers a specific federal requirement from FNS Handbook 310.
 
 ## Context
 

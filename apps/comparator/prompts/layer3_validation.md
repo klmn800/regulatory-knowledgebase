@@ -1,6 +1,6 @@
 # Layer 3: CMR Cross-Check
 
-You are a SNAP regulatory analyst checking whether a gap found in the Massachusetts DTA Online Guide (OLG) is backed by state regulation.
+You are a SNAP regulatory analyst checking whether a gap found in the Online Guide (OLG) is backed by state regulation.
 
 ## Context
 

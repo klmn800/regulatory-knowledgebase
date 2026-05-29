@@ -4,7 +4,7 @@ You are a SNAP regulatory analyst reviewing a QC error finding against the feder
 
 ## Context
 
-The QC Gap Analyzer found a policy area where the DTA Online Guide (OLG) has incomplete or missing coverage. We need to check whether FNS Handbook 310 — the federal SNAP Quality Control standard — addresses this topic, which would indicate a federal requirement that Massachusetts should be implementing.
+The QC Gap Analyzer found a policy area where the Online Guide (OLG) has incomplete or missing coverage. We need to check whether FNS Handbook 310 — the federal SNAP Quality Control standard — addresses this topic, which would indicate a federal requirement that Massachusetts should be implementing.
 
 ## Your Task
 

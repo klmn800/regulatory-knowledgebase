@@ -77,7 +77,7 @@ Both are **optional** post-analysis steps that live below the existing investiga
 | Format | `pptx_writer.generate_pptx()` (deterministic) | $0 | `output.pptx` |
 
 **Why this engine split**:
-- Free format step (`pptx_writer` already encodes the DTA standard).
+- Free format step (`pptx_writer` already encodes the brand standard).
 - Free generation step (Claude Code on subscription).
 - Observable + resumable Claude Code window matches the author tab pattern Ben already uses and trusts.
 - The intermediate `outline.json` is editable — Ben can tweak before formatting if needed.
@@ -94,7 +94,7 @@ The LLM must emit `{"slides": [...]}` where each slide is one of:
 
 | Type | Required fields | Notes |
 |------|-----------------|-------|
-| `title` | `title`, optional `subtitle` | DTA section-breaker layout, gold line |
+| `title` | `title`, optional `subtitle` | branded section-breaker layout, gold line |
 | `section` | `title`, optional `subtitle` | Section divider |
 | `content` | `title`, `bullets` (list of str or `{text, sub}`) | Bullets warned >120 chars |
 | `table` | `title`, `headers`, `rows` | Manual table on blank layout |

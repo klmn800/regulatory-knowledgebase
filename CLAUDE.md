@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Policy Navigator** is a multi-source RAG (Retrieval-Augmented Generation) system for Massachusetts DTA (Department of Transitional Assistance) policy. It indexes four authoritative policy sources in priority order:
+**Policy Navigator** is a multi-source RAG (Retrieval-Augmented Generation) system for U.S. public-assistance (SNAP) policy. It indexes four authoritative policy sources in priority order:
 
-1. **OLG** (Online Guide) — DTA's internal staff guide; ~1,200 HTML pages covering SNAP, TAFDC, EAEDC, and cross-program policy. This is what workers follow day-to-day.
+1. **OLG** (Online Guide) — the agency's internal staff guide; ~1,200 HTML pages covering SNAP, TAFDC, EAEDC, and cross-program policy. This is what workers follow day-to-day.
 2. **CMR** (Code of Massachusetts Regulations, Title 106) — The state regulations the OLG implements. 18 PDFs, ~360 pages of formal legal language.
 3. **FNS Handbook 310** — The federal SNAP Quality Control standard the CMR is supposed to implement. Single PDF, 306 pages, 483 numbered sections.
 4. **7 CFR** (federal SNAP regulations) — Parts 271-275, 280, 292. The federal codification that 106 CMR implements. 7 PDFs, 517 pages, 118 sections.

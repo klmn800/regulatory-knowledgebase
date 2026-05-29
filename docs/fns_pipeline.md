@@ -4,7 +4,7 @@
 
 Build a RAG system for the USDA FNS Handbook 310 (the federal SNAP Quality Control
 standard), and a comparator agent that identifies meaningful policy differences between
-the federal handbook and the Massachusetts DTA Online Guide (OLG).
+the federal handbook and the Online Guide (OLG).
 
 The FNS RAG is an independent system that mirrors the OLG RAG architecture. The
 comparator bridges both systems but neither depends on the other for core functionality.

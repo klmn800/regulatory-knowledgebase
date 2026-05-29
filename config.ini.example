@@ -24,6 +24,13 @@ cmr_section_collection = cmr_sections
 cfr_part_collection = cfr_parts
 cfr_section_collection = cfr_sections
 
+[olg]
+# Base URL of the WebHelp site to scrape, and the HAR capture (placed in raw/)
+# used to seed the URL list. Kept here, not hardcoded, so the source site
+# isn't baked into the repo.
+base_url = https://example.gov/PolicyOnline/WebHelp/
+har_filename = raw/site.har
+
 [fns]
 pdf_path = raw/FNS Handbook 310.pdf
 content_start_page = 18

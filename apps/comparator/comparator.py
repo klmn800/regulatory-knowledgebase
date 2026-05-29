@@ -2,7 +2,7 @@
 Comparator Agent — Cross-source policy analysis.
 
 Compares FNS Handbook 310 (federal SNAP standard) against the
-Massachusetts DTA Online Guide (OLG) to identify gaps, differences,
+the Online Guide (OLG) to identify gaps, differences,
 and missing procedures. Four-layer architecture:
 
   Layer 0  Pre-classification — filter out non-policy FNS sections
@@ -1599,7 +1599,7 @@ def run_comparison(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Compare FNS Handbook 310 against DTA Online Guide (SNAP).",
+        description="Compare FNS Handbook 310 against the Online Guide (SNAP).",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

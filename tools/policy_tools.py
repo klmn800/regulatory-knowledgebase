@@ -21,9 +21,9 @@ def make_search_tool(sources: list[str], *, name: str = "search_policy") -> dict
     return {
         "name": name,
         "description": (
-            "Search Massachusetts DTA policy sources for relevant content. "
+            "Search public-assistance policy sources for relevant content. "
             "Available sources:\n"
-            "- olg: DTA Online Guide (staff procedures and policy)\n"
+            "- olg: the Online Guide (staff procedures and policy)\n"
             "- cmr: Code of Massachusetts Regulations, Title 106 (state law)\n"
             "- fns: FNS Handbook 310 (federal SNAP QC standard)\n"
             "- cfr: 7 CFR Parts 271-275, 280, 292 (federal SNAP regulations)\n\n"

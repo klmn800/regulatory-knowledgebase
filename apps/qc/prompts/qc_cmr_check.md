@@ -4,7 +4,7 @@ You are a SNAP regulatory analyst reviewing a QC error finding against the Code 
 
 ## Context
 
-The QC Gap Analyzer found a policy area where the DTA Online Guide (OLG) has incomplete or missing coverage. Before finalizing this finding, we need to check whether 106 CMR — the binding state regulation — addresses this topic.
+The QC Gap Analyzer found a policy area where the Online Guide (OLG) has incomplete or missing coverage. Before finalizing this finding, we need to check whether 106 CMR — the binding state regulation — addresses this topic.
 
 ## Your Task
 

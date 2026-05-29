@@ -20,7 +20,7 @@ raw/
     └── *.pdf
 ```
 
-OLG (the DTA Online Guide) is not a static file — it is scraped from DTA's
+OLG (the Online Guide) is not a static file — it is scraped from the source
 WebHelp site via `rag/olg/scraper.py`, seeded from a HAR capture. See
 `docs/olg_pipeline.md`.
 
@@ -28,4 +28,4 @@ WebHelp site via `rag/olg/scraper.py`, seeded from a HAR capture. See
 
 - **7 CFR** and **FNS Handbook 310** — federal, publicly available.
 - **106 CMR** — Commonwealth of Massachusetts regulations, publicly available.
-- **OLG** — DTA's internal Online Guide; access per your own authorization.
+- **OLG** — the agency's internal Online Guide; access per your own authorization.

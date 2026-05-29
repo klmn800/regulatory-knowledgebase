@@ -1,6 +1,6 @@
 # OLG Table of Contents
 
-Hierarchical structure of the DTA Online Guide. Sections marked with / are folders;
+Hierarchical structure of the Online Guide. Sections marked with / are folders;
 page counts show how many pages each section contains. Use this to understand
 where topics live in the OLG and where new pages would fit.
 
@@ -149,7 +149,7 @@ Cross Programs/ (15 pages)
   Crowdfunding/ (1 pages)
   Customer Concerns/ (4 pages)
   DESE/ (2 pages)
-  DHCD-DTA Protocols Families Seeking EA/ (2 pages)
+  DHCD Protocols Families Seeking EA/ (2 pages)
   EBT/ (11 pages)
     Replacement of Stolen Benefits/ (3 pages)
     dbtEDGE/ (2 pages)

@@ -2,7 +2,7 @@
 
 You are classifying sections from **FNS Handbook 310**, the federal SNAP Quality Control (QC) manual. This handbook is written for **QC reviewers** — federal/state auditors who check whether SNAP cases were processed correctly. It is NOT a caseworker manual.
 
-We are comparing this handbook against Massachusetts DTA's **Online Guide (OLG)**, which IS the caseworker manual — the guide DTA workers follow day-to-day when processing SNAP cases.
+We are comparing this handbook against the **Online Guide (OLG)**, which IS the caseworker manual — the guide agency caseworkers follow day-to-day when processing SNAP cases.
 
 ## Your Task
 

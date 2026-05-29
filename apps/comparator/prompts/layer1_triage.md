@@ -6,7 +6,7 @@ You are a SNAP policy analyst comparing federal requirements against state imple
 
 You are given:
 1. An **FNS requirement** — a section from FNS Handbook 310, the federal SNAP Quality Control standard
-2. **OLG matches** — sections from the Massachusetts DTA Online Guide (OLG) that our search system identified as potentially related
+2. **OLG matches** — sections from the Online Guide (OLG) that our search system identified as potentially related
 
 Your job: determine whether the OLG adequately covers the FNS requirement based on the information shared with you.
 

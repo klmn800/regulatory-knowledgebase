@@ -26,7 +26,7 @@ index/sparse/
 output/*
 !output/README.md
 
-# OLG scrape-derived metadata (DTA's site structure)
+# OLG scrape-derived metadata (the source site structure)
 index/olg/policy_manifest.json
 index/olg/policy_toc.json
 index/olg/policy_urls.txt
@@ -46,7 +46,7 @@ docs/qc_*review/
 apps/qc/inputs/
 Deprecated/qc_cli_artifacts/inputs/
 
-# Reference materials (copyrighted DTA documents, not ours to redistribute)
+# Reference materials (copyrighted source documents, not ours to redistribute)
 apps/author/references/*.docx
 apps/author/references/sample_pages/
 
@@ -65,6 +65,10 @@ tools/fns_dedup_examples.py
 tools/fns_validate_chunks.py
 tools/sparse_token_audit.py
 tools/production_swap.py
+
+# Brand assets (logo images, branded PPT template) — kept on disk, not published
+tools/*.png
+tools/ppt_template.pptx
 
 # Python
 __pycache__/

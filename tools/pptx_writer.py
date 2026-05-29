@@ -1,10 +1,10 @@
 """
 Presentation Renderer — converts slide outline JSON to styled .pptx files.
 
-Uses the DTA-branded PowerPoint template for styling when available.
+Uses the branded PowerPoint template for styling when available.
 Falls back to a generic standalone mode if no template is found.
 
-The template defines slide layouts, theme colors (DTA blue #073856,
+The template defines slide layouts, theme colors (brand blue #073856,
 gold #F6BA16, accent blue #166B9D), and fonts (Franklin Gothic Medium
 for headings, Calibri for body).
 
@@ -44,12 +44,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 DEFAULT_TEMPLATE = PROJECT_ROOT / "tools" / "ppt_template.pptx"
 
-# DTA brand colors
-DTA_PRIMARY = RGBColor(0x07, 0x38, 0x56)    # Primary DTA Blue
-DTA_GOLD = RGBColor(0xF6, 0xBA, 0x16)       # Gold
-DTA_ACCENT = RGBColor(0x16, 0x6B, 0x9D)     # Accent blue
-DTA_GREEN = RGBColor(0x00, 0x98, 0x76)       # Green
-DTA_ORANGE = RGBColor(0xEC, 0x5A, 0x00)      # Orange
+# brand colors
+BRAND_PRIMARY = RGBColor(0x07, 0x38, 0x56)    # Primary brand blue
+BRAND_GOLD = RGBColor(0xF6, 0xBA, 0x16)       # Gold
+BRAND_ACCENT = RGBColor(0x16, 0x6B, 0x9D)     # Accent blue
+BRAND_GREEN = RGBColor(0x00, 0x98, 0x76)       # Green
+BRAND_ORANGE = RGBColor(0xEC, 0x5A, 0x00)      # Orange
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 LIGHT_BG = RGBColor(0xF3, 0xF4, 0xF6)       # Light gray (alt rows)
 BODY_COLOR = RGBColor(0x37, 0x41, 0x51)      # Medium gray (standalone body)
@@ -59,7 +59,7 @@ SUBTLE_COLOR = RGBColor(0x6B, 0x72, 0x80)    # Muted gray
 HEADING_FONT = "Franklin Gothic Medium"
 BODY_FONT = "Calibri"
 
-# Template layout names (from DTA template)
+# Template layout names (from branded template)
 LAYOUT_SECTION_BREAKER = "Section breaker"
 LAYOUT_CONTENT = "1_Title and Content"
 LAYOUT_TWO_CONTENT = "1_Two Content"
@@ -430,7 +430,7 @@ def _render_content_slide_template(prs: Presentation, slide_data: dict):
         p = ph1.text_frame.paragraphs[0]
         run = p.add_run()
         run.text = slide_data.get("title", "")
-        _set_font(run, SLIDE_TITLE_SIZE, DTA_PRIMARY, name=HEADING_FONT)
+        _set_font(run, SLIDE_TITLE_SIZE, BRAND_PRIMARY, name=HEADING_FONT)
 
     # Bullets in the body placeholder
     bullets = slide_data.get("bullets", [])
@@ -461,7 +461,7 @@ def _render_table_slide_template(prs: Presentation, slide_data: dict):
     p = tf.paragraphs[0]
     run = p.add_run()
     run.text = slide_data.get("title", "")
-    _set_font(run, SLIDE_TITLE_SIZE, DTA_PRIMARY, name=HEADING_FONT)
+    _set_font(run, SLIDE_TITLE_SIZE, BRAND_PRIMARY, name=HEADING_FONT)
 
     headers = slide_data.get("headers", [])
     rows = slide_data.get("rows", [])
@@ -485,7 +485,7 @@ def _render_table_slide_template(prs: Presentation, slide_data: dict):
     for ci in range(n_cols):
         table.columns[ci].width = col_width
 
-    # Header row — DTA primary blue
+    # Header row — primary brand blue
     for ci, header in enumerate(headers):
         cell = table.cell(0, ci)
         cell.text = header
@@ -495,7 +495,7 @@ def _render_table_slide_template(prs: Presentation, slide_data: dict):
         p.font.bold = True
         p.font.color.rgb = WHITE
         cell.fill.solid()
-        cell.fill.fore_color.rgb = DTA_PRIMARY
+        cell.fill.fore_color.rgb = BRAND_PRIMARY
 
     # Data rows
     for ri, row in enumerate(rows):
@@ -533,7 +533,7 @@ def _render_two_column_slide_template(prs: Presentation, slide_data: dict):
     p = tf.paragraphs[0]
     run = p.add_run()
     run.text = slide_data.get("title", "")
-    _set_font(run, SLIDE_TITLE_SIZE, DTA_PRIMARY, name=HEADING_FONT)
+    _set_font(run, SLIDE_TITLE_SIZE, BRAND_PRIMARY, name=HEADING_FONT)
 
     # Column headers
     left_title = slide_data.get("left_title", "")
@@ -547,13 +547,13 @@ def _render_two_column_slide_template(prs: Presentation, slide_data: dict):
             lh = _add_textbox(slide, Inches(0.50), Inches(1.83), Inches(4.42), Inches(0.54))
             run = lh.paragraphs[0].add_run()
             run.text = left_title
-            _set_font(run, COL_HEADER_SIZE, DTA_PRIMARY, bold=True, name=HEADING_FONT)
+            _set_font(run, COL_HEADER_SIZE, BRAND_PRIMARY, bold=True, name=HEADING_FONT)
 
         if right_title:
             rh = _add_textbox(slide, Inches(5.08), Inches(1.83), Inches(4.42), Inches(0.54))
             run = rh.paragraphs[0].add_run()
             run.text = right_title
-            _set_font(run, COL_HEADER_SIZE, DTA_PRIMARY, bold=True, name=HEADING_FONT)
+            _set_font(run, COL_HEADER_SIZE, BRAND_PRIMARY, bold=True, name=HEADING_FONT)
 
         body_top = Inches(2.38)
         body_height = Inches(4.32)
@@ -596,7 +596,7 @@ def _render_citations_slide(prs: Presentation, slide_data: dict):
                              CONTENT_WIDTH, Inches(0.8))
     run = title_tf.paragraphs[0].add_run()
     run.text = title
-    _set_font(run, CITATION_TITLE_SIZE, DTA_PRIMARY, name=HEADING_FONT)
+    _set_font(run, CITATION_TITLE_SIZE, BRAND_PRIMARY, name=HEADING_FONT)
 
     # Body block — one labeled group per populated source
     sources = slide_data.get("sources", {}) or {}
@@ -610,7 +610,7 @@ def _render_citations_slide(prs: Presentation, slide_data: dict):
         if not entries:
             continue
 
-        # Source label (bold, DTA blue)
+        # Source label (bold, brand blue)
         if first:
             p = body_tf.paragraphs[0]
             first = False
@@ -620,7 +620,7 @@ def _render_citations_slide(prs: Presentation, slide_data: dict):
         p.space_after = Pt(2)
         run = p.add_run()
         run.text = CITATION_SOURCE_LABELS[key]
-        _set_font(run, CITATION_LABEL_SIZE, DTA_PRIMARY,
+        _set_font(run, CITATION_LABEL_SIZE, BRAND_PRIMARY,
                    bold=True, name=HEADING_FONT)
 
         # Entries indented under the label
@@ -652,7 +652,7 @@ def _render_title_slide_standalone(prs: Presentation, slide_data: dict):
     tf.paragraphs[0].alignment = PP_ALIGN.CENTER
     run = tf.paragraphs[0].add_run()
     run.text = slide_data.get("title", "")
-    _set_font(run, Pt(36), DTA_PRIMARY, bold=True, name=HEADING_FONT)
+    _set_font(run, Pt(36), BRAND_PRIMARY, bold=True, name=HEADING_FONT)
 
     subtitle = slide_data.get("subtitle", "")
     if subtitle:
@@ -677,7 +677,7 @@ def _render_section_slide_standalone(prs: Presentation, slide_data: dict):
     tf = _add_textbox(slide, MARGIN_LEFT, Inches(2.5), CONTENT_WIDTH, Inches(1.5))
     run = tf.paragraphs[0].add_run()
     run.text = slide_data.get("title", "")
-    _set_font(run, Pt(32), DTA_PRIMARY, bold=True, name=HEADING_FONT)
+    _set_font(run, Pt(32), BRAND_PRIMARY, bold=True, name=HEADING_FONT)
 
     subtitle = slide_data.get("subtitle", "")
     if subtitle:
@@ -698,7 +698,7 @@ def _render_content_slide_standalone(prs: Presentation, slide_data: dict):
     tf = _add_textbox(slide, MARGIN_LEFT, MARGIN_TOP, CONTENT_WIDTH, TITLE_HEIGHT)
     run = tf.paragraphs[0].add_run()
     run.text = slide_data.get("title", "")
-    _set_font(run, SLIDE_TITLE_SIZE, DTA_PRIMARY, bold=True, name=HEADING_FONT)
+    _set_font(run, SLIDE_TITLE_SIZE, BRAND_PRIMARY, bold=True, name=HEADING_FONT)
 
     bullets = slide_data.get("bullets", [])
     if bullets:
@@ -722,7 +722,7 @@ def _render_two_column_slide_standalone(prs: Presentation, slide_data: dict):
     tf = _add_textbox(slide, MARGIN_LEFT, MARGIN_TOP, CONTENT_WIDTH, TITLE_HEIGHT)
     run = tf.paragraphs[0].add_run()
     run.text = slide_data.get("title", "")
-    _set_font(run, SLIDE_TITLE_SIZE, DTA_PRIMARY, bold=True, name=HEADING_FONT)
+    _set_font(run, SLIDE_TITLE_SIZE, BRAND_PRIMARY, bold=True, name=HEADING_FONT)
 
     col_width = Inches(4.2)
     col_right_x = Inches(5.3)
@@ -735,12 +735,12 @@ def _render_two_column_slide_standalone(prs: Presentation, slide_data: dict):
             lh = _add_textbox(slide, MARGIN_LEFT, BODY_TOP, col_width, Inches(0.5))
             run = lh.paragraphs[0].add_run()
             run.text = left_title
-            _set_font(run, COL_HEADER_SIZE, DTA_PRIMARY, bold=True, name=HEADING_FONT)
+            _set_font(run, COL_HEADER_SIZE, BRAND_PRIMARY, bold=True, name=HEADING_FONT)
         if right_title:
             rh = _add_textbox(slide, col_right_x, BODY_TOP, col_width, Inches(0.5))
             run = rh.paragraphs[0].add_run()
             run.text = right_title
-            _set_font(run, COL_HEADER_SIZE, DTA_PRIMARY, bold=True, name=HEADING_FONT)
+            _set_font(run, COL_HEADER_SIZE, BRAND_PRIMARY, bold=True, name=HEADING_FONT)
         body_top = Inches(2.3)
 
     body_height = Inches(7.5) - body_top - Inches(0.5)
@@ -806,7 +806,7 @@ def generate_pptx(
     Args:
         outline: Slide outline dict matching the schema.
         output_path: Where to save the .pptx file.
-        template_path: Path to .pptx template. Defaults to the DTA template
+        template_path: Path to .pptx template. Defaults to the branded template
                        at tools/ppt_template.pptx. Pass False to disable.
 
     Returns:

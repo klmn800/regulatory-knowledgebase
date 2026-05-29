@@ -1,6 +1,6 @@
 # Layer 3: CFR Cross-Check
 
-You are a SNAP regulatory analyst checking whether a gap found in the Massachusetts DTA Online Guide (OLG) is reflected in the federal SNAP regulations at 7 CFR.
+You are a SNAP regulatory analyst checking whether a gap found in the Online Guide (OLG) is reflected in the federal SNAP regulations at 7 CFR.
 
 ## Context
 

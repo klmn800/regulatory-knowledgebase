@@ -10,16 +10,22 @@ Currently overrides:
 
 from __future__ import annotations
 
+import configparser
 import re
+from pathlib import Path
 
 
 # ============================================================
 # VERIFICATION CHART OVERRIDE
 # ============================================================
 
+# Source site base URL lives in config.ini (gitignored), not in code.
+_config = configparser.ConfigParser()
+_config.read(Path(__file__).resolve().parents[2] / "config.ini")
+_BASE_URL = _config.get("olg", "base_url", fallback="")
+
 VERIFICATION_CHART_URL = (
-    "https://eohhs.ehs.state.ma.us/DTA/PolicyOnline/BEACON5/!SSL!/WebHelp/"
-    "CrossProg/Verifications/Vers_Types_VerifChart.htm"
+    _BASE_URL + "CrossProg/Verifications/Vers_Types_VerifChart.htm"
 )
 
 VERIFICATION_CHART_GROUPS = [
@@ -265,8 +271,8 @@ def chunk_verification_chart(page_data: dict) -> list[dict]:
     vc1_note = (
         "Note: The Examples shown for each item are the proofs listed on "
         "the Verification Checklist (VC-1) notice issued to clients. They "
-        "are not an exhaustive list of allowable verifications — DTA may "
-        "accept other proofs."
+        "are not an exhaustive list of allowable verifications — the agency "
+        "may accept other proofs."
     )
 
     # Chunk 1: Overview/preamble — use the existing prose section text,
@@ -296,7 +302,7 @@ def chunk_verification_chart(page_data: dict) -> list[dict]:
                 rows.append(r)
 
         body_parts = [
-            f"This portion of the DTA Verification Chart covers "
+            f"This portion of the Verification Chart covers "
             f"{group['label']}: the proofs SNAP, TAFDC, and EAEDC clients "
             f"may need to provide for these items.",
             "",

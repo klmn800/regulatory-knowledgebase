@@ -1,14 +1,14 @@
-# DTA Online Guide — RAG Pipeline
+# the Online Guide — RAG Pipeline
 
 ## Project Goal
 
-Build a RAG (Retrieval-Augmented Generation) system so AI agents can check policy writing against the Massachusetts DTA Online Policy Guide. The guide is a public-facing MadCap Flare WebHelp site with ~1,200 pages covering SNAP, TAFDC, EAEDC, and cross-program policy.
+Build a RAG (Retrieval-Augmented Generation) system so AI agents can check policy writing against the Massachusetts the Online Policy Guide. The guide is a public-facing MadCap Flare WebHelp site with ~1,200 pages covering SNAP, TAFDC, EAEDC, and cross-program policy.
 
 End users: AI agents, human policy writers, and programmatic search/retrieval.
 
 ## Source Site
 
-- **Base URL**: `https://eohhs.ehs.state.ma.us/DTA/PolicyOnline/BEACON5/!SSL!/WebHelp/`
+- **Base URL**: `https://example.gov/PolicyOnline/WebHelp/`
 - **Content**: Clean, well-structured HTML with H1/H2/H3 headings, paragraphs, tables, lists
 - **Page structure**: All content inside `<div id="rh-topic">`, "Last Update" date in H3 at bottom
 - **Programs covered**: SNAP (205 pages), TAFDC (244), EAEDC (164), Cross-Program (275), BP (80), Pathways (57), COVID (39), Harper (34), plus smaller categories

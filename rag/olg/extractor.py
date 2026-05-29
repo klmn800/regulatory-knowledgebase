@@ -1,5 +1,5 @@
 """
-HAR TOC URL Extractor (with hierarchy) for DTA Policy Online Guide
+HAR TOC URL Extractor (with hierarchy) for the source policy online guide
 
 Reads a HAR file exported from Chrome DevTools, finds all the TOC
 JavaScript responses, reconstructs the full chapter/subchapter tree
@@ -19,6 +19,7 @@ Usage:
     3. Run: python har_url_extractor.py
 """
 
+import configparser
 import json
 import re
 from pathlib import Path
@@ -30,12 +31,13 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 INDEX_DIR = PROJECT_ROOT / "index" / "olg"
 
-HAR_FILENAME = str(PROJECT_ROOT / "raw" / "eohhs.ehs.state.ma.us.har")
+# Source site URL and HAR capture live in config.ini (gitignored), not in code.
+_config = configparser.ConfigParser()
+_config.read(PROJECT_ROOT / "config.ini")
 
-BASE_URL = (
-    "https://eohhs.ehs.state.ma.us"
-    "/DTA/PolicyOnline/BEACON5/!SSL!/WebHelp/"
-)
+HAR_FILENAME = str(PROJECT_ROOT / _config.get("olg", "har_filename", fallback="raw/site.har"))
+
+BASE_URL = _config.get("olg", "base_url", fallback="")
 
 # The root TOC key. This is the top-level file that contains
 # the main sections (Welcome, Forms, EAEDC, SNAP, TAFDC, etc.)

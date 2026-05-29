@@ -6,7 +6,7 @@ embeddings via the Voyage AI API, and stores everything in ChromaDB
 for retrieval.
 
 Supports multiple sources via the --source flag:
-  - olg  — DTA Online Guide (pages + sections)
+  - olg  — the Online Guide (pages + sections)
   - fns  — FNS Handbook 310 (chapters + sections)
 
 Features:
@@ -96,8 +96,8 @@ def _resolve_source_paths(source: str) -> dict:
             "granular_collection_key": "olg_section_collection",
             "broad_label": "pages",
             "granular_label": "sections",
-            "broad_description": "DTA Policy Online Guide - page-level documents",
-            "granular_description": "DTA Policy Online Guide - section-level chunks",
+            "broad_description": "Online Guide - page-level documents",
+            "granular_description": "Online Guide - section-level chunks",
         }
     elif source == "fns":
         return {

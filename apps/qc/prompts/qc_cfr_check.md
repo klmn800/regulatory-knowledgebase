@@ -4,7 +4,7 @@ You are a SNAP regulatory analyst reviewing a QC error finding against the feder
 
 ## Context
 
-The QC Gap Analyzer found a policy area where the DTA Online Guide (OLG) has incomplete or missing coverage. The federal SNAP regulations at **7 CFR Parts 271-275, 280, and 292** define the underlying federal rules that state agencies must implement. Cross-checking 7 CFR helps determine whether the policy area is grounded in federal law (raising the stakes of an OLG gap) or whether it's purely a state/operational concern.
+The QC Gap Analyzer found a policy area where the Online Guide (OLG) has incomplete or missing coverage. The federal SNAP regulations at **7 CFR Parts 271-275, 280, and 292** define the underlying federal rules that state agencies must implement. Cross-checking 7 CFR helps determine whether the policy area is grounded in federal law (raising the stakes of an OLG gap) or whether it's purely a state/operational concern.
 
 ## Your Task
 

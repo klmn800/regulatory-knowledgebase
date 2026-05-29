@@ -4,7 +4,7 @@
 
 ## Purpose
 
-A policy search tool for DTA policy analysts. Accepts natural-language queries, retrieves relevant passages from indexed policy sources, and optionally synthesizes answers using Claude. This is the system's primary daily-use interface — distinct from the comparator, which is a purpose-built research tool for cross-source analysis.
+A policy search tool for SNAP policy analysts. Accepts natural-language queries, retrieves relevant passages from indexed policy sources, and optionally synthesizes answers using Claude. This is the system's primary daily-use interface — distinct from the comparator, which is a purpose-built research tool for cross-source analysis.
 
 ## Users
 
@@ -61,7 +61,7 @@ A policy search tool for DTA policy analysts. Accepts natural-language queries, 
 | Frontend | HTMX + server-rendered HTML | One Python codebase, no Node toolchain. Form→results pattern is ideal for HTMX. |
 | Result layout | Tabbed by source | Clean separation per source. OLG tab pre-selected. Other tabs load on click (lazy). |
 | LLM integration | Claude Agent SDK | Structured agent with tools, same pattern as comparator |
-| Agent prompts | Shared `prompts/` folder | Search agent needs the same DTA policy context as comparator |
+| Agent prompts | Shared `prompts/` folder | Search agent needs the same public-assistance policy context as comparator |
 | Search history | Server-side persistence | Analysts can revisit prior searches. Stored in backend database. |
 | Results per tab | 5 (with "show more") | Concise default, matches CLI. Analyst can load more on demand. |
 | Agent retrieval | Iterative, on analyst toggle | Agent works with fixed passages by default. "Dig deeper" toggle lets it search for more. |

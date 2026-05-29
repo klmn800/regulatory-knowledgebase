@@ -1,10 +1,10 @@
 # OLG Writing Style Guide
 
-This guide defines how to write content for the DTA Online Guide (OLG). It combines rules from the OLG Writer's Manual with observed patterns from actual OLG pages written by DTA policy staff.
+This guide defines how to write content for the Online Guide (OLG). It combines rules from the OLG Writer's Manual with observed patterns from actual OLG pages written by policy staff.
 
 ## Voice and Tone
 
-**Write directly to the reader in second person.** The reader is a DTA worker — an eligibility worker, case manager, FAW, or supervisor — who needs clear, actionable guidance. Address them as "you."
+**Write directly to the reader in second person.** The reader is an agency caseworker — an eligibility worker, case manager, FAW, or supervisor — who needs clear, actionable guidance. Address them as "you."
 
 - "You must send a VC-1" (correct)
 - "A VC-1 must be sent" (incorrect — passive voice)
@@ -33,9 +33,9 @@ Clear, descriptive page title. Use the topic name, not a question or action phra
 One to two paragraphs that establish context: what this topic is, why it matters, and who it applies to. This orients the reader before they get into details.
 
 Examples of effective openers:
-- "The verification of Social Security Numbers (SSN) is a critical, mandatory requirement for all applicants seeking eligibility for DTA assistance programs."
-- "To better serve our clients, the Department provides the option to conduct DTA business with virtual meetings through Zoom."
-- "Clients may contact a Local Office directly by calling the main line to request services or information related to DTA business."
+- "The verification of Social Security Numbers (SSN) is a critical, mandatory requirement for all applicants seeking eligibility for public-assistance programs."
+- "To better serve our clients, the Department provides the option to conduct agency business with virtual meetings through Zoom."
+- "Clients may contact a Local Office directly by calling the main line to request services or information related to agency business."
 
 Pattern: State the topic, its importance, and its scope in one or two sentences. Then provide any essential background the reader needs before proceeding.
 
@@ -151,9 +151,9 @@ Spell out on first use, followed by the acronym in parentheses. Use the acronym 
 ## Terminology
 
 ### Standard Terms
-- DTA customers are **"clients"** — never "customers," "recipients," or "beneficiaries"
+- Clients are **"clients"** — never "customers," "recipients," or "beneficiaries"
 - Use **"household members"** for people in the assistance unit
-- The DTA system is **"BEACON"** — always capitalized
+- The case-management system is **"BEACON"** — always capitalized
 - Use **"case manager"** or **"FAW"** (First Available Worker) for the worker role
 - The local office is a **"TAO"** (Transitional Assistance Office) or **"Local Office"**
 - Use **"they/them/their"** as gender-neutral singular pronouns

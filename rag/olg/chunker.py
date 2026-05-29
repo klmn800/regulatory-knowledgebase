@@ -1,5 +1,5 @@
 """
-Chunker for DTA Online Guide RAG pipeline.
+Chunker for the Online Guide RAG pipeline.
 
 Reads the scraped page JSON files and produces two sets of chunks
 for embedding:
@@ -1014,7 +1014,7 @@ def preview_chunks(page_chunks: list[dict], section_chunks: list[dict],
 def main():
     """Parse arguments and run the chunker."""
     parser = argparse.ArgumentParser(
-        description="Chunk scraped DTA policy pages for RAG embedding.",
+        description="Chunk scraped public-assistance policy pages for RAG embedding.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

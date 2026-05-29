@@ -8,7 +8,7 @@ Provides three ways to search the embedded policy knowledge base:
   3. JSON output      — python query.py "income deduction" --json
 
 Supports multiple sources via the --source flag:
-  - olg  — DTA Online Guide (pages + sections)
+  - olg  — the Online Guide (pages + sections)
   - fns  — FNS Handbook 310 (chapters + sections)
 
 Features:
@@ -39,7 +39,7 @@ Usage:
     python query.py --source olg --chunk-id sec__SNAP__Eligibility__Stu_Students__035 --neighbors 1
 
     # Full OLG page by URL
-    python query.py --source olg --url "https://eohhs.ehs.state.ma.us/.../page.htm"
+    python query.py --source olg --url "https://example.gov/.../page.htm"
 
 Configuration:
     See config.ini for API key, model, and ChromaDB settings.
@@ -127,7 +127,7 @@ def _resolve_source_config(source: str) -> dict:
             "granular_name": "sections",
             "has_program_filter": True,
             "parent_id_field": "parent_page_id",
-            "source_label": "DTA Online Guide",
+            "source_label": "the Online Guide",
         }
     elif source == "fns":
         return {

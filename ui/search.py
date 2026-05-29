@@ -18,7 +18,7 @@ from rag.query import create_client, search_with_client
 # Templates iterate over this. Adding a source = adding one dict entry.
 SOURCES = {
     "olg": {
-        "label": "DTA Online Guide",
+        "label": "the Online Guide",
         "short_label": "OLG",
         "has_program_filter": True,
     },
