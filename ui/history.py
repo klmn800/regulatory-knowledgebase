@@ -7,9 +7,14 @@ Database created automatically at data/search_history.db.
 
 import json
 import sqlite3
+import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from tools.cost_tracker import calculate_cost
+
 DB_PATH = PROJECT_ROOT / "output" / "search_history.db"
 
 
@@ -50,6 +55,12 @@ def init_db():
     if "programs_by_source" not in existing_cols:
         conn.execute("ALTER TABLE searches ADD COLUMN programs_by_source TEXT")
 
+    # Incomplete-answer reason added 2026-09-11 (SynthesisResult.incomplete).
+    # NULL means complete — or, for rows saved before this date, unknown:
+    # older runs never recorded it, so they are not flagged retroactively.
+    if "incomplete" not in existing_cols:
+        conn.execute("ALTER TABLE searches ADD COLUMN incomplete TEXT")
+
     conn.commit()
     conn.close()
 
@@ -80,8 +91,9 @@ def save_search(
         """INSERT INTO searches
            (question, sources, program_filter, programs_by_source, deep,
             answer, evidence,
-            input_tokens, output_tokens, cost, duration_seconds, model)
-           VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            input_tokens, output_tokens, cost, duration_seconds, model,
+            incomplete)
+           VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             question,
             json.dumps(sources),
@@ -94,6 +106,7 @@ def save_search(
             result.cost,
             result.duration_seconds,
             result.model,
+            result.incomplete,
         ),
     )
     conn.commit()
@@ -107,7 +120,8 @@ def get_recent(limit: int = 20) -> list[dict]:
     conn = _get_conn()
     rows = conn.execute(
         """SELECT id, question, sources, program_filter, programs_by_source,
-                  deep, duration_seconds, cost, created_at
+                  deep, duration_seconds, cost, model,
+                  input_tokens, output_tokens, incomplete, created_at
            FROM searches ORDER BY id DESC LIMIT ?""",
         (limit,),
     ).fetchall()
@@ -129,7 +143,6 @@ def get_by_id(search_id: int) -> dict | None:
     result["evidence"] = json.loads(row["evidence"])
     result["input_tokens"] = row["input_tokens"]
     result["output_tokens"] = row["output_tokens"]
-    result["model"] = row["model"]
     return result
 
 
@@ -138,6 +151,11 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
     pbs_raw = row["programs_by_source"] if "programs_by_source" in row.keys() else None
     programs_by_source = json.loads(pbs_raw) if pbs_raw else None
 
+    # Cost is recomputed from stored tokens at current MODEL_PRICING rather
+    # than read from the `cost` column: a run priced at stand-in rates
+    # self-corrects once its model is added, and the estimate marker in the
+    # UI (also evaluated against current pricing) stays consistent with the
+    # number shown. Same formula synthesis uses (no prompt caching there).
     return {
         "id": row["id"],
         "question": row["question"],
@@ -146,6 +164,9 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
         "programs_by_source": programs_by_source,
         "deep": bool(row["deep"]),
         "duration_seconds": row["duration_seconds"],
-        "cost": row["cost"],
+        "cost": calculate_cost(row["model"], row["input_tokens"] or 0,
+                               row["output_tokens"] or 0),
+        "model": row["model"],
+        "incomplete": row["incomplete"],
         "created_at": row["created_at"],
     }

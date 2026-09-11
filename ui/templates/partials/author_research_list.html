@@ -18,7 +18,7 @@
             {% if v.meta.get('sources') %}<span>{{ v.meta.sources | join(', ') | upper }}</span>{% endif %}
             {% if v.meta.get('duration') %}<span>{{ v.meta.duration }}s</span>{% endif %}
             {% if v.meta.get('searches') %}<span>{{ v.meta.searches }} searches</span>{% endif %}
-            {% if v.meta.get('cost') %}<span>${{ v.meta.cost }}</span>{% endif %}
+            {% if v.meta.get('cost') %}<span>{{ cost_display(v.meta.cost, v.meta.get('model')) }}</span>{% endif %}
         </div>
     </div>
     {% endfor %}

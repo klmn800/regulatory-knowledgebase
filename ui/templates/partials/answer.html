@@ -1,12 +1,15 @@
 <div class="answer-container">
     <div class="answer-card">
+        {% if result.incomplete %}
+        <div class="incomplete-banner" role="alert">{{ describe_incomplete(result.incomplete) }}</div>
+        {% endif %}
         <div class="answer-body">
             {{ result.answer | markdown | safe }}
         </div>
         <div class="answer-meta">
             <span title="Model: {{ result.model }}">{{ result.duration_seconds|round(1) }}s</span>
             <span>{{ result.input_tokens|int }} + {{ result.output_tokens|int }} tokens</span>
-            <span>${{ '%.4f'|format(result.cost) }}</span>
+            <span>{{ cost_display(result.cost, result.model) }}</span>
             <span>{{ result.search_queries|length }} search{{ 'es' if result.search_queries|length != 1 }}</span>
             <button class="copy-btn" onclick="copyAnswer()" title="Copy answer to clipboard">Copy</button>
             <a href="/search/export/{{ search_id }}" class="copy-btn download-btn" title="Download as Word document">Download</a>

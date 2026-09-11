@@ -82,7 +82,7 @@
         <span>{{ s.timestamp[:16] | replace('T', ' ') }}</span>
         <span>{{ s.duration_sec }}s</span>
         <span>{{ '{:,}'.format(s.tokens_in) }} in / {{ '{:,}'.format(s.tokens_out) }} out tokens</span>
-        <span>${{ s.cost }}</span>
+        <span>{{ cost_display(s.cost, s.model) }}</span>
         <span class="text-muted">{{ s.model }}</span>
     </div>
     {% endif %}

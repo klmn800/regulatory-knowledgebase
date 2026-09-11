@@ -11,8 +11,9 @@
         <div class="detail-meta">
             <span>{{ entry.sources|join(', ') }}</span>
             {% if entry.deep %}<span class="deep-badge">deep</span>{% endif %}
+            {% if entry.incomplete %}<span class="incomplete-badge" title="{{ describe_incomplete(entry.incomplete) }}">incomplete</span>{% endif %}
             <span>{{ entry.duration_seconds|round(1) }}s</span>
-            <span>${{ '%.4f'|format(entry.cost) }}</span>
+            <span>{{ cost_display(entry.cost, entry.model) }}</span>
             <span>{{ entry.input_tokens }} + {{ entry.output_tokens }} tokens</span>
             <span>{{ entry.model }}</span>
             <span>{{ entry.created_at }}</span>
@@ -21,6 +22,9 @@
     </div>
 
     <div class="answer-card">
+        {% if entry.incomplete %}
+        <div class="incomplete-banner" role="alert">{{ describe_incomplete(entry.incomplete) }}</div>
+        {% endif %}
         <div class="answer-body">
             {{ entry.answer | markdown | safe }}
         </div>

@@ -52,7 +52,7 @@
             {% if view.meta.get('sources') %}<span>{{ view.meta.sources | join(', ') | upper }}</span>{% endif %}
             {% if view.duration %}<span>{{ view.duration }}s</span>{% endif %}
             {% if view.searches %}<span>{{ view.searches }} search{{ 'es' if view.searches != 1 }}</span>{% endif %}
-            {% if view.cost %}<span>${{ view.cost }}</span>{% endif %}
+            {% if view.cost %}<span>{{ cost_display(view.cost, view.model) }}</span>{% endif %}
             {% if view.model %}<span class="text-muted">{{ view.model }}</span>{% endif %}
             {% if view.session_id %}<span>Session: <code>{{ view.session_id[:8] }}...</code></span>{% endif %}
         </div>

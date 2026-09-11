@@ -23,6 +23,43 @@
     <form method="post" action="/settings/save" class="settings-form">
 
         <section class="settings-section">
+            <h3>Ask</h3>
+            <p class="settings-section-aux">Question answering on the Ask tab, in both Standard and Deep mode. Always runs through the Anthropic API (per-token billing). Author research has its own settings below and does not read these.</p>
+
+            <fieldset class="settings-group">
+                <legend>Synthesis</legend>
+
+                <div class="form-group {% if errors.synthesis_model %}has-error{% endif %}">
+                    <label for="synthesis_model">Model</label>
+                    <input type="text" id="synthesis_model" name="synthesis_model" value="{{ values.synthesis_model }}" list="anthropic-models" autocomplete="off">
+                    <p class="form-help">Anthropic model ID that writes Ask answers. The model shown on each answer and in History is this value. Typical: <code>claude-sonnet-4-5-20250929</code>.</p>
+                    {% if errors.synthesis_model %}<p class="form-error">{{ errors.synthesis_model }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.synthesis_max_tokens %}has-error{% endif %}">
+                    <label for="synthesis_max_tokens">Max output tokens per call</label>
+                    <input type="number" id="synthesis_max_tokens" name="synthesis_max_tokens" value="{{ values.synthesis_max_tokens }}" min="1" max="21333">
+                    <p class="form-help">Output cap for each API call. In Deep mode it applies to every turn, including the one that writes the final answer — an answer that reaches the cap is cut off. On models that think by default (e.g. Opus 5), thinking tokens count against this cap too. You pay for tokens actually generated, not for the cap. Maximum 21,333 (Ask doesn't stream responses yet). Default 1500.</p>
+                    {% if errors.synthesis_max_tokens %}<p class="form-error">{{ errors.synthesis_max_tokens }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.synthesis_max_searches %}has-error{% endif %}">
+                    <label for="synthesis_max_searches">Max additional searches (Deep mode)</label>
+                    <input type="number" id="synthesis_max_searches" name="synthesis_max_searches" value="{{ values.synthesis_max_searches }}" min="1" max="50">
+                    <p class="form-help">Hard budget of follow-up searches the model can run after the initial results. Ignored in Standard mode. Default 8.</p>
+                    {% if errors.synthesis_max_searches %}<p class="form-error">{{ errors.synthesis_max_searches }}</p>{% endif %}
+                </div>
+
+                <div class="form-group {% if errors.synthesis_results_per_search %}has-error{% endif %}">
+                    <label for="synthesis_results_per_search">Results per search</label>
+                    <input type="number" id="synthesis_results_per_search" name="synthesis_results_per_search" value="{{ values.synthesis_results_per_search }}" min="1" max="20">
+                    <p class="form-help">Top-K chunks returned from each selected source in the initial search, and from each Deep-mode follow-up search. Higher = more evidence per call but more input tokens. Default 5.</p>
+                    {% if errors.synthesis_results_per_search %}<p class="form-error">{{ errors.synthesis_results_per_search }}</p>{% endif %}
+                </div>
+            </fieldset>
+        </section>
+
+        <section class="settings-section">
             <h3>QC Analyzer</h3>
             <p class="settings-section-aux">Phased OLG-coverage pipeline driven from the QC tab. Per-source program filters live in their own collapsible panel on the QC tab and are not duplicated here.</p>
 

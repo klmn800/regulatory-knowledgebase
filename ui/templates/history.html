@@ -24,10 +24,11 @@
                 <td class="history-q">
                     {{ s.question[:80] }}{% if s.question|length > 80 %}...{% endif %}
                     {% if s.deep %}<span class="deep-badge">deep</span>{% endif %}
+                    {% if s.incomplete %}<span class="incomplete-badge" title="{{ describe_incomplete(s.incomplete) }}">incomplete</span>{% endif %}
                 </td>
                 <td>{{ s.sources|join(', ') }}</td>
                 <td>{{ s.duration_seconds|round(1) }}s</td>
-                <td>${{ '%.4f'|format(s.cost) }}</td>
+                <td>{{ cost_display(s.cost, s.model) }}</td>
                 <td>{{ s.created_at[:16] }}</td>
             </tr>
             {% endfor %}

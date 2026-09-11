@@ -75,6 +75,49 @@ class SynthesisResult:
     # `answer` still carries the same "Synthesis failed due to ..." text for
     # backwards compat, but new callers should branch on `error` first.
     error: str | None = None
+    # None when the model finished its answer. Otherwise why it didn't:
+    # the API stop_reason ("max_tokens", "refusal", ...) or "max_turns"
+    # when deep mode ran out of turns. `answer` then holds partial text.
+    # Callers must surface this — see describe_incomplete().
+    incomplete: str | None = None
+
+
+_COMPLETE_STOP_REASONS = ("end_turn", "stop_sequence")
+
+_INCOMPLETE_MESSAGES = {
+    "max_tokens": (
+        "This answer was cut off: it reached the output-token limit "
+        "(Settings → Ask → Max output tokens). Raise the limit and ask again "
+        "for the full answer."
+    ),
+    "max_turns": (
+        "Deep mode reached its turn limit before finishing. This is the "
+        "model's last partial response, not a final answer."
+    ),
+    "refusal": "The model declined to answer this request.",
+}
+
+
+def describe_incomplete(reason: str | None) -> str:
+    """User-facing explanation for SynthesisResult.incomplete ("" if complete)."""
+    if not reason:
+        return ""
+    return _INCOMPLETE_MESSAGES.get(
+        reason, f"The model stopped before finishing (stop reason: {reason})."
+    )
+
+
+def _incomplete_reason(stop_reason: str | None) -> str | None:
+    return None if stop_reason in _COMPLETE_STOP_REASONS else stop_reason
+
+
+def _response_text(resp) -> str:
+    """Join every text block in a response. Models that think by default
+    (Opus 5) put a thinking block first, so content[0] is not the answer."""
+    return "\n\n".join(
+        block.text.strip() for block in resp.content
+        if block.type == "text" and block.text.strip()
+    )
 
 
 # ============================================================
@@ -187,7 +230,7 @@ def run_standard(
         )
     print(" done")
 
-    answer = response.content[0].text.strip()
+    answer = _response_text(response)
     input_tokens = response.usage.input_tokens
     output_tokens = response.usage.output_tokens
     cost = calculate_cost(model, input_tokens, output_tokens)
@@ -201,6 +244,7 @@ def run_standard(
         cost=cost,
         duration_seconds=time.time() - start,
         model=model,
+        incomplete=_incomplete_reason(response.stop_reason),
     )
 
 
@@ -297,11 +341,7 @@ def run_deep(
         total_input += resp.usage.input_tokens
         total_output += resp.usage.output_tokens
 
-        # Extract any text from the response
-        answer_text = ""
-        for block in resp.content:
-            if hasattr(block, "text") and block.text.strip():
-                answer_text = block.text.strip()
+        answer_text = _response_text(resp)
 
         if resp.stop_reason == "tool_use":
             tool_results = []
@@ -356,8 +396,10 @@ def run_deep(
             messages.append({"role": "user", "content": tool_results})
             continue
 
-        # Not tool_use — Claude is done
-        print(" done")
+        # Not tool_use — the loop ends here, finished or not (a max_tokens
+        # stop can even land mid tool call, leaving only preamble text).
+        incomplete = _incomplete_reason(resp.stop_reason)
+        print(" done" if incomplete is None else f" stopped early ({incomplete})")
         cost = calculate_cost(model, total_input, total_output)
 
         return SynthesisResult(
@@ -369,6 +411,7 @@ def run_deep(
             cost=cost,
             duration_seconds=time.time() - start,
             model=model,
+            incomplete=incomplete,
         )
 
     # Max turns exhausted
@@ -382,6 +425,7 @@ def run_deep(
         cost=calculate_cost(model, total_input, total_output),
         duration_seconds=time.time() - start,
         model=model,
+        incomplete="max_turns",
     )
 
 
@@ -485,6 +529,8 @@ def main():
     print("ANSWER")
     print("=" * 60)
     print(result.answer)
+    if result.incomplete:
+        print(f"\n*** WARNING: {describe_incomplete(result.incomplete)}")
     print("\n" + "-" * 60)
     print(f"Model: {result.model}")
     print(f"Tokens: {result.input_tokens:,} in / {result.output_tokens:,} out")

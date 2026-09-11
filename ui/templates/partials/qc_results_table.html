@@ -317,9 +317,11 @@
                 <span class="qc-cost-aux">Judge cost is reconstructed from per-turn API usage stored in each finding's <code>judge_trace</code>. Other phases trust meta-recorded values. Claude Code judge runs are subscription-billed and show $0.00 here.</span>
             </div>
             {% set phase_order = [('extractor', 'Extractor'), ('judge', 'Judge'), ('cmr_check', 'CMR Check'), ('fns_check', 'FNS Check'), ('cfr_check', 'CFR Check')] %}
+            {% set cost_ns = namespace(estimated=false) %}
             {% for key, label in phase_order %}
             {% set c = costs[key] if costs and key in costs else None %}
             {% if c %}
+            {% if c.engine != 'claude-code' and c.cost and cost_is_estimate(c.model) %}{% set cost_ns.estimated = true %}{% endif %}
             <div class="qc-cost-row">
                 <span class="qc-cost-phase">{{ label }}</span>
                 <span class="qc-cost-model text-muted">{{ c.model }}{% if c.engine == 'api' %} (API){% elif c.engine == 'claude-code' %} (Claude Code){% endif %}</span>
@@ -329,7 +331,7 @@
                     {% if c.engine == 'claude-code' %}
                         <span class="text-muted">subscription</span>
                     {% else %}
-                        ${{ '%.4f' % c.cost }}
+                        {{ cost_display(c.cost, c.model) }}
                     {% endif %}
                 </span>
                 {% if c.recorded_cost is defined and c.recorded_cost is not none and (c.recorded_cost - c.cost) | abs > 0.01 %}
@@ -342,7 +344,11 @@
             {% endfor %}
             <div class="qc-cost-total">
                 <span>Total (API spend)</span>
+                {% if cost_ns.estimated %}
+                <span><strong class="cost-estimate" title="Includes at least one estimated phase cost — hover the ~$ amounts above for details.">~${{ '%.4f' % costs.total_cost }}</strong></span>
+                {% else %}
                 <span><strong>${{ '%.4f' % costs.total_cost }}</strong></span>
+                {% endif %}
             </div>
         </div>
         {% endif %}

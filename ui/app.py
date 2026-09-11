@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Optional
 
 import markdown
+from markupsafe import Markup
 
 UI_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = UI_DIR.parent
@@ -42,7 +43,8 @@ from ui.versioning import (
     load_version,
     load_version_list,
 )
-from tools.synthesis import run_synthesis
+from tools.synthesis import run_synthesis, describe_incomplete
+from tools.cost_tracker import estimate_note
 from apps.author.author import (
     load_config as load_author_config,
     get_output_dir,
@@ -129,6 +131,22 @@ templates.env.globals["PROGRAM_REGISTRY"] = PROGRAM_REGISTRY
 templates.env.filters["markdown"] = lambda text: markdown.markdown(
     text, extensions=["tables", "fenced_code"]
 )
+
+
+def _cost_display(amount, model, fmt: str = "%.4f") -> Markup:
+    """Render a dollar cost, flagged as an estimate when `model` has no
+    exact MODEL_PRICING entry. Estimates render as ~$ with a hover note
+    naming the stand-in rates, so a guessed number never looks exact."""
+    text = fmt % amount if isinstance(amount, (int, float)) else str(amount)
+    note = estimate_note(model) if model else ""
+    if not note:
+        return Markup("${}").format(text)
+    return Markup('<span class="cost-estimate" title="{}">~${}</span>').format(note, text)
+
+
+templates.env.globals["cost_display"] = _cost_display
+templates.env.globals["cost_is_estimate"] = lambda model: bool(model and estimate_note(model))
+templates.env.globals["describe_incomplete"] = describe_incomplete
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -276,6 +294,11 @@ def _build_export_markdown(entry: dict) -> str:
         "",
         f"**Date:** {entry['created_at']} | **Mode:** {mode} | **Sources:** {sources_str}",
         "",
+    ]
+    if entry.get("incomplete"):
+        # "Warning:" at line start renders as a callout in docx_writer.
+        lines += [f"Warning: {describe_incomplete(entry['incomplete'])}", ""]
+    lines += [
         "---",
         "",
         entry["answer"],
@@ -1915,6 +1938,29 @@ _AUTHOR_INT_FIELDS = ("research_max_searches",)
 _AUTHOR_STR_FIELDS = ("research_model",)
 _AUTHOR_OPTIONAL_STR_FIELDS = ("research_cc_model",)
 
+# [synthesis] section — Ask tab (standard + deep). Unlike the sections
+# above, form names are namespaced ("synthesis_model") and mapped back to
+# the config key, because the bare keys (model, max_tokens, ...) are too
+# generic to share the flat values/errors dicts safely. Author research
+# overrides all four keys via config_overrides, so these only affect Ask.
+_SYNTHESIS_STR_FIELDS = {"synthesis_model": "model"}
+_SYNTHESIS_INT_FIELDS = {
+    "synthesis_max_tokens": "max_tokens",
+    "synthesis_max_searches": "max_searches",
+    "synthesis_results_per_search": "results_per_search",
+}
+# Synthesis calls are non-streaming; the anthropic SDK refuses those when
+# max_tokens implies >10 min (3600s * max_tokens / 128000 > 600s), i.e.
+# above 21,333. Raising this cap requires switching synthesis to streaming.
+_SYNTHESIS_MAX_TOKENS_CEILING = 21333
+# Mirror the fallbacks in tools/synthesis.py so the form shows what runs.
+_SYNTHESIS_DEFAULTS = {
+    "synthesis_model": "claude-sonnet-4-5-20250929",
+    "synthesis_max_tokens": "1500",
+    "synthesis_max_searches": "8",
+    "synthesis_results_per_search": "5",
+}
+
 # [debug] section — hidden behind the testing-mode gate. Lay users never
 # see these; the qc_analyzer only honors the temperature overrides when
 # debug_mode is also true.
@@ -1927,9 +1973,12 @@ _DEBUG_OPTIONAL_FLOAT_FIELDS = (
 
 
 def _read_qc_settings() -> dict:
-    """Return current [qc_analyzer] + [author] + [debug] values for form pre-fill."""
+    """Return current [synthesis] + [qc_analyzer] + [author] + [debug] values for form pre-fill."""
     config = load_qc_config()
     values = {}
+    for form_key, cfg_key in {**_SYNTHESIS_STR_FIELDS, **_SYNTHESIS_INT_FIELDS}.items():
+        values[form_key] = config.get("synthesis", cfg_key,
+                                      fallback=_SYNTHESIS_DEFAULTS[form_key])
     for k in _QC_ENUM_FIELDS:
         values[k] = config.get("qc_analyzer", k, fallback="")
     for k in _QC_INT_FIELDS + _QC_STR_FIELDS + _QC_OPTIONAL_STR_FIELDS:
@@ -2004,7 +2053,8 @@ async def settings_save(request: Request):
     """Validate, write back to config.ini, redirect on success."""
     form = await request.form()
     submitted = {k: (form.get(k) or "").strip()
-                 for k in (*_QC_ENUM_FIELDS, *_QC_INT_FIELDS,
+                 for k in (*_SYNTHESIS_STR_FIELDS, *_SYNTHESIS_INT_FIELDS,
+                           *_QC_ENUM_FIELDS, *_QC_INT_FIELDS,
                            *_QC_STR_FIELDS, *_QC_OPTIONAL_STR_FIELDS,
                            *_AUTHOR_ENUM_FIELDS, *_AUTHOR_INT_FIELDS,
                            *_AUTHOR_STR_FIELDS, *_AUTHOR_OPTIONAL_STR_FIELDS,
@@ -2024,7 +2074,7 @@ async def settings_save(request: Request):
         if submitted[k] not in allowed:
             errors[k] = f"Must be one of: {', '.join(allowed)}."
 
-    for k in _QC_INT_FIELDS + _AUTHOR_INT_FIELDS:
+    for k in (*_SYNTHESIS_INT_FIELDS, *_QC_INT_FIELDS, *_AUTHOR_INT_FIELDS):
         raw = submitted[k]
         try:
             v = int(raw)
@@ -2034,9 +2084,13 @@ async def settings_save(request: Request):
         if v < 1:
             errors[k] = "Must be 1 or greater."
             continue
+        if k == "synthesis_max_tokens" and v > _SYNTHESIS_MAX_TOKENS_CEILING:
+            errors[k] = (f"Must be {_SYNTHESIS_MAX_TOKENS_CEILING:,} or less "
+                         "(Ask doesn't stream responses yet).")
+            continue
         parsed_ints[k] = v
 
-    for k in _QC_STR_FIELDS + _AUTHOR_STR_FIELDS:
+    for k in (*_SYNTHESIS_STR_FIELDS, *_QC_STR_FIELDS, *_AUTHOR_STR_FIELDS):
         if not submitted[k]:
             errors[k] = "Required."
 
@@ -2071,6 +2125,13 @@ async def settings_save(request: Request):
         )
 
     config = load_qc_config()
+    if not config.has_section("synthesis"):
+        config.add_section("synthesis")
+    for form_key, cfg_key in _SYNTHESIS_STR_FIELDS.items():
+        config.set("synthesis", cfg_key, submitted[form_key])
+    for form_key, cfg_key in _SYNTHESIS_INT_FIELDS.items():
+        config.set("synthesis", cfg_key, str(parsed_ints[form_key]))
+
     if not config.has_section("qc_analyzer"):
         config.add_section("qc_analyzer")
     for k in _QC_ENUM_FIELDS:
