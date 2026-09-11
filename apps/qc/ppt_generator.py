@@ -58,7 +58,7 @@ from apps.qc.qc_analyzer import (
 from tools.pptx_writer import generate_pptx, validate_outline
 
 
-PPT_PROMPT_PATH = PROJECT_ROOT / "programs" / "qc" / "prompts" / "ppt_outline.md"
+PPT_PROMPT_PATH = PROJECT_ROOT / "apps" / "qc" / "prompts" / "ppt_outline.md"
 
 # Stripped from each finding before inputs.json is handed to Claude Code.
 # Limited to actual PII / PII-adjacent identifiers — case categorizations
