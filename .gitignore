@@ -52,6 +52,8 @@ apps/author/references/sample_pages/
 
 # Personal notes
 big-to-do-list.txt
+docs/policy_navigator_devlog.md
+.devlog.json
 
 # Local-only: kept on disk, not published
 Deprecated/
