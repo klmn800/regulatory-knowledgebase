@@ -1,4 +1,4 @@
-/* Policy Navigator — minimal client-side JS */
+/* Regulatory Knowledgebase — minimal client-side JS */
 
 /* Copy answer text to clipboard */
 function copyAnswer() {

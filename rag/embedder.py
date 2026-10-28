@@ -1,5 +1,5 @@
 """
-Embedder for Policy Navigator RAG pipeline.
+Embedder for Regulatory Knowledgebase RAG pipeline.
 
 Reads chunked JSON files produced by source-specific chunkers, generates
 embeddings via the Voyage AI API, and stores everything in ChromaDB

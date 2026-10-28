@@ -1,5 +1,5 @@
 """
-Search service layer for the Policy Navigator web UI.
+Search service layer for the Regulatory Knowledgebase web UI.
 
 Wraps core/query.py with pre-initialized clients and a source registry.
 Templates and routes should reference SOURCES, never hardcode source names.

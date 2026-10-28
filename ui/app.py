@@ -1,5 +1,5 @@
 """
-Policy Navigator — Web search interface.
+Regulatory Knowledgebase — Web search interface.
 
 FastAPI application serving HTMX-powered search UI for policy analysts.
 Synthesis-first: questions get natural language answers with citations.
@@ -120,7 +120,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Policy Navigator", lifespan=lifespan)
+app = FastAPI(title="Regulatory Knowledgebase", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=UI_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=UI_DIR / "templates")
 

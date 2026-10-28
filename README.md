@@ -1,4 +1,4 @@
-# Policy Navigator
+# Regulatory Knowledgebase
 
 Multi-source RAG system for U.S. public-assistance (SNAP) policy. Indexes four authoritative sources, searches across them, identifies gaps and conflicts, and authors new OLG content.
 

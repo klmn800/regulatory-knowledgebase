@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Policy Navigator** is a multi-source RAG (Retrieval-Augmented Generation) system for U.S. public-assistance (SNAP) policy. It indexes four authoritative policy sources in priority order:
+**Regulatory Knowledgebase** is a multi-source RAG (Retrieval-Augmented Generation) system for U.S. public-assistance (SNAP) policy. It indexes four authoritative policy sources in priority order:
 
 1. **OLG** (Online Guide) — the agency's internal staff guide; ~1,200 HTML pages covering SNAP, TAFDC, EAEDC, and cross-program policy. This is what workers follow day-to-day.
 2. **CMR** (Code of Massachusetts Regulations, Title 106) — The state regulations the OLG implements. 18 PDFs, ~360 pages of formal legal language.

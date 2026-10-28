@@ -1,5 +1,5 @@
 """
-Search interface for the Policy Navigator RAG pipeline.
+Search interface for the Regulatory Knowledgebase RAG pipeline.
 
 Provides three ways to search the embedded policy knowledge base:
 
@@ -1378,7 +1378,7 @@ def run_query(
 def main():
     """Parse command-line arguments and run the query."""
     parser = argparse.ArgumentParser(
-        description="Search the Policy Navigator knowledge base.",
+        description="Search the Regulatory Knowledgebase knowledge base.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

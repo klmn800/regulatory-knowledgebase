@@ -1,6 +1,6 @@
 # RAG Parsing & Chunking Playbook
 
-**Purpose**: A practical guide for adding new sources to Policy Navigator's RAG database. Captures techniques that emerged from cleaning up OLG (HTML), CMR (PDF), CFR (PDF), and FNS (PDF) pipelines. Use this when bringing in a new source so we don't relearn the same lessons.
+**Purpose**: A practical guide for adding new sources to Regulatory Knowledgebase's RAG database. Captures techniques that emerged from cleaning up OLG (HTML), CMR (PDF), CFR (PDF), and FNS (PDF) pipelines. Use this when bringing in a new source so we don't relearn the same lessons.
 
 **Audience**: Future Claude (and Ben) when standing up a new pipeline.
 
