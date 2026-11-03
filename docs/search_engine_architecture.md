@@ -131,7 +131,7 @@ All initial design questions resolved (2026-03-23). New questions as they arise:
 ## File Structure (Planned)
 
 ```
-policy_navigator/
+regulatory-knowledgebase/
 ├── ui/                           ← FastAPI backend + HTMX templates + static assets
 │   ├── app.py                    ← App entry point, routes
 │   ├── search.py                 ← Search service layer + source registry

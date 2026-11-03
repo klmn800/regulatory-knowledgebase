@@ -188,7 +188,7 @@ Single-page HTML from comparator CSVs. Dark mode, favorites, expandable details,
 
 ## Commands
 
-All commands run from the project root (`policy_navigator/`).
+All commands run from the project root (`regulatory-knowledgebase/`).
 
 ### Web UI
 ```bash
@@ -269,7 +269,7 @@ Single unified `config.ini` at project root (gitignored). Key sections:
 ## Project Structure
 
 ```
-policy_navigator/
+regulatory-knowledgebase/
 ├── CLAUDE.md
 ├── README.md
 ├── .gitignore
@@ -378,4 +378,4 @@ policy_navigator/
 - **NO COP-OUT ANSWERS**: NEVER give up on solving technical problems or provide "that's good enough" responses when something clearly isn't working. Always debug thoroughly and find the actual root cause. If an UPDATE statement isn't working, investigate why instead of suggesting workarounds.
 - **NO QUICK FIXES**: When a bug reveals a design flaw, fix the design — don't patch over it with workarounds. If a mechanism is fundamentally fragile (e.g., relying on a race condition), redesign it so the failure mode doesn't exist, rather than adding fallbacks to catch failures after the fact.
 - **FOLLOW INSTRUCTIONS EXACTLY**: When user gives specific values or instructions (e.g., "set all to 300"), implement EXACTLY what was requested. Do not improvise variations (300/350/400) or interpret creatively. If the instruction is unclear, ask for clarification. Do not second-guess explicit directives.
-- **Git Workflow**: Offer to commit after completing each meaningful unit of work (pipeline stage, bug fix, refactor, etc.). Offer to push to GitHub periodically so the remote backup stays current. User controls timing — always ask, never auto-commit or auto-push. Repo: `klmn800/policy-navigator` (private).
+- **Git Workflow**: Offer to commit after completing each meaningful unit of work (pipeline stage, bug fix, refactor, etc.). Offer to push to GitHub periodically so the remote backup stays current. User controls timing — always ask, never auto-commit or auto-push. Repo: `klmn800/regulatory-knowledgebase` (public).

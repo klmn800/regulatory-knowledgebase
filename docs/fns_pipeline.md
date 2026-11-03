@@ -225,7 +225,7 @@ python rag/query.py --source fns --list-programs
 ## Project files reference
 
 ```
-policy_navigator/
+regulatory-knowledgebase/
 ├── rag/
 │   ├── fns/
 │   │   ├── parser.py           ← PDF → structured JSON sections (Phase 1, COMPLETE)

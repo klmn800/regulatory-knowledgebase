@@ -176,7 +176,7 @@ python apps/comparator/report.py --open
 ## Project Structure
 
 ```
-policy_navigator/
+regulatory-knowledgebase/
 ├── config.ini               # API keys, model settings (gitignored; copy from config.ini.example)
 ├── config.ini.example       # template config with placeholder keys
 ├── requirements.txt

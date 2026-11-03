@@ -228,7 +228,7 @@ r2 = search_with_client("expedited benefits", clients)
 ## Project files reference
 
 ```
-policy_navigator/
+regulatory-knowledgebase/
 ├── rag/
 │   ├── olg/
 │   │   ├── extractor.py        ← HAR → URL list + TOC hierarchy
