@@ -169,6 +169,8 @@ draft, and the draft's saved prompt shows exactly what it saw.
 - Sending images to the model or describing them. Image references stay in the Markdown
   as paths; the draft session can open them if it chooses, but nothing requires it.
 - Changing the Convert tab.
+- A required cross-check step that makes the draft search published sources for each
+  upload's policy points (see section 9).
 
 ## 6. Design considerations
 
@@ -200,14 +202,21 @@ draft, and the draft's saved prompt shows exactly what it saw.
   browser.
 - For a test draft, `full_prompt.md` contains every selected upload's full text and
   description, and `meta.json` lists them.
-- In Ben's first real Overview drafts, the Author's Notes flag conflicts between uploads and
-  published sources instead of silently merging them, and the draft doesn't cite uploads
-  as published OLG pages.
+- In Ben's first real Overview drafts, the draft doesn't cite uploads as published OLG
+  pages, and any conflict it does encounter is flagged in the Author's Notes rather than
+  silently merged. (This measures how conflicts are *handled*, not whether they're *found*;
+  see section 9.)
 
-## 9. Open questions
+## 9. Known limitation: conflict detection is opportunistic
 
-1. Is the help-text wording in requirement 14 right, or should it be shorter?
-2. Is 200,000 characters a sensible warning threshold? (A rough stand-in for "this is a lot
-   to read in one session"; I haven't measured where drafting quality starts to drop.)
-3. Default behavior in a conflict (requirement 19): follow the reference document and flag
-   it. Do you want that, or flag it and follow the published source?
+The draft only sees published policy that reaches it through selected research reports or
+the searches it chooses to run. Nothing in this build makes it search for each upload's
+policy points. With uploads and no research, it may report no conflicts simply because it
+never compared. A clean Author's Notes is **not** evidence that an upload agrees with
+published policy. Systematic comparison belongs to the Research integration PRD.
+
+## 10. Resolved questions (Ben, 2026-11-03)
+
+1. Help-text wording in requirement 14: accepted as written.
+2. Warning threshold of 200,000 characters: accepted (unmeasured; revisit if it misfires).
+3. Conflict default: follow the upload and flag the conflict (requirement 19).
