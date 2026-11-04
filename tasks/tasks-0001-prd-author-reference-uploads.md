@@ -28,15 +28,15 @@
 
 ## Tasks
 
-- [ ] 1.0 Reference storage and conversion module (`apps/author/reference_docs.py`) with tests
-  - [ ] 1.1 Add `pytest` to `requirements.txt`; create `tests/` with `conftest.py` (temp assignment dir; synthetic `.docx` builder via python-docx, including a variant with a `w:ins`/`w:del` tracked change and one with an embedded image).
-  - [ ] 1.2 `make_ref_id(filename)`: lowercase slug of the stem, non-alphanumerics to `-`, trimmed; rejects empty results, `..`, and Windows reserved names (`CON`, `PRN`, `AUX`, `NUL`, `COM1-9`, `LPT1-9`) by suffixing `-file`. Original filename stored by its basename only.
-  - [ ] 1.3 `add_reference(output_dir, filename, data: bytes, max_mb)`: validate extension (`.docx`, `.md`, `.txt`) and size; write to a temp folder first, convert, then swap into `references/<ref_id>/` so a failed conversion never leaves a half-written upload. Returns a result with `ref_id`, `replaced: bool`, or an error message.
-  - [ ] 1.4 Conversion: `.docx` via `has_tracked_changes` + `read_docx(change_mode="accept", extract_images_to=<ref>/images)` + `to_markdown`; `.md`/`.txt` decoded as UTF-8 (BOM-tolerant), falling back to cp1252. Empty text is an error. Write `converted.md` and `meta.json` (fields per PRD req. 1).
-  - [ ] 1.5 Replace rule: re-adding an existing `ref_id` replaces the files and keeps the old `description`.
-  - [ ] 1.6 `list_references`, `load_reference` (meta + text), `update_description`, `remove_reference`, `reconvert_reference(ref_id, change_mode)` (docx only; re-runs conversion from the stored original).
-  - [ ] 1.7 `select_references(output_dir, ref_ids)` returns the loaded references in a stable order (upload order), skipping unknown ids.
-  - [ ] 1.8 Tests in `tests/test_reference_docs.py`: each file type; tracked-change detection and accept vs. reject text; image count; replace keeps description; bad extension, oversize, empty file, cp1252 `.txt`; path-traversal and reserved filenames; remove; reconvert on a non-docx is refused.
+- [x] 1.0 Reference storage and conversion module (`apps/author/reference_docs.py`) with tests
+  - [x] 1.1 Add `pytest` to `requirements.txt`; create `tests/` with `conftest.py` (temp assignment dir; synthetic `.docx` builder via python-docx, including a variant with a `w:ins`/`w:del` tracked change and one with an embedded image).
+  - [x] 1.2 `make_ref_id(filename)`: lowercase slug of the stem, non-alphanumerics to `-`, trimmed; rejects empty results, `..`, and Windows reserved names (`CON`, `PRN`, `AUX`, `NUL`, `COM1-9`, `LPT1-9`) by suffixing `-file`. Original filename stored by its basename only.
+  - [x] 1.3 `add_reference(output_dir, filename, data: bytes, max_mb)`: validate extension (`.docx`, `.md`, `.txt`) and size; write to a temp folder first, convert, then swap into `references/<ref_id>/` so a failed conversion never leaves a half-written upload. Returns a result with `ref_id`, `replaced: bool`, or an error message.
+  - [x] 1.4 Conversion: `.docx` via `has_tracked_changes` + `read_docx(change_mode="accept", extract_images_to=<ref>/images)` + `to_markdown`; `.md`/`.txt` decoded as UTF-8 (BOM-tolerant), falling back to cp1252. Empty text is an error. Write `converted.md` and `meta.json` (fields per PRD req. 1).
+  - [x] 1.5 Replace rule: re-adding an existing `ref_id` replaces the files and keeps the old `description`.
+  - [x] 1.6 `list_references`, `load_reference` (meta + text), `update_description`, `remove_reference`, `reconvert_reference(ref_id, change_mode)` (docx only; re-runs conversion from the stored original).
+  - [x] 1.7 `select_references(output_dir, ref_ids)` returns the loaded references in a stable order (upload order), skipping unknown ids.
+  - [x] 1.8 Tests in `tests/test_reference_docs.py`: each file type; tracked-change detection and accept vs. reject text; image count; replace keeps description; bad extension, oversize, empty file, cp1252 `.txt`; path-traversal and reserved filenames; remove; reconvert on a non-docx is refused.
 - [ ] 2.0 Draft prompt integration: framing prompt, `compose_draft_prompt`, draft `meta.json`, opening message, config keys, with tests
   - [ ] 2.1 Write `apps/author/prompts/author_reference_framing.md` with the framing rules from PRD req. 19 (unpublished, authoritative as qualified by the description, don't cite as published OLG, follow the upload and flag conflicts in Author's Notes, description outranks defaults).
   - [ ] 2.2 `compose_draft_prompt(..., references=None)`: when references are given, add `## Author's Reference Documents` after the Assignment and before Research Findings: framing text, then one `<reference_document filename="...">` block per upload with `<author_description>` (or "(none given)") and `<content>`. Omit the section entirely when there are none.

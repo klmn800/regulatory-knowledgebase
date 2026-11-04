@@ -91,3 +91,4 @@ nul
 
 # Claude Code
 .claude/
+.pytest_cache/
