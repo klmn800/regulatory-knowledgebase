@@ -53,6 +53,7 @@ apps/author/references/sample_pages/
 # Personal notes
 big-to-do-list.txt
 docs/regulatory-knowledgebase_devlog.md
+docs/laptop-setup.md
 .devlog.json
 
 # Local-only: kept on disk, not published

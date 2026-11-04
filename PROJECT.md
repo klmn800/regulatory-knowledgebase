@@ -28,31 +28,7 @@ Product work, from `big-to-do-list.txt` or whatever Ben picks.
 - The GitHub repo `klmn800/regulatory-knowledgebase` is **public** and ships code only. The
   index, sources, outputs and `config.ini` are gitignored.
 
-## Laptop setup (work laptop only)
+## Machine-specific setup
 
-The laptop's network runs Zscaler, which re-signs HTTPS traffic with its own CA. Python 3.13+
-rejects that CA ("Basic Constraints of CA cert not marked critical"), and `certifi` doesn't
-include it, so Voyage calls (made through `requests`) fail with `CERTIFICATE_VERIFY_FAILED`.
-The Anthropic SDK already trusts the Windows store and works as it is.
-
-The fix lives in the venv only, not the repo, because the development machine doesn't need it:
-
-1. `.venv\Scripts\python.exe -m pip install truststore`
-2. Create `.venv\Lib\site-packages\sitecustomize.py` with:
-   ```python
-   try:
-       import truststore
-       import urllib3.util.ssl_ as _u3ssl
-       _u3ssl.SSLContext = truststore.SSLContext
-   except Exception:
-       pass
-   ```
-
-This makes `urllib3` (under `requests`, under `voyageai`) verify through the Windows trust
-store. Don't use `pip-system-certs` or a global `truststore.inject_into_ssl()`: the Anthropic
-SDK then fails with a `RecursionError`. A custom CA bundle via `REQUESTS_CA_BUNDLE` doesn't
-work either; Python's strict check still rejects the Zscaler CA.
-
-Rebuild the venv from scratch:
-`python -m venv .venv`, then `.venv\Scripts\python.exe -m pip install -r requirements.txt`,
-then the two steps above.
+Setup steps that apply to one machine only live in gitignored files on that machine. On the
+work laptop: `docs/laptop-setup.md` (read it before rebuilding `.venv`).
