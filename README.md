@@ -45,7 +45,7 @@ python ui/app.py
 
 Three tabs:
 - **Ask** -- Type a policy question, get a synthesized answer with evidence from OLG/CMR/FNS/CFR
-- **Author** -- Enter an assignment, run the research/draft/format pipeline with buttons. Each run is versioned with navigable history.
+- **Author** -- Enter an assignment, run the research/draft/format pipeline with buttons. Each run is versioned with navigable history. Upload your own unpublished pages (`.docx`, `.md`, `.txt`) in the References tab, with a description of how to use each one, and the draft builds from them.
 - **History** -- Browse past searches
 
 ### CLI
@@ -63,6 +63,7 @@ python apps/author/author.py "Consolidate all VC-1 scripts" --name vc1_scripts
 python apps/author/author.py --name vc1_scripts --research-only
 python apps/author/author.py --name vc1_scripts --draft-only
 python apps/author/author.py --name vc1_scripts --resume
+python apps/author/author.py --name overview -r "Draft Page.docx" --list-references   # add reference documents
 
 # Run comparator
 python apps/comparator/comparator.py --chapter 10 --engine claude-code --parallel 5
@@ -125,6 +126,7 @@ Assignment (text)
        v
   Phase 2: AUTHOR             Claude Code CLI (subscription, $0)
   Style guide + research      2-5 minutes, session resumable
+  + uploaded references
   -> draft.md
   -> session_id.txt
        |
@@ -229,8 +231,18 @@ regulatory-knowledgebase/
 │   └── qc_analysis/          #   QC error gap analyses (contains case data)
 │
 ├── raw/                      # Source PDFs, HAR files (gitignored; see raw/README.md)
+├── tests/                    # pytest suite (synthetic fixtures only)
+├── tasks/                    # PRDs and task lists
 └── docs/                     # Architecture docs
 ```
+
+## Development
+
+```bash
+python -m pytest tests
+```
+
+The test suite runs offline and costs nothing: no API calls, no Claude Code terminal. Every fixture is synthetic and built in code. This repo is public, so real or agency documents never go in `tests/`.
 
 ## Configuration
 

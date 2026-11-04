@@ -150,9 +150,11 @@ Three-phase pipeline: **Research → Author → Format**
 | Author | Claude Code CLI (visible terminal, session resumable) | $0 (subscription) | `draft.md`, `session_id.txt` |
 | Format | python-docx (deterministic, no LLM) | $0 | `output.docx` |
 
-CLI: `python apps/author/author.py "assignment" --name name`. Flags: `--research-only`, `--draft-only`, `--resume`, `--no-docx`, `--assignment-file`.
+CLI: `python apps/author/author.py "assignment" --name name`. Flags: `--research-only`, `--draft-only`, `--resume`, `--no-docx`, `--assignment-file`, `--reference PATH` (repeatable), `--list-references`.
 
-Web UI: Author tab with buttons for each phase. Draft spawns a Claude Code terminal window for live observation. Clicking a phase button shows existing output with version navigation (left/right arrows) and a "Run Again" button; draft views include a Resume button wired to the version-specific session ID.
+**Reference documents** (`apps/author/reference_docs.py`, PRD `tasks/0001-prd-author-reference-uploads.md`): the author's own unpublished pages (`.docx`, `.md`, `.txt`) uploaded per assignment in the References tab (or `--reference`). Stored at `output/author/{name}/references/{ref_id}/` (original + `converted.md` + `meta.json` + `images/`); `.docx` converts via `tools/docx_reader.py` with tracked changes accepted by default and flagged, re-convertible as rejected. Each upload carries a free-text description. Selected uploads go **into** the draft prompt as an *Author's Reference Documents* section (framing in `apps/author/prompts/author_reference_framing.md`: unpublished, authoritative as described, follow the upload and flag conflicts in Author's Notes). The draft's `meta.json` `references` records which uploads and descriptions it used. Known limit: conflict detection is opportunistic (only against published text the draft happens to see); Research does not use uploads yet.
+
+Web UI: Author tab with a References tab plus buttons for each phase. Draft spawns a Claude Code terminal window for live observation. Clicking a phase button shows existing output with version navigation (left/right arrows) and a "Run Again" button; draft views include a Resume button wired to the version-specific session ID.
 
 Output versioning (`ui/versioning.py`): Each UI-triggered run creates a numbered version directory (e.g., `research/001_20260406-1430/`) with the output files, assignment text used (`input.txt`), and metadata. Top-level files always hold the latest version for phase-to-phase handoff. CLI runs are not versioned.
 
@@ -229,6 +231,8 @@ python apps/author/author.py --name vc1_scripts --draft-only
 python apps/author/author.py --name vc1_scripts --resume
 python apps/author/author.py --name vc1_scripts --no-docx
 python apps/author/author.py --assignment-file assignment.txt --name my_assignment
+python apps/author/author.py --name overview --reference "Draft Page.docx" -r notes.md --list-references
+python apps/author/author.py --name overview --draft-only   # drafts include all uploaded references
 ```
 
 ### Comparator
@@ -249,6 +253,12 @@ python rag/embedder.py --source cmr --force          # Re-embed from scratch
 ```bash
 pip install -r requirements.txt
 ```
+
+### Tests
+```bash
+python -m pytest tests            # offline and free: no API calls, no Claude Code terminal
+```
+Fixtures are synthetic and built in code (`tests/conftest.py`). The repo is public: never put real or agency documents in `tests/`.
 
 ## Configuration
 
@@ -317,6 +327,10 @@ regulatory-knowledgebase/
 │   ├── versioning.py                ← author output versioning
 │   ├── static/                      ← CSS + JS
 │   └── templates/                   ← Jinja2 + HTMX partials
+│
+├── tests/                           ← pytest suite (synthetic fixtures only)
+│
+├── tasks/                           ← PRDs and task lists
 │
 └── docs/                            ← architecture docs, pipeline docs
 ```

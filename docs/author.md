@@ -11,8 +11,11 @@ User (Web UI or CLI)
   │                  ├── Searches OLG, CMR, FNS via ChromaDB
   │                  └── Returns structured report + evidence
   │
+  ├── References ─→ Uploads converted locally (tools/docx_reader.py), no LLM
+  │                  └── Stored per assignment; text included in the draft prompt
+  │
   ├── Draft ────→ Claude Code CLI (terminal window)
-  │                  ├── Reads research reports + style guide + assignment
+  │                  ├── Reads reference documents + research reports + style guide + assignment
   │                  ├── Can do additional searches via rag/query.py
   │                  └── Writes draft.md to versioned directory
   │
@@ -33,6 +36,12 @@ Each assignment lives at `output/author/{name}/`:
 ```
 output/author/{name}/
 ├── assignment.txt                    ← the stable project description
+├── references/                       ← the author's own unpublished documents (not versioned)
+│   └── expedited-overview-v3/        ← ref_id: slug of the filename stem
+│       ├── Expedited Overview v3.docx  ← original upload
+│       ├── converted.md              ← text used in prompts
+│       ├── meta.json                 ← filename, type, char_count, tracked_changes, change_mode, image_count, description
+│       └── images/                   ← extracted .docx images (only if any)
 ├── research/
 │   ├── 001_20260408-2130/
 │   │   ├── prompt.md                 ← task instructions for this run (may be empty)
@@ -47,7 +56,7 @@ output/author/{name}/
 │   │   ├── draft.md                  ← the authored content (written by Claude Code)
 │   │   ├── session_id.txt            ← Claude Code session UUID for resume
 │   │   ├── full_prompt.md            ← complete assembled prompt (instructions + research + style guide)
-│   │   └── meta.json                 ← timestamp, based_on: ["research/001", "research/002"]
+│   │   └── meta.json                 ← timestamp, based_on: ["research/001", ...], references: [{ref_id, filename, description}]
 │   └── ...
 └── formats/
     ├── 001_20260409-1130/
@@ -61,6 +70,19 @@ output/author/{name}/
 - Explicit linkage: each draft records which research versions it used; each format records which draft.
 - The version directory is the source of truth. No top-level convenience copies.
 - Resume updates in place — resuming a Claude Code session writes back to the same draft version directory.
+- References are not versioned. Re-uploading a file with the same name (same `ref_id`) replaces it and keeps its description. Each draft's `full_prompt.md` holds the exact reference text it saw, and `meta.json` snapshots the descriptions.
+
+## Reference Documents
+
+The author's own unpublished pages and notes, uploaded per assignment (PRD: `tasks/0001-prd-author-reference-uploads.md`). Logic lives in `apps/author/reference_docs.py`, shared by the UI and CLI.
+
+- **Types:** `.docx` (converted with `tools/docx_reader.py`), `.md` and `.txt` (stored as-is; UTF-8, falling back to cp1252). Other types are rejected per file; one bad file doesn't block the rest. Size cap: `reference_max_mb`.
+- **Tracked changes:** accepted by default; `meta.json` records the counts and the mode, and the UI offers a re-convert with the other mode.
+- **Safety:** upload is converted in a `.staging-*` folder and swapped in only on success, so a failed re-upload never destroys a good one. Filenames are reduced to a Windows-safe basename; `ref_id` must be a lowercase slug (no traversal).
+- **Description:** free text per upload telling the drafting model what the document is, its status, its role and how far to trust it. Editable any time; past drafts keep the description they used.
+- **In the prompt:** selected uploads (UI: checkboxes, all on; CLI: all) become the *Author's Reference Documents* section. The fixed framing text is `apps/author/prompts/author_reference_framing.md`: the documents are unpublished, authoritative for the new page as qualified by their descriptions, must not be cited as published OLG, and conflicts with published OLG/CMR/FNS/CFR are followed (upload wins) and listed in Author's Notes. Each document is wrapped in `<reference_document filename="...">` with `<author_description>` and `<content>`.
+- **Known limit:** conflict detection is opportunistic. The draft only compares against published text it sees through selected research or its own searches; a clean Author's Notes doesn't prove an upload agrees with policy. Research doesn't use uploads yet.
+- **Size:** the Draft picker shows a running character total and warns above `reference_warn_chars`. The prompt reaches Claude Code as a file, which its reader returns in pieces, so the opening message tells the session to read the whole file before drafting.
 
 ## File Inventory
 
@@ -79,6 +101,9 @@ output/author/{name}/
 |----------|---------|
 | `author.html` | Main page — assignment form, phase tabs, version panels |
 | `partials/author_assignments_list.html` | Sidebar — assignment list with R/D/F version counts |
+| `partials/author_references_list.html` | References tab — upload control, per-file results, upload list |
+| `partials/author_reference_detail.html` | References tab — read-only converted text, description editor with help text, re-convert |
+| `partials/author_reference_picker.html` | Draft editor — reference checkboxes, running total, size warning |
 | `partials/author_research_list.html` | Research tab — version entries with metadata |
 | `partials/author_research_detail.html` | Research tab — full report view with navigation |
 | `partials/author_prompt_editor.html` | Research + Draft — editable prompt textarea |
@@ -94,6 +119,7 @@ output/author/{name}/
 |------|-----------|-----------------|
 | `prompts/author_research.md` | System prompt for the research agent — how to search, output format, citation rules | No — always injected automatically |
 | `apps/author/prompts/author_draft.md` | Default draft instructions — how to write OLG content, revision process, improvement suggestions | Yes — shown in the draft prompt textarea |
+| `apps/author/prompts/author_reference_framing.md` | How the drafting model must treat the author's reference documents | No — injected ahead of the reference documents when any are selected |
 | `apps/author/references/olg_style_guide.md` | Evidence-based OLG writing style guide | No — injected into the full draft prompt |
 | `apps/author/references/olg_toc.md` | OLG table of contents (for structure/placement reference) | No — referenced by draft agent |
 
@@ -110,6 +136,8 @@ The `[author]` section in `config.ini`:
 | `style_guide` | Path to OLG style guide | `apps/author/references/olg_style_guide.md` |
 | `template_docx` | Path to OLG Word template | `apps/author/references/2026 OLG Template.docx` |
 | `claude_code_timeout` | Timeout for CLI draft sessions | `600` |
+| `reference_warn_chars` | Draft picker warns when selected references exceed this many characters | `200000` |
+| `reference_max_mb` | Largest single reference upload accepted | `25` |
 
 ## How Prompts Are Assembled
 
@@ -131,6 +159,10 @@ The draft prompt is assembled by `compose_draft_prompt()` from four parts:
 ## Assignment
 [assignment.txt]
 ---
+## Author's Reference Documents  ← only when references are selected
+[framing text]
+<reference_document filename="..."> description + converted text </reference_document> ...
+---
 ## Research Findings
 [research report(s)]          ← from selected research version(s)
 ---
@@ -141,7 +173,7 @@ The draft prompt is assembled by `compose_draft_prompt()` from four parts:
 Write your draft to: `{path}`
 ```
 
-The draft instructions are the only editable part in the UI. Research reports and style guide are injected automatically based on the user's selections.
+The draft instructions are the only editable part in the UI. Reference documents, research reports and style guide are injected automatically based on the user's selections.
 
 ## API Endpoints
 
@@ -154,6 +186,15 @@ All author endpoints are under `/author`. The `{name}` parameter is the assignme
 - `GET /author/load/{name}` — JSON with assignment text + version counts
 - `POST /author/save-assignment` — update assignment text (form: `name`, `assignment`)
 
+### References
+- `GET /author/{name}/references` — upload control + list partial
+- `POST /author/{name}/references/upload` — add files (multipart: `files`, repeatable); returns the list with per-file results
+- `GET /author/{name}/references/{ref_id}` — detail partial
+- `POST /author/{name}/references/{ref_id}/description` — save description (form: `description`)
+- `POST /author/{name}/references/{ref_id}/reconvert` — re-convert a .docx (form: `change_mode` = `accept`|`reject`)
+- `POST /author/{name}/references/{ref_id}/delete` — remove an upload
+- `GET /author/{name}/reference-picker` — Draft-editor checkboxes (separate path so an upload named "picker" can't collide)
+
 ### Research
 - `GET /author/{name}/research` — version list partial
 - `GET /author/{name}/research/prompt` — prompt editor partial (empty textarea)
@@ -163,7 +204,7 @@ All author endpoints are under `/author`. The `{name}` parameter is the assignme
 ### Drafts
 - `GET /author/{name}/drafts` — version list partial
 - `GET /author/{name}/drafts/prompt` — prompt editor partial (pre-filled with default draft instructions)
-- `POST /author/{name}/drafts/run` — launch Claude Code terminal (form: `prompt`, `assignment`, `research_versions`)
+- `POST /author/{name}/drafts/run` — launch Claude Code terminal (form: `prompt`, `assignment`, `research_versions`, `reference_ids`)
 - `GET /author/{name}/drafts/{num}` — version detail partial
 - `POST /author/{name}/drafts/{num}/resume` — resume Claude Code session
 
@@ -220,6 +261,10 @@ python apps/author/author.py --name vc1_scripts --resume
 
 # Assignment from file
 python apps/author/author.py --assignment-file assignment.txt --name my_task
+
+# Add reference documents (repeatable), list them, then draft with all of them
+python apps/author/author.py --name overview -r "Draft Page.docx" -r notes.md --list-references
+python apps/author/author.py --name overview --draft-only
 ```
 
 CLI runs create versioned directories in the same structure as the UI, so outputs are visible from either interface.
