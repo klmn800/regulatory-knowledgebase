@@ -72,3 +72,46 @@ def test_picker(client):
     _upload(client, ("a.txt", b"12345"))
     r = client.get(f"/author/{NAME}/reference-picker")
     assert 'class="reference-cb" value="a"' in r.text and 'data-chars="5"' in r.text
+
+
+def test_draft_run_includes_only_selected_references(client, monkeypatch):
+    captured = {}
+
+    def fake_launch(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(app_mod, "launch_draft", fake_launch)
+    _upload(client, ("keep.txt", b"KEEP THIS TEXT"), ("skip.txt", b"SKIP THIS TEXT"))
+    client.post(f"/author/{NAME}/references/keep/description", data={"description": "Use me."})
+
+    r = client.post(f"/author/{NAME}/drafts/run", data={
+        "prompt": "", "assignment": "Write an overview.",
+        "research_versions": "", "reference_ids": "keep,unknown",
+    })
+    assert r.status_code == 200
+    assert "keep.txt" in r.text  # launch message lists the references
+
+    prompt = captured["full_prompt"]
+    assert "KEEP THIS TEXT" in prompt and "Use me." in prompt
+    assert "SKIP THIS TEXT" not in prompt
+    assert [ref.ref_id for ref in captured["references"]] == ["keep"]
+
+
+def test_draft_run_without_references_omits_section(client, monkeypatch):
+    captured = {}
+    monkeypatch.setattr(app_mod, "launch_draft", lambda **kw: captured.update(kw))
+    client.post(f"/author/{NAME}/drafts/run", data={"assignment": "Write an overview."})
+    assert "## Author's Reference Documents" not in captured["full_prompt"]
+    assert captured["references"] == []
+
+
+def test_draft_detail_shows_references(client, tmp_path):
+    import json
+    draft_dir = tmp_path / "author" / NAME / "drafts" / "001_20260101-0000"
+    draft_dir.mkdir(parents=True)
+    (draft_dir / "draft.md").write_text("Draft", encoding="utf-8")
+    (draft_dir / "meta.json").write_text(json.dumps({
+        "based_on": [], "references": [{"ref_id": "a", "filename": "a.docx", "description": "Main page."}],
+    }), encoding="utf-8")
+    r = client.get(f"/author/{NAME}/drafts/1")
+    assert "Reference documents used (1)" in r.text and "Main page." in r.text

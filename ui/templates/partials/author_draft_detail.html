@@ -28,6 +28,17 @@
     </div>
     {% endif %}
 
+    {% if view.references %}
+    <details class="author-input-block">
+        <summary>Reference documents used ({{ view.references | length }})</summary>
+        <ul class="draft-references">
+            {% for r in view.references %}
+            <li><strong>{{ r.filename }}</strong>{% if r.description %}: {{ r.description }}{% else %} <span class="text-muted">(no description)</span>{% endif %}</li>
+            {% endfor %}
+        </ul>
+    </details>
+    {% endif %}
+
     {% if view.prompt %}
     <details class="author-input-block">
         <summary>Draft instructions used</summary>

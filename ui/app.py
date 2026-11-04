@@ -770,8 +770,9 @@ async def author_draft_run(
     prompt: str = Form(""),
     assignment: str = Form(""),
     research_versions: str = Form(""),
+    reference_ids: str = Form(""),
 ):
-    """Launch Claude Code with provided prompt + selected research versions."""
+    """Launch Claude Code with provided prompt + selected research versions and references."""
     name = name.strip()
     output_dir = get_output_dir(name)
 
@@ -798,6 +799,10 @@ async def author_draft_run(
             research_paths.append(vdir)
             based_on_labels.append(f"research/{num:03d}")
 
+    # Selected reference documents (unknown ids are skipped)
+    ref_ids = [x.strip() for x in reference_ids.split(",") if x.strip()]
+    references = reference_docs.select_references(output_dir, ref_ids) if ref_ids else []
+
     # Use provided prompt or default
     instructions = prompt.strip() or get_default_draft_prompt()
 
@@ -815,6 +820,7 @@ async def author_draft_run(
         assignment=assignment,
         config=config,
         draft_file=draft_file,
+        references=references,
     )
 
     # Launch Claude Code terminal
@@ -826,6 +832,7 @@ async def author_draft_run(
         name=name,
         session_id=session_id,
         based_on=based_on_labels,
+        references=references,
     )
 
     from ui.versioning import _parse_version_num
@@ -836,6 +843,7 @@ async def author_draft_run(
         f"A new terminal window has opened for the drafting session.\n\n"
         f"**Draft version:** {num:03d}\n\n"
         f"**Based on research:** {', '.join(based_on_labels) or 'none selected'}\n\n"
+        f"**Reference documents:** {', '.join(r.filename for r in references) or 'none selected'}\n\n"
         f"When it finishes, the draft will be at:\n"
         f"`{draft_file}`\n\n"
         f"Session ID `{session_id[:8]}...` saved for resume."

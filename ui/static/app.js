@@ -489,6 +489,14 @@ function authorShowDraftPrompt() {
             document.getElementById('drafts-detail').innerHTML = html;
             htmx.process(document.getElementById('drafts-detail'));
 
+            /* Populate reference-document checkboxes */
+            fetch(_authorRefUrl(name, '/reference-picker'))
+                .then(function(resp) { return resp.text(); })
+                .then(function(pickerHtml) {
+                    _authorSetHtml('reference-checkboxes', pickerHtml);
+                    authorUpdateReferenceTotal();
+                });
+
             /* Populate research checkboxes */
             fetch('/author/' + encodeURIComponent(name) + '/research')
                 .then(function(resp) { return resp.text(); })
@@ -549,6 +557,10 @@ function authorRunDraft() {
     formData.append('prompt', prompt);
     formData.append('assignment', assignment);
     formData.append('research_versions', researchVersions.join(','));
+
+    var referenceIds = [];
+    document.querySelectorAll('.reference-cb:checked').forEach(function(cb) { referenceIds.push(cb.value); });
+    formData.append('reference_ids', referenceIds.join(','));
 
     fetch('/author/' + encodeURIComponent(name) + '/drafts/run', { method: 'POST', body: formData })
         .then(function(resp) { return resp.text(); })

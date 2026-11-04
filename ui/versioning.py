@@ -188,6 +188,7 @@ def load_version_list(output_dir: Path, phase: str) -> list[dict]:
             entry["has_draft"] = (d / "draft.md").exists()
             entry["has_session"] = (d / "session_id.txt").exists()
             entry["based_on"] = entry["meta"].get("based_on", [])
+            entry["references"] = entry["meta"].get("references", [])
 
         elif phase == "formats":
             entry["has_docx"] = (d / "output.docx").exists()
@@ -251,6 +252,7 @@ def _load_version_data(version_dir: Path, phase: str) -> dict:
         data["session_id"] = sid_file.read_text(encoding="utf-8").strip() if sid_file.exists() else None
 
         data["based_on"] = data["meta"].get("based_on", [])
+        data["references"] = data["meta"].get("references", [])
 
     elif phase == "formats":
         docx_file = version_dir / "output.docx"

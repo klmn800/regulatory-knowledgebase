@@ -57,12 +57,12 @@
   - [x] 3.4 `author_reference_detail.html`: read-only preview of `converted.md`, description textarea with the PRD req. 14 help text and Save, tracked-change status with a re-convert button (accept/reject toggle).
   - [x] 3.5 Styles in `style.css` for the list, badge and help text, matching the existing Author panels.
   - [x] 3.6 Smoke-test the routes with FastAPI's `TestClient` against a temp output dir and synthetic files (add to `tests/test_reference_routes.py`).
-- [ ] 4.0 Draft phase in the web UI: reference picker with size warning, references shown on launch and in draft detail
-  - [ ] 4.1 In `author_prompt_editor.html` (drafts phase), add a "Reference documents to include" area loaded from the picker route: one checkbox per upload, all checked, with character counts; an empty-state message pointing to the References tab.
-  - [ ] 4.2 `app.js`: running total of checked characters; show the warning above `reference_warn_chars` (value passed into the partial); send `reference_ids` with the draft run.
-  - [ ] 4.3 `author_draft_run` accepts `reference_ids`, loads them with `select_references`, passes them to `compose_draft_prompt` and `launch_draft`, and lists them in the launch message.
-  - [ ] 4.4 `ui/versioning.py` exposes `references` for drafts (empty list for older drafts); `author_draft_detail.html` shows "References:" next to "Based on".
-  - [ ] 4.5 Route test: a draft run with `launch_draft` patched out builds a prompt containing the selected references and only those.
+- [x] 4.0 Draft phase in the web UI: reference picker with size warning, references shown on launch and in draft detail
+  - [x] 4.1 In `author_prompt_editor.html` (drafts phase), add a "Reference documents to include" area loaded from the picker route: one checkbox per upload, all checked, with character counts; an empty-state message pointing to the References tab.
+  - [x] 4.2 `app.js`: running total of checked characters; show the warning above `reference_warn_chars` (value passed into the partial); send `reference_ids` with the draft run.
+  - [x] 4.3 `author_draft_run` accepts `reference_ids`, loads them with `select_references`, passes them to `compose_draft_prompt` and `launch_draft`, and lists them in the launch message.
+  - [x] 4.4 `ui/versioning.py` exposes `references` for drafts (empty list for older drafts); `author_draft_detail.html` shows "References:" next to "Based on".
+  - [x] 4.5 Route test: a draft run with `launch_draft` patched out builds a prompt containing the selected references and only those.
 - [ ] 5.0 Command-line parity: `--reference`, `--list-references`, all uploads in CLI drafts
   - [ ] 5.1 `--reference PATH` (repeatable): read each file and `add_reference` it before any phase runs; print added / replaced / rejected.
   - [ ] 5.2 `--list-references`: print the assignment's uploads (filename, characters, tracked changes, description snippet) and exit.
