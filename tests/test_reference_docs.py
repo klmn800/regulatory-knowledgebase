@@ -126,7 +126,7 @@ def test_list_order_remove_and_select(assignment_dir):
     for name in ("b.txt", "a.txt", "c.txt"):
         rd.add_reference(assignment_dir, name, name.encode())
     ids = [r.ref_id for r in rd.list_references(assignment_dir)]
-    assert sorted(ids) == ["a", "b", "c"]
+    assert ids == ["b", "a", "c"]  # upload order, not alphabetical
 
     rd.remove_reference(assignment_dir, "b")
     assert {r.ref_id for r in rd.list_references(assignment_dir)} == {"a", "c"}
@@ -134,7 +134,7 @@ def test_list_order_remove_and_select(assignment_dir):
         rd.remove_reference(assignment_dir, "b")
 
     picked = rd.select_references(assignment_dir, ["c", "missing", "a"])
-    assert [r.ref_id for r in picked] == [r for r in ids if r in ("a", "c")]
+    assert [r.ref_id for r in picked] == ["a", "c"]
     assert all(r.text for r in picked)
 
 

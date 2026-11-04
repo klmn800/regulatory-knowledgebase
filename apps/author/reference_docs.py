@@ -24,6 +24,7 @@ import shutil
 import time
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 ALLOWED_EXTENSIONS = (".docx", ".md", ".txt")
@@ -250,13 +251,14 @@ def add_reference(
                 except (OSError, ValueError):
                     previous = {}
 
+            # Microseconds so files uploaded together keep their upload order.
+            now = datetime.now().isoformat(timespec="microseconds")
             meta = {
                 "ref_id": ref_id,
                 "filename": name,
                 "file_type": ext.lstrip("."),
-                "uploaded": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                "first_uploaded": (previous or {}).get("first_uploaded")
-                                  or time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "uploaded": now,
+                "first_uploaded": (previous or {}).get("first_uploaded") or now,
                 "description": (previous or {}).get("description", ""),
                 **conv,
             }
