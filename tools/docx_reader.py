@@ -445,13 +445,41 @@ def _extract_cell_text(cell_elem, with_formatting=True, doc_rels=None):
 # ELEMENT TYPE DETECTION
 # ============================================================
 
-def _get_paragraph_style(p_elem):
-    """Get the style name from a paragraph element."""
+def _style_names(doc):
+    """Map each paragraph style's ID to its name for one document.
+
+    A paragraph's XML stores the style ID (``Heading1``, ``ListParagraph``), not the
+    name (``Heading 1``, ``List Paragraph``). Built-in style names are stored in
+    English whatever the language of Word, so matching on names is reliable.
+    """
+    from docx.enum.style import WD_STYLE_TYPE
+
+    names = {}
+    for style in doc.styles:
+        try:
+            if style.type == WD_STYLE_TYPE.PARAGRAPH and style.style_id:
+                names[style.style_id] = style.name or style.style_id
+        except (AttributeError, KeyError, ValueError):
+            continue
+    return names
+
+
+def _get_paragraph_style(p_elem, style_names=None):
+    """Get the style name of a paragraph element.
+
+    Args:
+        p_elem: The ``w:p`` element.
+        style_names: Style ID -> name map from ``_style_names``. Without it (or for
+            an ID missing from it), the raw style ID is returned.
+    """
     pPr = p_elem.find(qn("w:pPr"))
     if pPr is not None:
         pStyle = pPr.find(qn("w:pStyle"))
         if pStyle is not None:
-            return pStyle.get(qn("w:val"), "")
+            style_id = pStyle.get(qn("w:val"), "")
+            if style_names:
+                return style_names.get(style_id, style_id)
+            return style_id
     return ""
 
 
@@ -510,16 +538,16 @@ def _is_all_bold(p_elem):
 
 
 def _read_paragraph_element(p_elem, numbering, is_title_candidate=False,
-                            doc_rels=None):
+                            doc_rels=None, style_names=None):
     """Extract a block dict from a paragraph element.
 
     Returns a block dict or None for empty paragraphs.
     """
-    style = _get_paragraph_style(p_elem)
+    style = _get_paragraph_style(p_elem, style_names)
     num_id, ilvl = _get_num_pr(p_elem)
 
-    # Check for heading style
-    heading_match = re.match(r"^Heading\s+(\d+)$", style, re.IGNORECASE)
+    # Check for heading style ("Heading 1"; "Heading1" if the name couldn't be resolved)
+    heading_match = re.match(r"^Heading\s*(\d+)$", style, re.IGNORECASE)
 
     # Get text
     text = _extract_paragraph_text(p_elem, with_formatting=True,
@@ -722,6 +750,7 @@ def read_docx(path, change_mode=None, extract_images_to=None):
     numbering = _NumberingResolver(doc)
     image_extractor = _ImageExtractor(doc, extract_images_to)
     doc_rels = doc.part.rels
+    style_names = _style_names(doc)
 
     blocks = []
     body = doc.element.body
@@ -748,7 +777,7 @@ def read_docx(path, change_mode=None, extract_images_to=None):
                 if not images:
                     block = _read_paragraph_element(
                         child, numbering, is_title_candidate=False,
-                        doc_rels=doc_rels)
+                        doc_rels=doc_rels, style_names=style_names)
                     if block:
                         blocks.append(block)
                 continue
@@ -759,7 +788,8 @@ def read_docx(path, change_mode=None, extract_images_to=None):
                 is_title = True
 
             block = _read_paragraph_element(child, numbering, is_title,
-                                            doc_rels=doc_rels)
+                                            doc_rels=doc_rels,
+                                            style_names=style_names)
             if block:
                 if not found_first_text:
                     found_first_text = True

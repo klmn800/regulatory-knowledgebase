@@ -7,7 +7,8 @@
 - `apps/author/author.py` - `compose_draft_prompt` and `launch_draft` take references; CLI flags `--reference` and `--list-references`.
 - `apps/author/prompts/author_reference_framing.md` - New. Fixed framing text for the Author's Reference Documents section.
 - `apps/author/prompts/author_draft.md` - Mention reference documents in "You have been given" and the Author's Notes list.
-- `tools/docx_reader.py` - Existing converter (`read_docx`, `to_markdown`, `has_tracked_changes`); reused, not changed.
+- `tools/docx_reader.py` - Existing converter (`read_docx`, `to_markdown`, `has_tracked_changes`); reused. Heading-style detection fixed (task 2.9).
+- `tests/test_docx_reader.py` - New. Heading and list-paragraph style detection.
 - `ui/app.py` - New `/author/{name}/references/...` routes; draft run accepts selected references.
 - `ui/versioning.py` - Draft view exposes `references` from `meta.json`.
 - `ui/templates/author.html` - New References phase tab and panel.
@@ -37,7 +38,7 @@
   - [x] 1.6 `list_references`, `load_reference` (meta + text), `update_description`, `remove_reference`, `reconvert_reference(ref_id, change_mode)` (docx only; re-runs conversion from the stored original).
   - [x] 1.7 `select_references(output_dir, ref_ids)` returns the loaded references in a stable order (upload order), skipping unknown ids.
   - [x] 1.8 Tests in `tests/test_reference_docs.py`: each file type; tracked-change detection and accept vs. reject text; image count; replace keeps description; bad extension, oversize, empty file, cp1252 `.txt`; path-traversal and reserved filenames; remove; reconvert on a non-docx is refused.
-- [ ] 2.0 Draft prompt integration: framing prompt, `compose_draft_prompt`, draft `meta.json`, opening message, config keys, with tests
+- [x] 2.0 Draft prompt integration: framing prompt, `compose_draft_prompt`, draft `meta.json`, opening message, config keys, with tests
   - [x] 2.1 Write `apps/author/prompts/author_reference_framing.md` with the framing rules from PRD req. 19 (unpublished, authoritative as qualified by the description, don't cite as published OLG, follow the upload and flag conflicts in Author's Notes, description outranks defaults).
   - [x] 2.2 `compose_draft_prompt(..., references=None)`: when references are given, add `## Author's Reference Documents` after the Assignment and before Research Findings: framing text, then one `<reference_document filename="...">` block per upload with `<author_description>` (or "(none given)") and `<content>`. Omit the section entirely when there are none.
   - [x] 2.3 `launch_draft(..., references=None)`: write a `references` list (`ref_id`, `filename`, `description` as used) into the draft's `meta.json`.
@@ -45,7 +46,8 @@
   - [x] 2.5 Update `apps/author/prompts/author_draft.md` ("You have been given" names reference documents) and the Author's Notes bullet list in `compose_draft_prompt` (add conflicts between reference documents and published sources).
   - [x] 2.6 Add `reference_warn_chars = 200000` and `reference_max_mb = 25` under `[author]` in `config.ini.example` (and read them with these fallbacks).
   - [x] 2.7 Tests in `tests/test_author_prompt.py`: section present with framing, filenames, descriptions and full text; "(none given)" for empty descriptions; section absent with no references; order is Assignment, References, Research. `launch_draft` is not called in tests.
-  - [ ] 2.8 **GATE (See):** Show Ben the References section of a prompt assembled from two synthetic uploads, so he can judge the framing wording before the UI is built on it.
+  - [x] 2.8 **GATE (See):** Show Ben the References section of a prompt assembled from two synthetic uploads, so he can judge the framing wording before the UI is built on it.
+  - [x] 2.9 (Added at the 2.8 gate, approved by Ben.) Fix `tools/docx_reader.py` heading detection: paragraphs store style IDs (`Heading1`), not names (`Heading 1`), so heading styles were never recognized (also broke the `List Paragraph` check). Resolve IDs to names per document; tests in `tests/test_docx_reader.py`. Also affects the Convert tab, for the better.
 - [ ] 3.0 References tab in the web UI: upload, list, preview, description, re-convert, remove
   - [ ] 3.1 Routes in `ui/app.py`: `GET /author/{name}/references` (list partial), `POST .../references/upload` (multiple `UploadFile`s; per-file results), `GET .../references/{ref_id}` (detail), `POST .../references/{ref_id}/description`, `POST .../references/{ref_id}/reconvert`, `POST .../references/{ref_id}/delete`, `GET .../references/picker` (draft picker partial, used in 4.0). All validate `ref_id` through `reference_docs`.
   - [ ] 3.2 Add the References phase tab and panel to `ui/templates/author.html` (first tab), and wire `authorSwitchTab('references')` in `app.js`.
