@@ -29,8 +29,42 @@
 ## Tasks
 
 - [ ] 1.0 Reference storage and conversion module (`apps/author/reference_docs.py`) with tests
+  - [ ] 1.1 Add `pytest` to `requirements.txt`; create `tests/` with `conftest.py` (temp assignment dir; synthetic `.docx` builder via python-docx, including a variant with a `w:ins`/`w:del` tracked change and one with an embedded image).
+  - [ ] 1.2 `make_ref_id(filename)`: lowercase slug of the stem, non-alphanumerics to `-`, trimmed; rejects empty results, `..`, and Windows reserved names (`CON`, `PRN`, `AUX`, `NUL`, `COM1-9`, `LPT1-9`) by suffixing `-file`. Original filename stored by its basename only.
+  - [ ] 1.3 `add_reference(output_dir, filename, data: bytes, max_mb)`: validate extension (`.docx`, `.md`, `.txt`) and size; write to a temp folder first, convert, then swap into `references/<ref_id>/` so a failed conversion never leaves a half-written upload. Returns a result with `ref_id`, `replaced: bool`, or an error message.
+  - [ ] 1.4 Conversion: `.docx` via `has_tracked_changes` + `read_docx(change_mode="accept", extract_images_to=<ref>/images)` + `to_markdown`; `.md`/`.txt` decoded as UTF-8 (BOM-tolerant), falling back to cp1252. Empty text is an error. Write `converted.md` and `meta.json` (fields per PRD req. 1).
+  - [ ] 1.5 Replace rule: re-adding an existing `ref_id` replaces the files and keeps the old `description`.
+  - [ ] 1.6 `list_references`, `load_reference` (meta + text), `update_description`, `remove_reference`, `reconvert_reference(ref_id, change_mode)` (docx only; re-runs conversion from the stored original).
+  - [ ] 1.7 `select_references(output_dir, ref_ids)` returns the loaded references in a stable order (upload order), skipping unknown ids.
+  - [ ] 1.8 Tests in `tests/test_reference_docs.py`: each file type; tracked-change detection and accept vs. reject text; image count; replace keeps description; bad extension, oversize, empty file, cp1252 `.txt`; path-traversal and reserved filenames; remove; reconvert on a non-docx is refused.
 - [ ] 2.0 Draft prompt integration: framing prompt, `compose_draft_prompt`, draft `meta.json`, opening message, config keys, with tests
+  - [ ] 2.1 Write `apps/author/prompts/author_reference_framing.md` with the framing rules from PRD req. 19 (unpublished, authoritative as qualified by the description, don't cite as published OLG, follow the upload and flag conflicts in Author's Notes, description outranks defaults).
+  - [ ] 2.2 `compose_draft_prompt(..., references=None)`: when references are given, add `## Author's Reference Documents` after the Assignment and before Research Findings: framing text, then one `<reference_document filename="...">` block per upload with `<author_description>` (or "(none given)") and `<content>`. Omit the section entirely when there are none.
+  - [ ] 2.3 `launch_draft(..., references=None)`: write a `references` list (`ref_id`, `filename`, `description` as used) into the draft's `meta.json`.
+  - [ ] 2.4 Opening message tells the session the prompt file is long and must be read in full, in several reads if needed, before drafting.
+  - [ ] 2.5 Update `apps/author/prompts/author_draft.md` ("You have been given" names reference documents) and the Author's Notes bullet list in `compose_draft_prompt` (add conflicts between reference documents and published sources).
+  - [ ] 2.6 Add `reference_warn_chars = 200000` and `reference_max_mb = 25` under `[author]` in `config.ini.example` (and read them with these fallbacks).
+  - [ ] 2.7 Tests in `tests/test_author_prompt.py`: section present with framing, filenames, descriptions and full text; "(none given)" for empty descriptions; section absent with no references; order is Assignment, References, Research. `launch_draft` is not called in tests.
+  - [ ] 2.8 **GATE (See):** Show Ben the References section of a prompt assembled from two synthetic uploads, so he can judge the framing wording before the UI is built on it.
 - [ ] 3.0 References tab in the web UI: upload, list, preview, description, re-convert, remove
+  - [ ] 3.1 Routes in `ui/app.py`: `GET /author/{name}/references` (list partial), `POST .../references/upload` (multiple `UploadFile`s; per-file results), `GET .../references/{ref_id}` (detail), `POST .../references/{ref_id}/description`, `POST .../references/{ref_id}/reconvert`, `POST .../references/{ref_id}/delete`, `GET .../references/picker` (draft picker partial, used in 4.0). All validate `ref_id` through `reference_docs`.
+  - [ ] 3.2 Add the References phase tab and panel to `ui/templates/author.html` (first tab), and wire `authorSwitchTab('references')` in `app.js`.
+  - [ ] 3.3 `author_references_list.html`: multi-file input (`accept=".docx,.md,.txt"`), upload results (added / replaced / rejected with reason), list rows with filename, type, character count, tracked-changes badge, description snippet, Remove (with confirm).
+  - [ ] 3.4 `author_reference_detail.html`: read-only preview of `converted.md`, description textarea with the PRD req. 14 help text and Save, tracked-change status with a re-convert button (accept/reject toggle).
+  - [ ] 3.5 Styles in `style.css` for the list, badge and help text, matching the existing Author panels.
+  - [ ] 3.6 Smoke-test the routes with FastAPI's `TestClient` against a temp output dir and synthetic files (add to `tests/test_reference_routes.py`).
 - [ ] 4.0 Draft phase in the web UI: reference picker with size warning, references shown on launch and in draft detail
+  - [ ] 4.1 In `author_prompt_editor.html` (drafts phase), add a "Reference documents to include" area loaded from the picker route: one checkbox per upload, all checked, with character counts; an empty-state message pointing to the References tab.
+  - [ ] 4.2 `app.js`: running total of checked characters; show the warning above `reference_warn_chars` (value passed into the partial); send `reference_ids` with the draft run.
+  - [ ] 4.3 `author_draft_run` accepts `reference_ids`, loads them with `select_references`, passes them to `compose_draft_prompt` and `launch_draft`, and lists them in the launch message.
+  - [ ] 4.4 `ui/versioning.py` exposes `references` for drafts (empty list for older drafts); `author_draft_detail.html` shows "References:" next to "Based on".
+  - [ ] 4.5 Route test: a draft run with `launch_draft` patched out builds a prompt containing the selected references and only those.
 - [ ] 5.0 Command-line parity: `--reference`, `--list-references`, all uploads in CLI drafts
+  - [ ] 5.1 `--reference PATH` (repeatable): read each file and `add_reference` it before any phase runs; print added / replaced / rejected.
+  - [ ] 5.2 `--list-references`: print the assignment's uploads (filename, characters, tracked changes, description snippet) and exit.
+  - [ ] 5.3 The CLI draft step passes all stored references to `compose_draft_prompt` and `launch_draft`.
+  - [ ] 5.4 Tests for argument handling of `--reference` / `--list-references` (no terminal launch).
 - [ ] 6.0 Documentation and end-to-end check in the browser
+  - [ ] 6.1 Update `CLAUDE.md` (Author section, project structure, commands, new test suite) and `README.md` (Author usage; tests run offline and free).
+  - [ ] 6.2 Start the web UI and exercise the References tab and draft picker with synthetic files over HTTP (no draft launch).
+  - [ ] 6.3 **GATE (Act):** Ben uploads a real document in the browser, writes a description, launches a draft, and checks the draft and its Author's Notes. Ben runs this himself: it uses real agency material and opens a Claude Code session.
