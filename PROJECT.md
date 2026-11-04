@@ -15,8 +15,8 @@ index; the environment is not set up here yet (no `chromadb` installed).
   copied index opens without a format migration. Check it supports Python 3.14.
 - `config.ini` came over with the dev machine's Anthropic and Voyage keys. If they're
   personal, consider keys made just for this laptop, so they can be revoked separately.
-- The commit rule in `CLAUDE.md` (always ask before committing or pushing) contradicts the
-  global rule (commit and push at checkpoints without asking). Pick one.
+- Push the onboarding commits from this laptop (needs this repo's token), then `git pull` on
+  the development machine.
 
 ### Blockers
 - None.

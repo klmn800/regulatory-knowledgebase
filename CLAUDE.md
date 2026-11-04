@@ -378,4 +378,16 @@ regulatory-knowledgebase/
 - **NO COP-OUT ANSWERS**: NEVER give up on solving technical problems or provide "that's good enough" responses when something clearly isn't working. Always debug thoroughly and find the actual root cause. If an UPDATE statement isn't working, investigate why instead of suggesting workarounds.
 - **NO QUICK FIXES**: When a bug reveals a design flaw, fix the design — don't patch over it with workarounds. If a mechanism is fundamentally fragile (e.g., relying on a race condition), redesign it so the failure mode doesn't exist, rather than adding fallbacks to catch failures after the fact.
 - **FOLLOW INSTRUCTIONS EXACTLY**: When user gives specific values or instructions (e.g., "set all to 300"), implement EXACTLY what was requested. Do not improvise variations (300/350/400) or interpret creatively. If the instruction is unclear, ask for clarification. Do not second-guess explicit directives.
-- **Git Workflow**: Offer to commit after completing each meaningful unit of work (pipeline stage, bug fix, refactor, etc.). Offer to push to GitHub periodically so the remote backup stays current. User controls timing — always ask, never auto-commit or auto-push. Repo: `klmn800/regulatory-knowledgebase` (public).
+- **Git Workflow**: Follow the global commit rule: commit at natural checkpoints without asking (each unit of work, the end of any task that changed files, before a risky change), stage by name, and push right after committing. Stop and ask only for a large or binary file, a possible secret, a merge conflict, or a failed push. Repo: `klmn800/regulatory-knowledgebase` (**public**: check every commit for agency material, data or secrets before pushing).
+
+## Working Across Two Machines
+
+This project is developed on two machines, kept in sync through GitHub. Git carries the code only; everything gitignored stays on each machine.
+
+- **Start of a session:** `git pull`. If it reports a conflict, stop and tell Ben.
+- **End of a session:** commit and push, so the other machine can pick up from here. Only one machine works on the project at a time.
+- **The index (`index/`) does not sync.** Rebuild it on one machine only (currently the original development machine), then copy `index/` to the other by flash drive. Never re-scrape or re-embed on both machines: it costs Voyage tokens twice and the two indexes drift apart. Note the date of each rebuild in `PROJECT.md`.
+- **`raw/`** moves the same way as the index when sources change. **`output/`** is per-machine and isn't synced.
+- **`config.ini`** is per-machine. When a setting is added or renamed, update `config.ini.example` in the same commit, so the other machine knows to update its copy.
+- **Dependencies:** keep the same versions on both machines, `chromadb` especially (its on-disk format changes between versions). If a version is pinned or bumped in `requirements.txt`, reinstall on the other machine before running anything.
+- **Local-only files** (the gitignored tools and brand assets in `.gitignore`) don't sync. If you change one, copy it across by hand.
