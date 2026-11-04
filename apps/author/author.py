@@ -554,6 +554,53 @@ def run_format(
 # CLI
 # ============================================================
 
+def cli_add_references(output_dir: Path, paths: list[str],
+                       config: configparser.ConfigParser) -> bool:
+    """Add files given with --reference. Prints one line per file.
+
+    Returns False if any file was missing or rejected.
+    """
+    from apps.author import reference_docs
+
+    max_mb = config.getfloat("author", "reference_max_mb",
+                             fallback=reference_docs.DEFAULT_MAX_MB)
+    all_ok = True
+    for p in paths:
+        path = Path(p)
+        if not path.is_file():
+            print(f"  REJECTED {p}: file not found")
+            all_ok = False
+            continue
+        res = reference_docs.add_reference(output_dir, path.name, path.read_bytes(), max_mb)
+        if res.ok:
+            print(f"  {'Replaced' if res.replaced else 'Added'} reference: {res.filename}")
+        else:
+            print(f"  REJECTED {path.name}: {res.error}")
+            all_ok = False
+    return all_ok
+
+
+def format_reference_listing(output_dir: Path) -> str:
+    """Text listing of an assignment's reference documents for --list-references."""
+    from apps.author import reference_docs
+
+    refs = reference_docs.list_references(output_dir)
+    if not refs:
+        return "No reference documents."
+    lines = [f"Reference documents ({len(refs)}):"]
+    for r in refs:
+        meta = r.meta
+        flags = [f"{meta.get('char_count', 0):,} chars"]
+        if meta.get("tracked_changes"):
+            flags.append(f"tracked changes {meta.get('change_mode')}ed")
+        desc = r.description
+        if len(desc) > 80:
+            desc = desc[:80] + "..."
+        lines.append(f"  {r.filename} ({', '.join(flags)})")
+        lines.append(f"      {desc or '(no description)'}")
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="OLG Policy Authoring Agent — research, draft, and format OLG pages"
@@ -586,6 +633,15 @@ def main():
         "--assignment-file", "-f", default=None,
         help="Read assignment text from a file instead of the command line"
     )
+    parser.add_argument(
+        "--reference", "-r", action="append", default=[], metavar="PATH",
+        help="Add a reference document (.docx, .md, .txt) to the assignment before "
+             "running. Repeat for several. Drafts include all of the assignment's references."
+    )
+    parser.add_argument(
+        "--list-references", action="store_true",
+        help="List the assignment's reference documents and exit"
+    )
     args = parser.parse_args()
 
     # Handle resume mode
@@ -606,6 +662,17 @@ def main():
         print(f"\nResuming Claude Code session: {session_id}")
         launch_resume(session_id, args.name)
         return
+
+    # Reference documents: add any given, then list and stop if asked
+    if args.reference or args.list_references:
+        ref_output_dir = get_output_dir(args.name)
+        if args.reference:
+            ok = cli_add_references(ref_output_dir, args.reference, load_config())
+            if not ok:
+                sys.exit(1)
+        if args.list_references:
+            print(format_reference_listing(ref_output_dir))
+            return
 
     # Load assignment text
     assignment = args.assignment
@@ -666,8 +733,12 @@ def main():
                 print("ERROR: No assignment found.")
                 sys.exit(1)
 
-        # Use all research versions
+        # Use all research versions and all reference documents
+        from apps.author import reference_docs
         research_versions = list_versions(output_dir, "research")
+        references = reference_docs.select_references(
+            output_dir, [r.ref_id for r in reference_docs.list_references(output_dir)],
+        )
         draft_dir = next_version_dir(output_dir, "drafts")
         draft_file = draft_dir / "draft.md"
         session_id = str(uuid.uuid4())
@@ -679,6 +750,7 @@ def main():
             assignment=assignment,
             config=config,
             draft_file=draft_file,
+            references=references,
         )
 
         based_on = [f"research/{d.name.split('_')[0]}" for d in research_versions]
@@ -691,8 +763,11 @@ def main():
             name=args.name,
             session_id=session_id,
             based_on=based_on,
+            references=references,
         )
 
+        if references:
+            print(f"  Reference documents: {', '.join(r.filename for r in references)}")
         print(f"\n  Claude Code terminal launched.")
         print(f"  Draft will be written to: {draft_file}")
         print(f"  Session ID: {session_id}")

@@ -4,6 +4,7 @@
 - `tests/test_reference_docs.py` - New. Unit tests for `reference_docs.py` with synthetic fixtures built in the test.
 - `tests/test_author_prompt.py` - New. Tests that `compose_draft_prompt` includes, frames and omits reference documents correctly.
 - `tests/conftest.py` - New. Shared fixtures (temp assignment folder, synthetic `.docx` builder, including one with a tracked change).
+- `tests/test_author_cli.py` - New. `--reference` / `--list-references` handling and CLI drafts including all uploads (launch replaced).
 - `apps/author/author.py` - `compose_draft_prompt` and `launch_draft` take references; CLI flags `--reference` and `--list-references`.
 - `apps/author/prompts/author_reference_framing.md` - New. Fixed framing text for the Author's Reference Documents section.
 - `apps/author/prompts/author_draft.md` - Mention reference documents in "You have been given" and the Author's Notes list.
@@ -63,11 +64,11 @@
   - [x] 4.3 `author_draft_run` accepts `reference_ids`, loads them with `select_references`, passes them to `compose_draft_prompt` and `launch_draft`, and lists them in the launch message.
   - [x] 4.4 `ui/versioning.py` exposes `references` for drafts (empty list for older drafts); `author_draft_detail.html` shows "References:" next to "Based on".
   - [x] 4.5 Route test: a draft run with `launch_draft` patched out builds a prompt containing the selected references and only those.
-- [ ] 5.0 Command-line parity: `--reference`, `--list-references`, all uploads in CLI drafts
-  - [ ] 5.1 `--reference PATH` (repeatable): read each file and `add_reference` it before any phase runs; print added / replaced / rejected.
-  - [ ] 5.2 `--list-references`: print the assignment's uploads (filename, characters, tracked changes, description snippet) and exit.
-  - [ ] 5.3 The CLI draft step passes all stored references to `compose_draft_prompt` and `launch_draft`.
-  - [ ] 5.4 Tests for argument handling of `--reference` / `--list-references` (no terminal launch).
+- [x] 5.0 Command-line parity: `--reference`, `--list-references`, all uploads in CLI drafts
+  - [x] 5.1 `--reference PATH` (repeatable): read each file and `add_reference` it before any phase runs; print added / replaced / rejected.
+  - [x] 5.2 `--list-references`: print the assignment's uploads (filename, characters, tracked changes, description snippet) and exit.
+  - [x] 5.3 The CLI draft step passes all stored references to `compose_draft_prompt` and `launch_draft`.
+  - [x] 5.4 Tests for argument handling of `--reference` / `--list-references` (no terminal launch).
 - [ ] 6.0 Documentation and end-to-end check in the browser
   - [ ] 6.1 Update `CLAUDE.md` (Author section, project structure, commands, new test suite) and `README.md` (Author usage; tests run offline and free).
   - [ ] 6.2 Start the web UI and exercise the References tab and draft picker with synthetic files over HTTP (no draft launch).
