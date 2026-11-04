@@ -74,6 +74,7 @@ tools/ppt_template.pptx
 
 # Python
 __pycache__/
+.venv/
 *.pyc
 
 # Windows
