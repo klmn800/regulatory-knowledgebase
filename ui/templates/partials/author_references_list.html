@@ -1,0 +1,55 @@
+<div class="version-list-header">
+    <h4>Reference Documents</h4>
+</div>
+
+<p class="text-muted reference-intro">
+    Your own unpublished pages and notes for this assignment. Their text goes into the
+    draft prompt, labeled as unpublished.
+</p>
+
+<div class="reference-upload">
+    <input type="file" id="reference-file-input" multiple accept="{{ allowed }}">
+    <button class="btn btn-primary btn-sm" onclick="authorUploadReferences()">Upload</button>
+    <div class="text-muted reference-upload-hint">.docx, .md or .txt. Uploading a file with the same name replaces it.</div>
+</div>
+
+{% if results %}
+<ul class="reference-results">
+    {% for r in results %}
+    <li class="{{ 'reference-result-ok' if r.ok else 'reference-result-error' }}">
+        <strong>{{ r.filename }}</strong>:
+        {% if r.ok %}{{ 'replaced the earlier upload' if r.replaced else 'added' }}{% else %}{{ r.error }}{% endif %}
+    </li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% if references %}
+<div class="version-entries">
+    {% for ref in references %}
+    <div class="version-entry reference-entry" data-ref-id="{{ ref.ref_id }}" onclick="authorViewReference(this.dataset.refId)">
+        <div class="version-entry-header">
+            <span class="reference-filename">{{ ref.filename }}</span>
+            <button class="btn btn-sm btn-outline reference-remove"
+                    data-ref-id="{{ ref.ref_id }}" data-filename="{{ ref.filename }}"
+                    onclick="event.stopPropagation(); authorDeleteReference(this.dataset.refId, this.dataset.filename)">Remove</button>
+        </div>
+        {% if ref.description %}
+        <div class="version-preview">{{ ref.description[:100] }}{% if ref.description | length > 100 %}...{% endif %}</div>
+        {% else %}
+        <div class="version-preview reference-no-description">No description yet. Click to add one.</div>
+        {% endif %}
+        <div class="version-entry-meta">
+            <span>{{ ref.meta.file_type | upper }}</span>
+            <span>{{ '{:,}'.format(ref.meta.char_count) }} chars</span>
+            {% if ref.meta.tracked_changes %}
+            <span class="reference-badge" title="Converted with tracked changes {{ ref.meta.change_mode }}ed">Tracked changes: {{ ref.meta.change_mode }}ed</span>
+            {% endif %}
+            {% if ref.meta.image_count %}<span>{{ ref.meta.image_count }} image{{ 's' if ref.meta.image_count != 1 }}</span>{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No reference documents yet.</p>
+{% endif %}

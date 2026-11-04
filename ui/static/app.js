@@ -162,7 +162,10 @@ function authorLoadVersionLists(name) {
             authorPopulateDraftSelect(name);
         });
 
+    authorLoadReferences(name);
+
     /* Clear detail areas */
+    document.getElementById('references-detail').innerHTML = '';
     document.getElementById('research-detail').innerHTML = '';
     document.getElementById('drafts-detail').innerHTML = '';
     document.getElementById('formats-detail').innerHTML = '';
@@ -200,6 +203,123 @@ function authorPopulateDraftSelect(name) {
                 }
             });
         });
+}
+
+/* ---- References (the author's own unpublished documents) ---- */
+
+function _authorName() {
+    return _currentAuthorName || (document.getElementById('author-name') ? document.getElementById('author-name').value.trim() : '');
+}
+
+function _authorRefUrl(name, rest) {
+    return '/author/' + encodeURIComponent(name) + rest;
+}
+
+function _authorSetHtml(id, html) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = html;
+    htmx.process(el);
+}
+
+function authorLoadReferences(name) {
+    fetch(_authorRefUrl(name, '/references'))
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) { _authorSetHtml('references-list', html); });
+}
+
+function authorUploadReferences() {
+    var name = _authorName();
+    if (!name) { alert('Enter an assignment name first.'); return; }
+    var input = document.getElementById('reference-file-input');
+    if (!input || input.files.length === 0) { alert('Choose one or more files to upload.'); return; }
+
+    var formData = new FormData();
+    for (var i = 0; i < input.files.length; i++) {
+        formData.append('files', input.files[i]);
+    }
+    _currentAuthorName = name;
+    authorShowProgress(["Uploading...", "Converting documents..."]);
+    fetch(_authorRefUrl(name, '/references/upload'), { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            authorHideProgress();
+            _authorSetHtml('references-list', html);
+            htmx.ajax('GET', '/author/assignments', '#assignments-list');
+        })
+        .catch(function(err) {
+            authorHideProgress();
+            _authorSetHtml('references-detail', '<p>Error: ' + err.message + '</p>');
+        });
+}
+
+function authorViewReference(refId) {
+    var name = _authorName();
+    if (!name) return;
+    fetch(_authorRefUrl(name, '/references/' + encodeURIComponent(refId)))
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) { _authorSetHtml('references-detail', html); });
+}
+
+function authorSaveReferenceDescription(refId) {
+    var name = _authorName();
+    var el = document.getElementById('reference-description');
+    if (!name || !el) return;
+    var formData = new FormData();
+    formData.append('description', el.value);
+    fetch(_authorRefUrl(name, '/references/' + encodeURIComponent(refId) + '/description'), { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            _authorSetHtml('references-detail', html);
+            authorLoadReferences(name);
+        });
+}
+
+function authorReconvertReference(refId, mode) {
+    var name = _authorName();
+    if (!name) return;
+    var formData = new FormData();
+    formData.append('change_mode', mode);
+    authorShowProgress(["Re-converting..."]);
+    fetch(_authorRefUrl(name, '/references/' + encodeURIComponent(refId) + '/reconvert'), { method: 'POST', body: formData })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            authorHideProgress();
+            _authorSetHtml('references-detail', html);
+            authorLoadReferences(name);
+        })
+        .catch(function(err) {
+            authorHideProgress();
+            _authorSetHtml('references-detail', '<p>Error: ' + err.message + '</p>');
+        });
+}
+
+function authorDeleteReference(refId, filename) {
+    var name = _authorName();
+    if (!name) return;
+    if (!confirm('Remove "' + filename + '" from this assignment? This deletes the uploaded file and its conversion.')) return;
+    fetch(_authorRefUrl(name, '/references/' + encodeURIComponent(refId) + '/delete'), { method: 'POST' })
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+            _authorSetHtml('references-list', html);
+            var detail = document.querySelector('#references-detail .reference-detail');
+            if (detail && detail.dataset.refId === refId) _authorSetHtml('references-detail', '');
+        });
+}
+
+/* Draft editor: running total of selected reference characters, with a size warning */
+function authorUpdateReferenceTotal() {
+    var picker = document.getElementById('reference-picker');
+    if (!picker) return;
+    var total = 0;
+    picker.querySelectorAll('.reference-cb:checked').forEach(function(cb) {
+        total += parseInt(cb.dataset.chars || '0', 10);
+    });
+    var totalEl = document.getElementById('reference-total-chars');
+    if (totalEl) totalEl.textContent = total.toLocaleString();
+    var warn = document.getElementById('reference-size-warning');
+    var limit = parseInt(picker.dataset.warnChars || '0', 10);
+    if (warn) warn.style.display = (limit && total > limit) ? 'block' : 'none';
 }
 
 /* ---- Research ---- */

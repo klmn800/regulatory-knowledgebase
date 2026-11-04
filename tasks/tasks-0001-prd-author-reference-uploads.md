@@ -14,6 +14,8 @@
 - `ui/templates/author.html` - New References phase tab and panel.
 - `ui/templates/partials/author_references_list.html` - New. Upload control and upload list.
 - `ui/templates/partials/author_reference_detail.html` - New. Read-only preview, description editor with help text, re-convert.
+- `ui/templates/partials/author_reference_picker.html` - New. Draft-editor checkboxes, running total and size warning (served at `/author/{name}/reference-picker`, a separate path so an upload named `picker` can't collide).
+- `tests/test_reference_routes.py` - New. TestClient smoke tests for the reference routes.
 - `ui/templates/partials/author_prompt_editor.html` - Reference picker in the Draft editor.
 - `ui/templates/partials/author_draft_detail.html` - Show references a draft used.
 - `ui/static/app.js` - Multi-file upload, reference picker, running character total and size warning.
@@ -48,13 +50,13 @@
   - [x] 2.7 Tests in `tests/test_author_prompt.py`: section present with framing, filenames, descriptions and full text; "(none given)" for empty descriptions; section absent with no references; order is Assignment, References, Research. `launch_draft` is not called in tests.
   - [x] 2.8 **GATE (See):** Show Ben the References section of a prompt assembled from two synthetic uploads, so he can judge the framing wording before the UI is built on it.
   - [x] 2.9 (Added at the 2.8 gate, approved by Ben.) Fix `tools/docx_reader.py` heading detection: paragraphs store style IDs (`Heading1`), not names (`Heading 1`), so heading styles were never recognized (also broke the `List Paragraph` check). Resolve IDs to names per document; tests in `tests/test_docx_reader.py`. Also affects the Convert tab, for the better.
-- [ ] 3.0 References tab in the web UI: upload, list, preview, description, re-convert, remove
-  - [ ] 3.1 Routes in `ui/app.py`: `GET /author/{name}/references` (list partial), `POST .../references/upload` (multiple `UploadFile`s; per-file results), `GET .../references/{ref_id}` (detail), `POST .../references/{ref_id}/description`, `POST .../references/{ref_id}/reconvert`, `POST .../references/{ref_id}/delete`, `GET .../references/picker` (draft picker partial, used in 4.0). All validate `ref_id` through `reference_docs`.
-  - [ ] 3.2 Add the References phase tab and panel to `ui/templates/author.html` (first tab), and wire `authorSwitchTab('references')` in `app.js`.
-  - [ ] 3.3 `author_references_list.html`: multi-file input (`accept=".docx,.md,.txt"`), upload results (added / replaced / rejected with reason), list rows with filename, type, character count, tracked-changes badge, description snippet, Remove (with confirm).
-  - [ ] 3.4 `author_reference_detail.html`: read-only preview of `converted.md`, description textarea with the PRD req. 14 help text and Save, tracked-change status with a re-convert button (accept/reject toggle).
-  - [ ] 3.5 Styles in `style.css` for the list, badge and help text, matching the existing Author panels.
-  - [ ] 3.6 Smoke-test the routes with FastAPI's `TestClient` against a temp output dir and synthetic files (add to `tests/test_reference_routes.py`).
+- [x] 3.0 References tab in the web UI: upload, list, preview, description, re-convert, remove
+  - [x] 3.1 Routes in `ui/app.py`: `GET /author/{name}/references` (list partial), `POST .../references/upload` (multiple `UploadFile`s; per-file results), `GET .../references/{ref_id}` (detail), `POST .../references/{ref_id}/description`, `POST .../references/{ref_id}/reconvert`, `POST .../references/{ref_id}/delete`, `GET .../references/picker` (draft picker partial, used in 4.0). All validate `ref_id` through `reference_docs`.
+  - [x] 3.2 Add the References phase tab and panel to `ui/templates/author.html` (first tab), and wire `authorSwitchTab('references')` in `app.js`.
+  - [x] 3.3 `author_references_list.html`: multi-file input (`accept=".docx,.md,.txt"`), upload results (added / replaced / rejected with reason), list rows with filename, type, character count, tracked-changes badge, description snippet, Remove (with confirm).
+  - [x] 3.4 `author_reference_detail.html`: read-only preview of `converted.md`, description textarea with the PRD req. 14 help text and Save, tracked-change status with a re-convert button (accept/reject toggle).
+  - [x] 3.5 Styles in `style.css` for the list, badge and help text, matching the existing Author panels.
+  - [x] 3.6 Smoke-test the routes with FastAPI's `TestClient` against a temp output dir and synthetic files (add to `tests/test_reference_routes.py`).
 - [ ] 4.0 Draft phase in the web UI: reference picker with size warning, references shown on launch and in draft detail
   - [ ] 4.1 In `author_prompt_editor.html` (drafts phase), add a "Reference documents to include" area loaded from the picker route: one checkbox per upload, all checked, with character counts; an empty-state message pointing to the References tab.
   - [ ] 4.2 `app.js`: running total of checked characters; show the warning above `reference_warn_chars` (value passed into the partial); send `reference_ids` with the draft run.

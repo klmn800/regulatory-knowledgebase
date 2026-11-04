@@ -1,0 +1,19 @@
+{% if references %}
+<div id="reference-picker" data-warn-chars="{{ warn_chars }}">
+    {% for ref in references %}
+    <label class="checkbox-label" style="display:block; margin-bottom:0.3rem;">
+        <input type="checkbox" class="reference-cb" value="{{ ref.ref_id }}"
+               data-chars="{{ ref.meta.char_count }}" checked onchange="authorUpdateReferenceTotal()">
+        {{ ref.filename }}
+        <span class="text-muted">({{ '{:,}'.format(ref.meta.char_count) }} chars{% if not ref.description %}, no description{% endif %})</span>
+    </label>
+    {% endfor %}
+    <div class="text-muted reference-total">Selected: <span id="reference-total-chars">0</span> characters</div>
+    <div id="reference-size-warning" class="reference-warning" style="display:none;">
+        The selected documents are very large (over {{ '{:,}'.format(warn_chars) }} characters).
+        The draft can still run, but the session has a lot to read; consider leaving some out.
+    </div>
+</div>
+{% else %}
+<p class="text-muted">No reference documents. Add them in the <a href="#" onclick="authorSwitchTab('references'); return false;">References</a> tab.</p>
+{% endif %}

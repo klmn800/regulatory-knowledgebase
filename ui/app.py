@@ -57,6 +57,8 @@ from apps.author.author import (
     run_format as author_run_format,
     DATA_DIR,
 )
+from apps.author import reference_docs
+from html import escape as html_escape
 from tools.docx_reader import has_tracked_changes, read_docx, to_markdown
 from tools.docx_writer import generate_docx
 from apps.qc.qc_analyzer import (
@@ -612,6 +614,127 @@ async def author_research_resume(request: Request, name: str, num: int):
     return templates.TemplateResponse(
         request, "partials/author_action_result.html",
         {"message": msg},
+    )
+
+
+# ============================================================
+# AUTHOR — Reference documents (the author's own unpublished pages)
+# ============================================================
+
+def _reference_limits() -> tuple[int, float]:
+    """(warn_chars, max_mb) from [author], with the documented defaults."""
+    cfg = load_author_config()
+    warn_chars = cfg.getint("author", "reference_warn_chars", fallback=200000)
+    max_mb = cfg.getfloat("author", "reference_max_mb", fallback=reference_docs.DEFAULT_MAX_MB)
+    return warn_chars, max_mb
+
+
+def _render_reference_list(request: Request, name: str, results=None):
+    output_dir = get_output_dir(name)
+    return templates.TemplateResponse(
+        request, "partials/author_references_list.html",
+        {
+            "name": name,
+            "references": reference_docs.list_references(output_dir),
+            "results": results or [],
+            "allowed": ",".join(reference_docs.ALLOWED_EXTENSIONS),
+        },
+    )
+
+
+def _render_reference_detail(request: Request, name: str, ref_id: str, notice: str = ""):
+    output_dir = get_output_dir(name)
+    try:
+        ref = reference_docs.load_reference(output_dir, ref_id)
+    except reference_docs.ReferenceDocError as e:
+        return HTMLResponse(f"<p>{html_escape(str(e))}</p>", status_code=404)
+    return templates.TemplateResponse(
+        request, "partials/author_reference_detail.html",
+        {"name": name, "ref": ref, "notice": notice},
+    )
+
+
+@app.get("/author/{name}/references", response_class=HTMLResponse)
+async def author_references_list(request: Request, name: str):
+    """Upload control and the list of this assignment's reference documents."""
+    return _render_reference_list(request, name.strip())
+
+
+@app.post("/author/{name}/references/upload", response_class=HTMLResponse)
+async def author_references_upload(
+    request: Request,
+    name: str,
+    files: list[UploadFile] = File(...),
+):
+    """Add one or more files. Each is converted on its own; one bad file doesn't block the rest."""
+    name = name.strip()
+    output_dir = get_output_dir(name)
+    _, max_mb = _reference_limits()
+    results = []
+    for f in files:
+        data = await f.read()
+        results.append(await asyncio.to_thread(
+            reference_docs.add_reference, output_dir, f.filename or "", data, max_mb,
+        ))
+    return _render_reference_list(request, name, results)
+
+
+@app.get("/author/{name}/references/{ref_id}", response_class=HTMLResponse)
+async def author_reference_detail(request: Request, name: str, ref_id: str):
+    """Read-only preview, description editor and re-convert control for one upload."""
+    return _render_reference_detail(request, name.strip(), ref_id)
+
+
+@app.post("/author/{name}/references/{ref_id}/description", response_class=HTMLResponse)
+async def author_reference_description(
+    request: Request, name: str, ref_id: str, description: str = Form(""),
+):
+    name = name.strip()
+    try:
+        reference_docs.update_description(get_output_dir(name), ref_id, description)
+    except reference_docs.ReferenceDocError as e:
+        return HTMLResponse(f"<p>{html_escape(str(e))}</p>", status_code=404)
+    return _render_reference_detail(request, name, ref_id, notice="Description saved.")
+
+
+@app.post("/author/{name}/references/{ref_id}/reconvert", response_class=HTMLResponse)
+async def author_reference_reconvert(
+    request: Request, name: str, ref_id: str, change_mode: str = Form(...),
+):
+    name = name.strip()
+    try:
+        await asyncio.to_thread(
+            reference_docs.reconvert_reference, get_output_dir(name), ref_id, change_mode,
+        )
+    except reference_docs.ReferenceDocError as e:
+        return HTMLResponse(f"<p>{html_escape(str(e))}</p>", status_code=400)
+    label = "accepted" if change_mode == "accept" else "rejected"
+    return _render_reference_detail(
+        request, name, ref_id, notice=f"Re-converted with tracked changes {label}.",
+    )
+
+
+@app.post("/author/{name}/references/{ref_id}/delete", response_class=HTMLResponse)
+async def author_reference_delete(request: Request, name: str, ref_id: str):
+    name = name.strip()
+    try:
+        reference_docs.remove_reference(get_output_dir(name), ref_id)
+    except reference_docs.ReferenceDocError as e:
+        return HTMLResponse(f"<p>{html_escape(str(e))}</p>", status_code=404)
+    return _render_reference_list(request, name)
+
+
+@app.get("/author/{name}/reference-picker", response_class=HTMLResponse)
+async def author_reference_picker(request: Request, name: str):
+    """Checkboxes for the Draft editor: every upload, all checked."""
+    warn_chars, _ = _reference_limits()
+    return templates.TemplateResponse(
+        request, "partials/author_reference_picker.html",
+        {
+            "name": name.strip(),
+            "references": reference_docs.list_references(get_output_dir(name.strip())),
+            "warn_chars": warn_chars,
+        },
     )
 
 

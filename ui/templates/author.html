@@ -30,6 +30,7 @@
 
             <!-- Phase tabs -->
             <div class="author-phase-tabs">
+                <button class="phase-tab" onclick="authorSwitchTab('references')" id="tab-references">References</button>
                 <button class="phase-tab active" onclick="authorSwitchTab('research')" id="tab-research">Research</button>
                 <button class="phase-tab" onclick="authorSwitchTab('drafts')" id="tab-drafts">Draft</button>
                 <button class="phase-tab" onclick="authorSwitchTab('formats')" id="tab-formats">Format</button>
@@ -51,6 +52,14 @@
 
     <!-- Phase panels -->
     <div id="author-panel" class="author-panel">
+
+        <!-- REFERENCES panel -->
+        <div id="panel-references" class="phase-panel" style="display:none;">
+            <div id="references-list" class="version-list-area">
+                <p class="text-muted">Select an assignment to see its reference documents.</p>
+            </div>
+            <div id="references-detail" class="phase-detail-area"></div>
+        </div>
 
         <!-- RESEARCH panel -->
         <div id="panel-research" class="phase-panel">

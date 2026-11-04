@@ -1,0 +1,50 @@
+<div class="author-result-container reference-detail" data-ref-id="{{ ref.ref_id }}">
+    <div class="author-version-bar">
+        <div class="version-nav">
+            <span class="version-phase">Reference</span>
+            <span class="version-id">{{ ref.filename }}</span>
+        </div>
+    </div>
+
+    {% if notice %}<p class="reference-notice">{{ notice }}</p>{% endif %}
+
+    <div class="form-group">
+        <label for="reference-description">Description <span class="text-muted">(goes into the draft prompt with this document)</span></label>
+        <div class="reference-help">
+            <strong>Tell the drafting model how to use this document.</strong> It already knows this is
+            your own, unpublished material. Helpful things to say:
+            <ul>
+                <li><strong>What it is:</strong> a new page, a rewrite of an existing OLG page (name it), notes, an outline.</li>
+                <li><strong>Its status:</strong> approved and awaiting publication, still in draft, superseded.</li>
+                <li><strong>Its role in this assignment:</strong> the page this overview summarizes, content to carry over word for word, background only.</li>
+                <li><strong>How much to trust it:</strong> e.g. "authoritative over the current OLG page", or "Section 3 is out of date; ignore it".</li>
+                <li><strong>Anything else:</strong> known conflicts with policy, where the page will live, the audience.</li>
+            </ul>
+        </div>
+        <textarea id="reference-description" rows="5" class="prompt-textarea">{{ ref.description }}</textarea>
+        <button class="btn btn-primary btn-sm" style="margin-top:0.5rem;"
+                onclick="authorSaveReferenceDescription('{{ ref.ref_id }}')">Save Description</button>
+    </div>
+
+    {% if ref.meta.file_type == 'docx' %}
+    <div class="reference-tracked">
+        {% if ref.meta.tracked_changes %}
+        <strong>Tracked changes:</strong>
+        {{ ref.meta.tracked_changes.insertions }} insertions,
+        {{ ref.meta.tracked_changes.deletions }} deletions.
+        Converted with changes <strong>{{ ref.meta.change_mode }}ed</strong>.
+        {% set other = 'reject' if ref.meta.change_mode == 'accept' else 'accept' %}
+        <button class="btn btn-sm btn-outline"
+                onclick="authorReconvertReference('{{ ref.ref_id }}', '{{ other }}')">Re-convert with changes {{ other }}ed</button>
+        {% else %}
+        <span class="text-muted">No tracked changes.</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <details class="author-input-block" open>
+        <summary>Converted text ({{ '{:,}'.format(ref.meta.char_count) }} characters, read-only)</summary>
+        <pre class="author-input-text reference-preview">{{ ref.text }}</pre>
+    </details>
+    <p class="text-muted reference-upload-hint">To change the text, fix the original file and upload it again with the same name.</p>
+</div>
