@@ -83,10 +83,30 @@ class Reference:
 # ------------------------------------------------------------
 
 def safe_filename(filename: str) -> str:
-    """Basename only, with path separators and leading dots removed."""
-    name = re.split(r"[\\/]", filename or "")[-1].strip()
-    name = name.lstrip(".")
+    """Basename only, safe to create on Windows.
+
+    Drops any directory part, characters Windows forbids in names (``<>:"|?*`` and
+    control characters), leading dots, and trailing dots/spaces.
+    """
+    name = re.split(r"[\\/]", filename or "")[-1]
+    name = re.sub(r'[<>:"|?*\x00-\x1f]', "", name)
+    name = name.strip().lstrip(".").rstrip(". ")
     return name
+
+
+def _retry_on_lock(op, *args, attempts: int = 10, delay: float = 0.2):
+    """Run a filesystem operation, retrying while Windows reports the target in use.
+
+    Antivirus and the search indexer briefly hold files that were just written, which
+    makes a folder rename or delete fail with PermissionError for a moment.
+    """
+    for i in range(attempts):
+        try:
+            return op(*args)
+        except PermissionError:
+            if i == attempts - 1:
+                raise
+            time.sleep(delay)
 
 
 def make_ref_id(filename: str) -> str:
@@ -134,7 +154,7 @@ def _convert(folder: Path, original: Path, change_mode: str) -> dict:
     ext = original.suffix.lower()
     images_dir = folder / IMAGES_DIRNAME
     if images_dir.exists():
-        shutil.rmtree(images_dir)
+        _retry_on_lock(shutil.rmtree, images_dir)
 
     tracked = None
     image_count = 0
@@ -243,8 +263,8 @@ def add_reference(
             _write_meta(staging, meta)
 
             if final.exists():
-                shutil.rmtree(final)
-            staging.rename(final)
+                _retry_on_lock(shutil.rmtree, final)
+            _retry_on_lock(staging.rename, final)
         finally:
             if staging.exists():
                 shutil.rmtree(staging, ignore_errors=True)
@@ -298,7 +318,7 @@ def remove_reference(output_dir: Path, ref_id: str) -> None:
     folder = _ref_dir(output_dir, ref_id)
     if not folder.exists():
         raise ReferenceDocError(f"Unknown reference '{ref_id}'.")
-    shutil.rmtree(folder)
+    _retry_on_lock(shutil.rmtree, folder)
 
 
 def reconvert_reference(output_dir: Path, ref_id: str, change_mode: str) -> Reference:

@@ -71,6 +71,10 @@ template_docx = apps/author/references/2026 OLG Template.docx
 style_guide = apps/author/references/olg_style_guide.md
 research_engine = claude-code
 research_cc_model = claude-opus-4-7
+# Reference uploads (Author > References): warn in the Draft picker when the selected
+# uploads total more than this many characters; reject single files over this size.
+reference_warn_chars = 200000
+reference_max_mb = 25
 
 [qc_analyzer]
 extractor_model = claude-haiku-4-5-20251001

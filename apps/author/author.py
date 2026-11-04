@@ -275,12 +275,51 @@ def _run_research_api(
 # PHASE 2: DRAFT (Claude Code CLI)
 # ============================================================
 
+REFERENCE_FRAMING_FILE = PROMPTS_DIR / "author_reference_framing.md"
+
+
+def format_reference_section(references: list) -> str:
+    """The Author's Reference Documents section for the draft prompt.
+
+    Args:
+        references: ``reference_docs.Reference`` objects loaded with their text.
+
+    Returns:
+        The section text (heading, framing, one tagged block per document), or ""
+        when there are no references.
+    """
+    if not references:
+        return ""
+    from html import escape
+
+    framing = load_text(REFERENCE_FRAMING_FILE) or ""
+    parts = ["## Author's Reference Documents\n\n", framing.strip(), "\n\n"]
+    for ref in references:
+        description = ref.description or "(none given)"
+        parts.append(
+            f'<reference_document filename="{escape(ref.filename, quote=True)}">\n'
+            f"<author_description>\n{description}\n</author_description>\n"
+            f"<content>\n{ref.text.strip()}\n</content>\n"
+            f"</reference_document>\n\n"
+        )
+    return "".join(parts)
+
+
+def reference_meta(references: list) -> list[dict]:
+    """What a draft's meta.json records about the references it used."""
+    return [
+        {"ref_id": r.ref_id, "filename": r.filename, "description": r.description}
+        for r in references
+    ]
+
+
 def compose_draft_prompt(
     instructions: str,
     research_paths: list[Path],
     assignment: str,
     config: configparser.ConfigParser,
     draft_file: Path,
+    references: list | None = None,
 ) -> str:
     """Assemble the full draft prompt from parts.
 
@@ -290,6 +329,8 @@ def compose_draft_prompt(
         assignment: The assignment text.
         config: App configuration.
         draft_file: Where Claude should write the draft.
+        references: Uploaded reference documents to include (``reference_docs.Reference``
+            objects with text). The section is left out when empty.
 
     Returns:
         The complete assembled prompt string.
@@ -311,7 +352,7 @@ def compose_draft_prompt(
     else:
         combined_research = "\n\n---\n\n".join(research_texts)
 
-    # Assemble: instructions → assignment → research → style guide → output path
+    # Assemble: instructions → assignment → references → research → style guide → output path
     parts = []
 
     parts.append(instructions)
@@ -320,6 +361,11 @@ def compose_draft_prompt(
     parts.append("## Assignment\n\n")
     parts.append(assignment)
     parts.append("\n\n---\n\n")
+
+    reference_section = format_reference_section(references or [])
+    if reference_section:
+        parts.append(reference_section.rstrip())
+        parts.append("\n\n---\n\n")
 
     parts.append("## Research Findings\n\n")
     parts.append(combined_research)
@@ -339,6 +385,8 @@ def compose_draft_prompt(
         "a brief **Author's Notes** section with:\n"
         "- Any areas where you had to make judgment calls about structure or content\n"
         "- Any gaps you couldn't fill from available sources\n"
+        "- Any conflicts between the Author's Reference Documents and published "
+        "OLG, CMR, FNS or CFR content you saw (both sides, with sources)\n"
         "- Suggestions for the reviewer (content that should be verified, links to add, etc.)\n"
         "- Any system improvement suggestions (see the prompt above)\n"
     )
@@ -354,6 +402,7 @@ def launch_draft(
     name: str,
     session_id: str,
     based_on: list[str],
+    references: list | None = None,
 ) -> None:
     """Save draft metadata and launch Claude Code in a terminal window.
 
@@ -365,6 +414,8 @@ def launch_draft(
         name: Assignment name (for window title).
         session_id: Pre-generated session UUID.
         based_on: List of research version labels (e.g. ["research/001", "research/002"]).
+        references: Reference documents included in the prompt; recorded in meta.json
+            with their descriptions as used.
     """
     import subprocess
 
@@ -381,6 +432,7 @@ def launch_draft(
     meta = {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "based_on": based_on,
+        "references": reference_meta(references or []),
         "session_id": session_id,
     }
     (draft_dir / "meta.json").write_text(
@@ -393,8 +445,9 @@ def launch_draft(
     prompt_path = str(prompt_file.resolve())
 
     initial_msg = (
-        f"Your full assignment is in {prompt_path} — it has the research findings, "
-        f"style guide, and output instructions. Please read it and take it from there."
+        f"Your full assignment is in {prompt_path} - it has the assignment, any reference "
+        f"documents, research findings, style guide, and output instructions. The file is "
+        f"long: read all of it, in several reads if needed, before you start drafting."
     )
 
     bat_file = DATA_DIR / ".run_draft.bat"

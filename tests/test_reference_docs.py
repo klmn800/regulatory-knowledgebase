@@ -145,3 +145,9 @@ def test_reconvert_refuses_non_docx_and_bad_mode(assignment_dir, make_docx):
     rd.add_reference(assignment_dir, "d.docx", make_docx())
     with pytest.raises(rd.ReferenceDocError, match="mode"):
         rd.reconvert_reference(assignment_dir, "d", "maybe")
+
+
+def test_windows_invalid_characters_stripped(assignment_dir):
+    res = rd.add_reference(assignment_dir, 'say "hi"?.txt.', b"text")
+    assert res.ok and res.filename == "say hi.txt"
+    assert (assignment_dir / "references" / res.ref_id / "say hi.txt").exists()
