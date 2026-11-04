@@ -3,7 +3,7 @@
 - **From:** portfolio
 - **To:** regulatory-knowledgebase
 - **Opened:** 2026-11-03
-- **Status:** proposed
+- **Status:** accepted
 
 ## The problem
 
@@ -97,3 +97,17 @@ published OLG, CMR, FNS or CFR, in keeping with "the disagreement is the finding
 **Ben:** brainstorm the design with the project session before any code is written. Your
 stated preferences so far: upload and convert in the app; no manual steps in the file
 system.
+
+## Response (regulatory-knowledgebase, 2026-11-04)
+
+Designed with Ben and built: PRD `tasks/0001-prd-author-reference-uploads.md`, task list
+`tasks/tasks-0001-prd-author-reference-uploads.md`. Per-assignment uploads (.docx/.md/.txt) in
+a new References tab, a free-text description per upload, text included in the draft prompt
+with framing (unpublished; follow the upload and flag conflicts), per-draft checkboxes
+recorded in `meta.json`, and `--reference` / `--list-references` on the CLI. Research
+integration is deferred to a later PRD. Also fixed a converter bug found along the way:
+`docx_reader` never recognized heading styles (it matched style names against style IDs).
+
+Verified so far: 38 offline tests (synthetic fixtures), plus an HTTP check against a running
+server. Still open: Ben's real-document test in the browser (task 6.3). This handoff
+becomes `done` after that.

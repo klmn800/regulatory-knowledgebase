@@ -71,5 +71,5 @@
   - [x] 5.4 Tests for argument handling of `--reference` / `--list-references` (no terminal launch).
 - [ ] 6.0 Documentation and end-to-end check in the browser
   - [x] 6.1 Update `CLAUDE.md` (Author section, project structure, commands, new test suite) and `README.md` (Author usage; tests run offline and free).
-  - [ ] 6.2 Start the web UI and exercise the References tab and draft picker with synthetic files over HTTP (no draft launch).
+  - [x] 6.2 Start the web UI and exercise the References tab and draft picker with synthetic files over HTTP (no draft launch).
   - [ ] 6.3 **GATE (Act):** Ben uploads a real document in the browser, writes a description, launches a draft, and checks the draft and its Author's Notes. Ben runs this himself: it uses real agency material and opens a Claude Code session.
