@@ -26,8 +26,11 @@ SECTIONS = {
                                "url": "https://example.test/beta.htm", "chunk_n": 0}),
 }
 PAGES = {
-    "page__alpha": ("Alpha page synthetic text.", {"title": "Alpha", "program": "SNAP"}),
-    "page__beta": ("Beta page synthetic text.", {"title": "Beta", "program": "TAFDC"}),
+    "page__alpha": ("# Alpha\n\nSynthetic text about income rules.\n\n"
+                    "Synthetic text about form XY-9.",
+                    {"title": "Alpha", "program": "SNAP"}),
+    "page__beta": ("# Beta\n\nSynthetic text about resources.",
+                   {"title": "Beta", "program": "TAFDC"}),
 }
 
 
@@ -333,3 +336,85 @@ def test_query_debug_prints_traceback(env, capsys, monkeypatch):
     assert code == 5
     assert "Traceback" in err
     assert err.rstrip().splitlines()[-1].startswith("query.py: error [internal]")
+
+
+# ---------------------------------------------------------------- --exact
+
+def test_exact_json(env, capsys):
+    code, data, err = run_json(capsys, "--exact", "Synthetic TEXT")
+    assert code == 0 and err == ""
+    assert data["command"] == "exact" and data["contract_version"] == "1.0"
+    assert data["phrase"] == "Synthetic TEXT"
+    assert data["normalized_phrase"] == "synthetic text"
+    assert data["total_matches"] == 3 and data["total_results"] == 3
+    assert data["truncated"] is False
+    assert data["results"][0]["parent_id"] == "page__alpha"
+    assert data["results"][0]["id"] == "sec__SNAP__Alpha__000"
+    assert "index" in data
+
+
+def test_exact_needs_no_api_key_or_config(env, capsys):
+    (env / "config.ini").write_text(
+        f"[chromadb]\npersist_dir = {(env / 'chroma').as_posix()}\n", encoding="utf-8")
+    assert run_json(capsys, "--exact", "form xy-9")[0] == 0
+    (env / "config.ini").unlink()
+    (env / "index" / "chroma_db").mkdir(parents=True)   # the default persist_dir
+    code, data, _ = run_json(capsys, "--exact", "form xy-9")
+    assert code == 0 and data["result_count"] == 1
+
+
+def test_exact_never_calls_voyage(env, capsys, monkeypatch):
+    def boom(*a, **k):
+        raise AssertionError("Voyage called")
+    monkeypatch.setattr(q, "embed_query", boom)
+    monkeypatch.setattr(q.voyageai, "Client", boom)
+    assert run_json(capsys, "--exact", "income")[0] == 0
+
+
+def test_exact_top_and_program_filter(env, capsys):
+    _, data, _ = run_json(capsys, "--exact", "synthetic", "--top", "1")
+    assert data["result_count"] == 1 and data["total_results"] == 3
+    assert data["truncated"] is True
+    _, data, _ = run_json(capsys, "--exact", "synthetic", "--program", "tafdc")
+    assert data["filters"] == {"program": "TAFDC"}
+    assert [r["id"] for r in data["results"]] == ["sec__TAFDC__Beta__000"]
+
+
+def test_exact_context(env, capsys):
+    _, data, _ = run_json(capsys, "--exact", "resources", "--context")
+    assert data["results"][0]["parent_context"]["metadata"]["title"] == "Beta"
+
+
+def test_exact_guardrail(env, capsys, monkeypatch):
+    monkeypatch.setattr(q, "OLG_PROGRAMS_WHITELIST", ["SNAP"])
+    _, data, _ = run_json(capsys, "--exact", "synthetic")
+    assert {r["metadata"]["program"] for r in data["results"]} == {"SNAP"}
+    code, data, _ = run_json(capsys, "--exact", "synthetic", "--program", "TAFDC")
+    assert code == 0 and data["result_count"] == 0
+    assert data["filters"] == {"olg_programs_guardrail": "no_match"}
+
+
+def test_exact_no_match_is_success(env, capsys):
+    code, data, _ = run_json(capsys, "--exact", "nothing like this")
+    assert code == 0 and data["result_count"] == 0
+
+
+@pytest.mark.parametrize("argv", [
+    ["--exact", "  "],
+    ["--exact", "x", "--mode", "dense"],
+    ["--exact", "x", "--threshold", "0.5"],
+    ["--exact", "x", "--collection", "sections"],
+    ["--exact", "x", "income"],
+    ["--exact", "x", "--program", "NOPE"],
+])
+def test_exact_usage_errors(env, capsys, argv):
+    code, data, err = run_json(capsys, *argv)
+    assert code == 2 and data["command"] == "exact"
+    assert err.startswith("query.py: error [usage]: ")
+
+
+def test_exact_text_output(env, capsys):
+    code, out, _ = run(capsys, "--exact", "form XY-9")
+    assert code == 0
+    assert 'Found 1 results (1 matches) for exact "form XY-9"' in out
+    assert "Chunk:   sec__SNAP__Alpha__001" in out

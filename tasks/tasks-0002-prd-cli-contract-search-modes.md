@@ -69,20 +69,29 @@
     - search, chunk and list JSON carrying `contract_version`, `command` and `index`;
     - default search JSON unchanged apart from the added fields.
 - [ ] 4.0 Add `--exact` phrase search (`rag/exact_search.py`) and wire it into the CLI
-  - [ ] 4.1 `normalize_with_map(text)`: applies the PRD 4.2.4 rules and returns the normalized string plus a map from each normalized index to its original index. `normalize(text)` is the plain form.
-  - [ ] 4.2 `find_matches(phrase, docs)`: non-overlapping matches in each broad document, as normalized offsets.
-  - [ ] 4.3 `attribute(parent_text_match, chunks)`: builds the concatenated stream of chunk bodies (prefix line removed) with per-chunk spans. Each matched phrase occurrence is aligned to a stream occurrence in order. The result is the start chunk plus every chunk spanned, or the match is unaligned.
-  - [ ] 4.4 `exact_search(phrase, broad_docs, chunk_loader, filter_fn, top)`: groups results per chunk plus unaligned groups, adds snippets, sets `parent_id`, applies the program filter, orders per PRD 4.2.8 and computes the totals and `truncated`.
-  - [ ] 4.5 The ChromaDB loader: reads the broad collection's documents and metadata, and loads a parent's section chunks lazily by parent-id metadata. It needs no Voyage client.
-  - [ ] 4.6 Wire it into `query.py`:
+  - [x] 4.1 `normalize_with_map(text)`: applies the PRD 4.2.4 rules and returns the normalized string plus a map from each normalized index to its original index. `normalize(text)` is the plain form.
+  - [x] 4.2 `find_matches(phrase, docs)`: non-overlapping matches in each broad document, as normalized offsets.
+  - [x] 4.3 `attribute(parent_text_match, chunks)`: builds the concatenated stream of chunk bodies (prefix line removed) with per-chunk spans. Each matched phrase occurrence is aligned to a stream occurrence in order. The result is the start chunk plus every chunk spanned, or the match is unaligned.
+  - [x] 4.4 `exact_search(phrase, broad_docs, chunk_loader, filter_fn, top)`: groups results per chunk plus unaligned groups, adds snippets, sets `parent_id`, applies the program filter, orders per PRD 4.2.8 and computes the totals and `truncated`.
+  - [x] 4.5 The ChromaDB loader: reads the broad collection's documents and metadata, and loads a parent's section chunks lazily by parent-id metadata. It needs no Voyage client.
+  - [x] 4.6 Wire it into `query.py`:
     - `--exact` with the flag checks from PRD 4.2.11;
     - program filters and the OLG_PROGRAMS whitelist;
     - `--context`;
     - JSON (`command: "exact"`);
     - a text formatter.
-  - [ ] 4.7 Write `tests/test_exact_search.py`: each normalization rule, a phrase straddling a chunk boundary, a heading-crossing phrase, an unaligned fallback, ordering, the `--top` cap and totals, the program filter, an empty phrase â†’ usage error, and no match â†’ `result_count: 0` with exit 0.
-  - [ ] 4.8 On the real index, measure the attribution rate on a sample of about 200 phrases taken from the broad text across the four sources, and record it in this task list.
-  - [ ] 4.9 **GATE (plan-changing test):** stop only if the attribution rate is under 95% for any source. In that case show Ben the failing patterns and propose either better alignment or searching the chunk text instead. At 95% or above, carry on without stopping.
+  - [x] 4.7 Write `tests/test_exact_search.py`: each normalization rule, a phrase straddling a chunk boundary, a heading-crossing phrase, an unaligned fallback, ordering, the `--top` cap and totals, the program filter, an empty phrase â†’ usage error, and no match â†’ `result_count: 0` with exit 0.
+  - [x] 4.8 On the real index, measure the attribution rate on a sample of about 200 phrases taken from the broad text across the four sources, and record it in this task list.
+    - **Result (2026-11-21):** 100 random 6-word phrases per source (400 in all, seed 20261121), each taken from the normalized broad text and searched in its own parent document. Script: scratchpad `measure_attr2.py` (not committed). Unaligned matches are split by cause: (a) the text is in no section chunk; (b) the phrase crosses a heading that sits only in the chunk prefix; (c) the text is in the chunk bodies but alignment missed it.
+
+      | Source | Aligned | (a) not in chunks | (b) heading | (c) missed | Raw rate | Alignment rate |
+      |--------|---------|-------------------|-------------|------------|----------|----------------|
+      | OLG | 97 | 3 | 7 | 0 | 90.7% | 100% |
+      | FNS | 152 | 2 | 5 | 0 | 95.6% | 100% |
+      | CMR | 112 | 5 | 3 | 0 | 93.3% | 100% |
+      | CFR | 112 | 28 | 2 | 0 | 78.9% | 100% |
+
+      The first run used in-order alignment and missed 9 matches (FNS repeats example boxes in a different order in the two tiers). The alignment is now best-first and not forced into order. (a) is mostly by design: CFR's 272.1(g) amendment history and 271.8 are excluded from the section tier (`rag/cfr/chunker.py` `SUBSECTION_EXCLUDES`). CMR 364's benefit tables are laid out differently in the two tiers. All unaligned matches are still reported against the parent document.  - [ ] 4.9 **GATE (plan-changing test):** stop only if the attribution rate is under 95% for any source. In that case show Ben the failing patterns and propose either better alignment or searching the chunk text instead. At 95% or above, carry on without stopping.
 - [ ] 5.0 Write `docs/cli_contract.md`, update CLAUDE.md and README, and write the handoff response
   - [ ] 5.1 Write `docs/cli_contract.md` covering every item in PRD 4.6.
   - [ ] 5.2 Update the `query.py` module docstring and `--help` epilog, the CLAUDE.md query commands and module table (`exact_search`, `build_record`, `cli_errors`), and the README.

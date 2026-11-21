@@ -74,6 +74,13 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from rag.build_record import format_index_info_text, read_index_info  # noqa: E402
 from rag.cli_errors import CONTRACT_VERSION, CliError, emit_error  # noqa: E402
+from rag.exact_search import (  # noqa: E402
+    EmptyPhraseError,
+    exact_search,
+    load_broad_docs,
+    make_chunk_loader,
+    normalize as normalize_phrase,
+)
 
 # Display defaults
 DEFAULT_TOP_N = 5
@@ -1559,11 +1566,20 @@ unavailable, 4 Voyage API failure, 5 internal error. See docs/cli_contract.md.
         "--url",
         help="Retrieve all chunks of an OLG page by URL (full-page fetch).",
     )
+    parser.add_argument(
+        "--exact", metavar="PHRASE",
+        help="Literal phrase search (no embeddings, no API key). Case, quote, "
+             "dash and whitespace variants are ignored; a plain substring match. "
+             "Returns every matching chunk unless --top is given. Works with "
+             "--programs/--program/--exclude-programs, --context and --json; "
+             "not with --mode, --threshold or --collection.",
+    )
     return parser
 
 
 # Lookup commands, in the order used to guess the command from raw argv.
 _COMMAND_FLAGS = (
+    ("--exact", "exact"),
     ("--chunk-id", "chunk"),
     ("--url", "url"),
     ("--list-programs", "list"),
@@ -1601,6 +1617,8 @@ def _resolve_command(args: argparse.Namespace) -> str:
     given = []
     if args.query is not None:
         given.append(("search", "a search query"))
+    if args.exact is not None:
+        given.append(("exact", "--exact"))
     if args.chunk_id:
         given.append(("chunk", "--chunk-id"))
     if args.url:
@@ -1609,13 +1627,22 @@ def _resolve_command(args: argparse.Namespace) -> str:
         given.append(("list", "--list-programs"))
 
     if not given:
-        raise CliError("usage", "a search query is required "
-                                "(or use --list-programs, --chunk-id or --url)")
+        raise CliError("usage", "a search query is required (or use --exact, "
+                                "--list-programs, --chunk-id or --url)")
     if len(given) > 1:
-        raise CliError("usage", "use only one of a search query, --chunk-id, "
-                                "--url or --list-programs (got "
+        raise CliError("usage", "use only one of a search query, --exact, "
+                                "--chunk-id, --url or --list-programs (got "
                                 + " and ".join(label for _, label in given) + ")")
     command = given[0][0]
+
+    if command == "exact":
+        if not normalize_phrase(args.exact):
+            raise CliError("usage", "the --exact phrase is empty")
+        for flag, value in (("--mode", args.mode), ("--threshold", args.threshold),
+                            ("--collection", args.collection)):
+            if value is not None:
+                raise CliError("usage", f"{flag} has no meaning for --exact "
+                                        "(a literal search over the whole source)")
 
     if command == "url" and args.source != "olg":
         raise CliError("usage", "--url is OLG-only (got --source "
@@ -1640,11 +1667,18 @@ def _resolve_command(args: argparse.Namespace) -> str:
     return command
 
 
-def _cli_config(require_api_key: bool) -> configparser.ConfigParser:
-    """Read config.ini for the CLI, raising `unavailable` instead of exiting."""
-    if not CONFIG_FILE.exists():
-        raise CliError("unavailable", f"config file not found: {CONFIG_FILE}")
+def _cli_config(require_api_key: bool,
+                require_file: bool = True) -> configparser.ConfigParser:
+    """Read config.ini for the CLI, raising `unavailable` instead of exiting.
+
+    Without `require_file`, a missing config.ini gives an empty config, so
+    the ChromaDB settings fall back to their defaults.
+    """
     config = configparser.ConfigParser()
+    if not CONFIG_FILE.exists():
+        if not require_file:
+            return config
+        raise CliError("unavailable", f"config file not found: {CONFIG_FILE}")
     config.read(CONFIG_FILE, encoding="utf-8")
     if require_api_key and not config.get("api", "voyage_api_key",
                                           fallback="").strip():
@@ -1694,6 +1728,9 @@ def _preflight(args: argparse.Namespace, command: str,
     chroma = _open_chroma(config)
     _get_cli_collection(chroma, config, args.source, "granular")
 
+    if command == "exact":
+        _get_cli_collection(chroma, config, args.source, "broad")
+
     if command == "search":
         source_config = _resolve_source_config(args.source)
         collection = args.collection or DEFAULT_COLLECTION
@@ -1714,7 +1751,7 @@ def _classify_exception(exc: BaseException) -> CliError:
     """Map an exception raised during a run onto a contract error kind."""
     if isinstance(exc, CliError):
         return exc
-    if isinstance(exc, UnknownProgramError):
+    if isinstance(exc, (UnknownProgramError, EmptyPhraseError)):
         return CliError("usage", str(exc))
     if isinstance(exc, SparseIndexMissingError):
         return CliError("unavailable", str(exc))
@@ -1732,9 +1769,143 @@ def _print_json(payload: dict) -> None:
     print(json.dumps(payload, indent=2, ensure_ascii=False))
 
 
+GUARDRAIL_NO_MATCH_TEXT = (
+    "No matching results — agent filter is outside the OLG_PROGRAMS whitelist."
+)
+
+
+def _program_filters(args: argparse.Namespace):
+    """Parse the program flags and apply the OLG_PROGRAMS guardrail.
+
+    Returns ``(programs, program, exclude_programs, blocked)``. `blocked`
+    is True when the guardrail intersection is empty, so the caller must
+    return zero results rather than run unfiltered.
+    """
+    programs = None
+    if args.programs:
+        programs = [p.strip() for p in args.programs.split(",") if p.strip()]
+    exclude = None
+    if args.exclude_programs:
+        exclude = [p.strip() for p in args.exclude_programs.split(",")]
+    program = args.program
+
+    # OLG_PROGRAMS guardrail (see module-level constant): intersect the
+    # agent-passed filter with the orchestrator's whitelist so the
+    # agent can narrow but never broaden.
+    if OLG_PROGRAMS_WHITELIST is not None and args.source == "olg":
+        whitelist = set(OLG_PROGRAMS_WHITELIST)
+        if programs:
+            programs = [p for p in programs if p in whitelist]
+        elif program:
+            programs = [program] if program in whitelist else []
+            program = None
+        else:
+            base = whitelist - set(exclude or [])
+            programs = sorted(base)
+            exclude = None
+        return programs, program, exclude, not programs
+    return programs, program, exclude, False
+
+
+def _exact_filter(source: str, granular, programs, program, exclude):
+    """The program filter for exact search, resolved like search's.
+
+    Returns ``(filter_fn or None, filters dict for the response)``. Sources
+    without program metadata ignore the flags, as search does.
+    """
+    if not _resolve_source_config(source)["has_program_filter"]:
+        return None, {}
+    if programs:
+        wanted = {_resolve_program_name(p, granular) for p in programs}
+        return (lambda m: m.get("program") in wanted), {"programs": sorted(wanted)}
+    if program:
+        one = _resolve_program_name(program, granular)
+        return (lambda m: m.get("program") == one), {"program": one}
+    if exclude:
+        dropped = [_resolve_program_name(p, granular) for p in exclude]
+        dropped_set = set(dropped)
+        return (lambda m: m.get("program") not in dropped_set), {"exclude_programs": dropped}
+    return None, {}
+
+
+def format_exact_text(response: dict, show_full: bool = False) -> str:
+    """Format an exact-search response for the terminal."""
+    label = _resolve_source_config(response["source"])["source_label"]
+    filters = response["filters"]
+    filter_str = ""
+    if filters:
+        filter_str = "  (filtered: " + ", ".join(f"{k}={v}" for k, v in filters.items()) + ")"
+    lines = [f'Found {response["total_results"]} results '
+             f'({response["total_matches"]} matches) for exact '
+             f'"{response["phrase"]}" in {label}{filter_str}']
+    if response["truncated"]:
+        lines.append(f"Showing the first {response['result_count']}.")
+    lines.append("")
+    if not response["results"]:
+        lines.append("No literal matches.")
+        return "\n".join(lines)
+
+    for r in response["results"]:
+        meta = r["metadata"] or {}
+        where = (meta.get("breadcrumb")
+                 or " ".join(str(x) for x in (meta.get("section_number", ""),
+                                              meta.get("section_title", "")) if x)
+                 or meta.get("page_title") or meta.get("title") or "")
+        plural = "es" if r["match_count"] != 1 else ""
+        lines.append("=" * 60)
+        lines.append(f"[{r['rank']}]  {r['match_count']} match{plural}  |  {where}")
+        if r["id"]:
+            lines.append(f"     Chunk:   {r['id']}")
+            if len(r["chunk_ids"]) > 1:
+                lines.append(f"     Spans:   {', '.join(r['chunk_ids'])}")
+        else:
+            lines.append(f"     Chunk:   (not aligned to a chunk) parent {r['parent_id']}")
+        if meta.get("url"):
+            lines.append(f"     URL:     {meta['url']}")
+        lines.append("")
+        for snip in r["snippets"]:
+            lines.append(textwrap.fill(snip, width=70, initial_indent="     > ",
+                                       subsequent_indent="       "))
+        if show_full:
+            lines.append("")
+            lines.append(textwrap.fill(r["text"], width=70, initial_indent="     ",
+                                       subsequent_indent="     "))
+        lines.append("")
+    lines.append("=" * 60)
+    return "\n".join(lines)
+
+
+def _run_exact(args, chroma, config, programs, program, exclude, blocked) -> None:
+    """Run ``--exact`` and print the response."""
+    source = args.source
+    if blocked:
+        filters = {"olg_programs_guardrail": "no_match"}
+        found = {"normalized_phrase": normalize_phrase(args.exact),
+                 "result_count": 0, "total_results": 0, "total_matches": 0,
+                 "truncated": False, "results": []}
+    else:
+        broad = _get_cli_collection(chroma, config, source, "broad")
+        granular = _get_cli_collection(chroma, config, source, "granular")
+        filter_fn, filters = _exact_filter(source, granular, programs, program, exclude)
+        found = exact_search(
+            args.exact,
+            load_broad_docs(broad),
+            make_chunk_loader(granular, _resolve_source_config(source)["parent_id_field"]),
+            filter_fn=filter_fn,
+            top=args.top,
+            include_context=args.context,
+        )
+    response = {"phrase": args.exact, "source": source, "filters": filters, **found}
+    if args.output_json:
+        _print_json(with_envelope(response, "exact", source))
+    else:
+        print(format_exact_text(response, show_full=args.full))
+
+
 def _run_command(args: argparse.Namespace, command: str) -> None:
     """Run a parsed, validated command and print its response."""
-    config = _cli_config(require_api_key=command != "list")
+    config = _cli_config(require_api_key=command not in ("list", "exact"),
+                         require_file=command != "exact")
     chroma = _preflight(args, command, config)
 
     # --- URL → full page mode (OLG-only) ---
@@ -1782,6 +1953,13 @@ def _run_command(args: argparse.Namespace, command: str) -> None:
             print(INDEX_DATES_NOTE)
         return
 
+    programs, program, exclude, blocked = _program_filters(args)
+
+    # --- Exact phrase mode ---
+    if command == "exact":
+        _run_exact(args, chroma, config, programs, program, exclude, blocked)
+        return
+
     # --- Search mode ---
     collection = args.collection or DEFAULT_COLLECTION
     mode = args.mode or DEFAULT_MODE
@@ -1789,49 +1967,23 @@ def _run_command(args: argparse.Namespace, command: str) -> None:
     threshold = (args.threshold if args.threshold is not None
                  else DEFAULT_SIMILARITY_THRESHOLD)
 
-    programs = None
-    if args.programs:
-        programs = [p.strip() for p in args.programs.split(",") if p.strip()]
-    exclude = None
-    if args.exclude_programs:
-        exclude = [p.strip() for p in args.exclude_programs.split(",")]
-    program = args.program
-
-    # OLG_PROGRAMS guardrail (see module-level constant): intersect the
-    # agent-passed filter with the orchestrator's whitelist so the
-    # agent can narrow but never broaden.
-    if OLG_PROGRAMS_WHITELIST is not None and args.source == "olg":
-        whitelist = set(OLG_PROGRAMS_WHITELIST)
-        if programs:
-            programs = [p for p in programs if p in whitelist]
-        elif program:
-            programs = [program] if program in whitelist else []
-            program = None
+    # Empty guardrail intersection ≠ "no filter at all": short-circuit to a
+    # zero-results response (don't fall through to an unfiltered search).
+    if blocked:
+        empty = {
+            "query": args.query,
+            "source": "olg",
+            "collection": collection,
+            "filters": {"olg_programs_guardrail": "no_match"},
+            "mode": mode,
+            "result_count": 0,
+            "results": [],
+        }
+        if args.output_json:
+            _print_json(with_envelope(empty, "search", "olg"))
         else:
-            base = whitelist - set(exclude or [])
-            programs = sorted(base)
-            exclude = None
-        # Empty intersection ≠ "no filter at all". The agent asked for
-        # something outside the whitelist — short-circuit to a zero-
-        # results response (don't fall through to an unfiltered search).
-        if not programs:
-            empty = {
-                "query": args.query,
-                "source": "olg",
-                "collection": collection,
-                "filters": {"olg_programs_guardrail": "no_match"},
-                "mode": mode,
-                "result_count": 0,
-                "results": [],
-            }
-            if args.output_json:
-                _print_json(with_envelope(empty, "search", "olg"))
-            else:
-                print(
-                    "No matching results — agent filter is outside the "
-                    "OLG_PROGRAMS whitelist."
-                )
-            return
+            print(GUARDRAIL_NO_MATCH_TEXT)
+        return
 
     run_query(
         query=args.query,
