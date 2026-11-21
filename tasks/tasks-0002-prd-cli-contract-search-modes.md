@@ -109,10 +109,18 @@
   - [x] 5.2 Update the `query.py` module docstring and `--help` epilog, the CLAUDE.md query commands and module table (`exact_search`, `build_record`, `cli_errors`), and the README.
   - [x] 5.3 Read the portfolio standard, section 4. Set the handoff status to `accepted` and write the `## Response`, covering PRD 4.7 with no agency content.
 - [ ] 6.0 Verify on the real index
-  - [ ] 6.1 Run sparse and hybrid OLG queries and confirm both return results.
-  - [ ] 6.2 Run the dense baseline queries again and diff against 1.1: results must be identical apart from the added fields.
-  - [ ] 6.3 Run `--exact` on a known phrase, on a phrase that crosses a chunk boundary, and on a nonsense phrase (exit 0, `result_count: 0`), for each source.
-  - [ ] 6.4 Check that `--list-programs` (text and JSON) and `--json` show the index dates, and that a temporarily renamed record gives `"unknown"`.
-  - [ ] 6.5 Check that each error kind gives the right exit code and the stderr line: a bad program, broad + sparse, a missing collection via a bad config path, and a bad Voyage key via an env override if possible.
-  - [ ] 6.6 Run `py -m pytest tests`.
+  - [x] 6.1 Run sparse and hybrid OLG queries and confirm both return results.
+  - [x] 6.2 Run the dense baseline queries again and diff against 1.1: results must be identical apart from the added fields.
+  - [x] 6.3 Run `--exact` on a known phrase, on a phrase that crosses a chunk boundary, and on a nonsense phrase (exit 0, `result_count: 0`), for each source.
+  - [x] 6.4 Check that `--list-programs` (text and JSON) and `--json` show the index dates, and that a temporarily renamed record gives `"unknown"`.
+  - [x] 6.5 Check that each error kind gives the right exit code and the stderr line: a bad program, broad + sparse, a missing collection via a bad config path, and a bad Voyage key via an env override if possible.
+  - [x] 6.6 Run `py -m pytest tests`.
+    - **Verification results (2026-11-21), 35/35 checks passed.** Script: scratchpad `verify_task6.py` (not committed).
+      - 6.1: OLG `--mode sparse` and `--mode hybrid` each return 5 results.
+      - 6.2: the six dense baseline captures are identical apart from `contract_version`, `command` and `index`.
+      - 6.3: for every source, a known phrase is found. A phrase made of the end of one chunk and the start of the next is found once and lists both chunks in `chunk_ids`. A nonsense phrase gives `result_count: 0` with exit 0.
+      - 6.4: `--list-programs` text and JSON show the seeded dates for all four sources, and so does a search's `index` block. With `index/olg/build_record.json` renamed, every date reads `"unknown"` and the text says `[build record missing]`. The file was restored.
+      - 6.5: bad program → 2 `usage`; broad + sparse → 2 `usage`; a config pointing at a missing ChromaDB directory → 3 `unavailable`; a missing collection → 3 `unavailable`; an invalid Voyage key → 4 `api`. Each wrote exactly one `query.py: error [kind]: ...` line to stderr, ignoring the third-party torch note.
+      - 6.6: `py -m pytest tests`: 149 passed.
+      - Found and fixed during task 5–6: text output crashed for sparse results and BM25-only hybrid hits (`score: null`), and `--json` output wasn't UTF-8 when piped.
   - [ ] 6.7 **GATE (see):** Ben reviews the verification results. If he approves, set the handoff status to `done` and commit.
