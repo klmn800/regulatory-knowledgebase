@@ -56,7 +56,9 @@ from pathlib import Path
 
 import chromadb
 from chromadb.config import Settings as ChromaSettings
+from chromadb.errors import NotFoundError as ChromaNotFoundError
 import voyageai
+from voyageai.error import VoyageError
 
 
 # ============================================================
@@ -65,6 +67,13 @@ import voyageai
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_FILE = PROJECT_ROOT / "config.ini"
+
+# Run as a script (`python rag/query.py`), only rag/ is on sys.path.
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+
+from rag.build_record import format_index_info_text, read_index_info  # noqa: E402
+from rag.cli_errors import CONTRACT_VERSION, CliError, emit_error  # noqa: E402
 
 # Display defaults
 DEFAULT_TOP_N = 5
@@ -83,6 +92,15 @@ HYBRID_SPARSE_WEIGHT = 0.4       # RRF weight for sparse — dense is already
                                  # Sparse needs to be a "rescue" channel for
                                  # adversarial cases, not equal voice.
 VALID_RETRIEVAL_MODES = ("dense", "sparse", "hybrid")
+DEFAULT_MODE = "dense"
+
+
+class UnknownProgramError(ValueError):
+    """A program name that matches no program in the collection."""
+
+
+class SparseIndexMissingError(FileNotFoundError):
+    """Sparse or hybrid search was asked for, but the source has no BM25 index."""
 
 # Orchestrator-set OLG program whitelist (NOT user config). When this
 # script is run as a subprocess from inside an agent loop (QC Claude Code
@@ -206,8 +224,9 @@ def embed_query(query_text: str, client: voyageai.Client,
             )
             if is_rate_limit and attempt < max_retries - 1:
                 wait = 25 * (attempt + 1)
+                # stderr: stdout carries only the response (CLI contract).
                 print(f"Rate limited — waiting {wait}s before retry...",
-                      flush=True)
+                      file=sys.stderr, flush=True)
                 time.sleep(wait)
                 continue
             raise
@@ -695,14 +714,25 @@ def search_with_client(
         threshold: Minimum similarity score (0-1). 0 = no threshold.
         include_context: If True and searching sections, include the
             full parent document text for each result.
-        mode: Retrieval mode — "dense", "sparse", or "hybrid". Default
-            "hybrid" (dense + BM25 fused via RRF). Sparse-only modes
-            require the granular tier; broad-tier searches automatically
-            downgrade to dense.
+        mode: Retrieval mode — "dense" (default), "sparse" (BM25 only) or
+            "hybrid" (dense + BM25 fused via weighted RRF). Dense is the
+            default because hybrid tested worse on the retrieval benchmark:
+            top-1 relevance fell for OLG (62% → 46%) and CMR (65% → 57%)
+            with no gain in useful-in-top-5. Use sparse or hybrid for
+            literal tokens (form numbers, section numbers, acronyms).
+            The sparse index covers the section tier only: a broad-tier
+            search (pages / chapters / parts) silently runs dense, and the
+            response's ``mode`` reports ``"dense"``. (The CLI rejects that
+            combination instead.)
 
     Returns:
-        Dict with query, source, collection, filters, mode,
-        result_count, results.
+        Dict with query, source, collection, filters, mode (the mode that
+        actually ran), result_count, results.
+
+    Raises:
+        SparseIndexMissingError: mode is sparse or hybrid on the section
+            tier and ``index/sparse/{source}.pkl`` doesn't exist.
+        UnknownProgramError: a program name matches no stored program.
     """
     source = clients["source"]
     source_config = clients["source_config"]
@@ -730,6 +760,16 @@ def search_with_client(
     # Sparse index is granular-tier only. Downgrade quietly if needed.
     if not is_granular and mode != "dense":
         mode = "dense"
+
+    # Fail loudly rather than return empty (sparse) or dense-only (hybrid)
+    # results that look like a real answer.
+    if mode != "dense" and not _load_sparse_index(clients):
+        from rag.sparse_index import index_path_for
+        raise SparseIndexMissingError(
+            f"No sparse index for source {source!r} at "
+            f"{index_path_for(PROJECT_ROOT, source)}; "
+            f"{mode} search needs it."
+        )
 
     # Handle program filter — sources without program metadata skip it entirely
     resolved_programs = None
@@ -917,8 +957,9 @@ def _resolve_program_name(
         return canonical
 
     # No exact match — caller decides how to handle. Raise so the bug
-    # surfaces instead of silently dropping the filter.
-    raise ValueError(
+    # surfaces instead of silently dropping the filter. (UnknownProgramError
+    # is a ValueError, so existing `except ValueError` callers still work.)
+    raise UnknownProgramError(
         f"Program {user_input!r} not found. "
         f"Available programs: {', '.join(programs)}"
     )
@@ -1215,16 +1256,22 @@ def format_chunk_lookup_text(
     return "\n".join(lines)
 
 
-def format_chunk_lookup_json(chunks: list[dict], target_id: str,
-                             source: str) -> str:
-    """Format chunk lookup results as JSON."""
-    response = {
+def chunk_lookup_response(chunks: list[dict], target_id: str,
+                          source: str) -> dict:
+    """The chunk / URL lookup response as a dict (before the JSON envelope)."""
+    return {
         "target_chunk_id": target_id,
         "source": source,
         "chunk_count": len(chunks),
         "chunks": chunks,
     }
-    return json.dumps(response, indent=2, ensure_ascii=False)
+
+
+def format_chunk_lookup_json(chunks: list[dict], target_id: str,
+                             source: str) -> str:
+    """Format chunk lookup results as JSON."""
+    return json.dumps(chunk_lookup_response(chunks, target_id, source),
+                      indent=2, ensure_ascii=False)
 
 
 def format_result_json(response: dict) -> str:
@@ -1232,106 +1279,124 @@ def format_result_json(response: dict) -> str:
     return json.dumps(response, indent=2, ensure_ascii=False)
 
 
+def index_info(source: str) -> dict:
+    """The ``index`` block (build record summary) for `source`. Never raises."""
+    return read_index_info(source, index_root=PROJECT_ROOT / "index")
+
+
+def with_envelope(response: dict, command: str, source: str) -> dict:
+    """Add the contract 1.0 fields to a response.
+
+    ``contract_version`` and ``command`` go first and ``index`` last; every
+    existing field keeps its name and value.
+    """
+    out = {"contract_version": CONTRACT_VERSION, "command": command}
+    out.update(response)
+    out["index"] = index_info(source)
+    return out
+
+
+# ============================================================
+# SOURCE INFO (--list-programs)
+# ============================================================
+
+INDEX_DATES_NOTE = (
+    "  (Build dates say when this index was fetched and built. An OLG page's "
+    "\"Updated\" date says when the agency last changed that page.)"
+)
+
+
+def collect_source_info(source: str, metadatas: list[dict]) -> dict:
+    """Summarize a source's section-tier metadata for ``--list-programs``.
+
+    Returns:
+        ``programs``: ``[{program, chunk_count}]``, most chunks first;
+        ``structure``: ``[{key, title, chunk_count}]`` for FNS / CMR chapters
+        or CFR parts (CMR entries also carry ``program``), or ``None`` for
+        OLG; ``total_chunks``.
+    """
+    programs: dict = {}
+    for meta in metadatas:
+        prog = meta.get("program", "")
+        programs[prog] = programs.get(prog, 0) + 1
+    program_rows = [
+        {"program": prog, "chunk_count": count}
+        for prog, count in sorted(programs.items(), key=lambda x: -x[1])
+    ]
+
+    structure = None
+    if source in ("fns", "cmr", "cfr"):
+        key_field, title_field = (
+            ("part", "part_title") if source == "cfr" else ("chapter", "chapter_title")
+        )
+        groups: dict = {}
+        for meta in metadatas:
+            group = (meta.get(key_field, ""), meta.get(title_field, ""))
+            if source == "cmr":
+                group += (meta.get("program", ""),)
+            groups[group] = groups.get(group, 0) + 1
+        structure = []
+        for group, count in sorted(groups.items()):
+            row = {"key": group[0], "title": group[1], "chunk_count": count}
+            if source == "cmr":
+                row["program"] = group[2]
+            structure.append(row)
+
+    return {
+        "source": source,
+        "programs": program_rows,
+        "structure": structure,
+        "total_chunks": len(metadatas),
+    }
+
+
+def format_source_info_text(info: dict) -> str:
+    """The ``--list-programs`` text, laid out as it always has been."""
+    source = info["source"]
+    label = _resolve_source_config(source)["source_label"]
+    total = info["total_chunks"]
+    lines: list[str] = []
+
+    if source == "olg":
+        lines += ["Available programs:", ""]
+        for row in info["programs"]:
+            lines.append(f"  {row['program']:25s} ({row['chunk_count']:,} chunks)")
+        lines += ["", f"Total: {total:,} chunks across "
+                      f"{len(info['programs'])} programs"]
+
+    elif source == "fns":
+        lines += [f"{label} chapters:", ""]
+        for row in info["structure"]:
+            lines.append(f"  Chapter {row['key']:>2}: {row['title']:50s} "
+                         f"({row['chunk_count']} chunks)")
+        lines += ["", f"Total: {total:,} chunks across "
+                      f"{len(info['structure'])} chapters"]
+
+    elif source == "cmr":
+        lines += [f"{label} chapters:", ""]
+        for row in info["structure"]:
+            lines.append(f"  CMR {row['key']:>3}: {row['title'][:45]:45s} "
+                         f"{row['program']:>12s}  ({row['chunk_count']} chunks)")
+        lines += ["", f"Total: {total:,} chunks across "
+                      f"{len(info['structure'])} chapters"]
+
+    elif source == "cfr":
+        lines += [f"{label} parts:", ""]
+        for row in info["structure"]:
+            lines.append(f"  Part {row['key']}: {row['title'][:50]:50s} "
+                         f"({row['chunk_count']} chunks)")
+        lines += ["", "Programs (section-level labels):", ""]
+        for row in info["programs"]:
+            lines.append(f"  {row['program']:20s} ({row['chunk_count']:,} chunks)")
+        lines += ["", f"Total: {total:,} chunks across "
+                      f"{len(info['structure'])} parts"]
+
+    return "\n".join(lines)
+
+
 # ============================================================
 # MAIN
 # ============================================================
-
-def _print_info(source: str) -> None:
-    """List source-specific info (programs for OLG, chapters for FNS)."""
-    config = load_config()
-    source_config = _resolve_source_config(source)
-    persist_dir = config.get("chromadb", "persist_dir", fallback="index/chroma_db")
-    persist_path = (PROJECT_ROOT / persist_dir).resolve()
-
-    if not persist_path.exists():
-        print(f"Error: ChromaDB directory not found at {persist_path}")
-        print("Run embedder.py first to create the vector store.")
-        sys.exit(1)
-
-    chroma = chromadb.PersistentClient(
-        path=str(persist_path),
-        settings=ChromaSettings(anonymized_telemetry=False),
-    )
-    granular_coll_name = config.get(
-        "chromadb", source_config["granular_collection_key"],
-        fallback=source_config["granular_name"])
-    collection = chroma.get_collection(granular_coll_name)
-    all_meta = collection.get(include=["metadatas"])
-
-    if source == "olg":
-        # Show programs
-        programs = {}
-        for meta in all_meta["metadatas"]:
-            prog = meta.get("program", "")
-            programs[prog] = programs.get(prog, 0) + 1
-
-        print("Available programs:")
-        print()
-        for prog, count in sorted(programs.items(), key=lambda x: -x[1]):
-            print(f"  {prog:25s} ({count:,} chunks)")
-        print()
-        print(f"Total: {sum(programs.values()):,} chunks across "
-              f"{len(programs)} programs")
-
-    elif source == "fns":
-        # Show chapters
-        chapters = {}
-        for meta in all_meta["metadatas"]:
-            ch = meta.get("chapter", "")
-            ch_title = meta.get("chapter_title", "")
-            key = (ch, ch_title)
-            chapters[key] = chapters.get(key, 0) + 1
-
-        print(f"{source_config['source_label']} chapters:")
-        print()
-        for (ch, ch_title), count in sorted(chapters.items()):
-            print(f"  Chapter {ch:>2}: {ch_title:50s} ({count} chunks)")
-        print()
-        print(f"Total: {sum(chapters.values()):,} chunks across "
-              f"{len(chapters)} chapters")
-
-    elif source == "cmr":
-        chapters = {}
-        for meta in all_meta["metadatas"]:
-            ch = meta.get("chapter", "")
-            ch_title = meta.get("chapter_title", "")
-            prog = meta.get("program", "")
-            key = (ch, ch_title, prog)
-            chapters[key] = chapters.get(key, 0) + 1
-
-        print(f"{source_config['source_label']} chapters:")
-        print()
-        for (ch, ch_title, prog), count in sorted(chapters.items()):
-            print(f"  CMR {ch:>3}: {ch_title[:45]:45s} {prog:>12s}  ({count} chunks)")
-        print()
-        print(f"Total: {sum(chapters.values()):,} chunks across "
-              f"{len(chapters)} chapters")
-
-    elif source == "cfr":
-        # Two views: by part (with dominant program) and by program label
-        parts = {}
-        programs = {}
-        for meta in all_meta["metadatas"]:
-            pt = meta.get("part", "")
-            pt_title = meta.get("part_title", "")
-            prog = meta.get("program", "")
-            key = (pt, pt_title)
-            parts[key] = parts.get(key, 0) + 1
-            programs[prog] = programs.get(prog, 0) + 1
-
-        print(f"{source_config['source_label']} parts:")
-        print()
-        for (pt, pt_title), count in sorted(parts.items()):
-            print(f"  Part {pt}: {pt_title[:50]:50s} ({count} chunks)")
-        print()
-        print(f"Programs (section-level labels):")
-        print()
-        for prog, count in sorted(programs.items(), key=lambda x: -x[1]):
-            print(f"  {prog:20s} ({count:,} chunks)")
-        print()
-        print(f"Total: {sum(parts.values()):,} chunks across "
-              f"{len(parts)} parts")
-
 
 def run_query(
     query: str,
@@ -1345,9 +1410,10 @@ def run_query(
     include_context: bool = False,
     output_json: bool = False,
     show_full: bool = False,
+    mode: str = DEFAULT_MODE,
 ) -> None:
     """
-    Execute a query and print results to stdout.
+    Execute a query and print results to stdout (JSON carries the envelope).
     """
     # Initialize clients once
     clients = create_client(source=source)
@@ -1362,11 +1428,12 @@ def run_query(
         top_n=top_n,
         threshold=threshold,
         include_context=include_context,
+        mode=mode,
     )
 
     # Format and print
     if output_json:
-        print(format_result_json(response))
+        print(format_result_json(with_envelope(response, "search", source)))
     else:
         print(format_result_text(response, show_full=show_full))
 
@@ -1375,9 +1442,23 @@ def run_query(
 # CLI
 # ============================================================
 
-def main():
-    """Parse command-line arguments and run the query."""
-    parser = argparse.ArgumentParser(
+SOURCES = ("olg", "fns", "cmr", "cfr")
+BROAD_COLLECTIONS = ("pages", "chapters", "parts")
+
+
+class _CliArgumentParser(argparse.ArgumentParser):
+    """ArgumentParser whose errors become `CliError("usage")` (exit 2)
+    instead of argparse's own usage dump and exit code."""
+
+    def error(self, message):  # noqa: D401 - argparse hook
+        raise CliError("usage", message)
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """The query.py argument parser. Flags whose explicit use matters
+    (--mode, --top, --threshold, --collection) default to None."""
+    parser = _CliArgumentParser(
+        prog="query.py",
         description="Search the Regulatory Knowledgebase knowledge base.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -1389,6 +1470,7 @@ Examples:
   python query.py "eligibility rules" --collection pages  # Search pages
   python query.py "income limits" --context             # Include parent page
   python query.py "work requirements" --json            # JSON output
+  python query.py "SNAP-2 form" --mode hybrid           # Dense + BM25
   python query.py --list-programs                       # Show programs
 
   # FNS
@@ -1400,6 +1482,9 @@ Examples:
   # Chunk ID lookup
   python query.py --chunk-id sec__SNAP__Eligibility__Stu_Students__035
   python query.py --chunk-id sec__SNAP__Eligibility__Stu_Students__035 --neighbors 1
+
+Exit codes: 0 ok (zero results is still 0), 2 usage, 3 index or config
+unavailable, 4 Voyage API failure, 5 internal error. See docs/cli_contract.md.
         """,
     )
     parser.add_argument(
@@ -1407,13 +1492,20 @@ Examples:
         help="Search query (natural language)",
     )
     parser.add_argument(
-        "--source", "-s", choices=["olg", "fns", "cmr", "cfr"], default="olg",
+        "--source", "-s", choices=list(SOURCES), default="olg",
         help="Which source to search (default: olg)",
     )
     parser.add_argument(
-        "--collection", "-c", choices=["sections", "pages", "chapters", "parts"],
-        default=DEFAULT_COLLECTION,
+        "--collection", "-c", choices=["sections", *BROAD_COLLECTIONS],
+        default=None,
         help=f"Which collection to search (default: {DEFAULT_COLLECTION})",
+    )
+    parser.add_argument(
+        "--mode", choices=list(VALID_RETRIEVAL_MODES), default=None,
+        help=f"Retrieval mode (default: {DEFAULT_MODE}). dense = meaning; "
+             "sparse = BM25 keywords; hybrid = both, fused. Dense ranks best on "
+             "natural-language questions; sparse/hybrid help with literal tokens "
+             "(form or section numbers). Sections only.",
     )
     parser.add_argument(
         "--programs",
@@ -1431,11 +1523,11 @@ Examples:
              "Kept for compat — prefer --programs",
     )
     parser.add_argument(
-        "--top", "-n", type=int, default=DEFAULT_TOP_N,
+        "--top", "-n", type=int, default=None,
         help=f"Number of results to return (default: {DEFAULT_TOP_N})",
     )
     parser.add_argument(
-        "--threshold", "-t", type=float, default=DEFAULT_SIMILARITY_THRESHOLD,
+        "--threshold", "-t", type=float, default=None,
         help="Minimum similarity score 0-1 (default: 0 = no threshold)",
     )
     parser.add_argument(
@@ -1467,17 +1559,192 @@ Examples:
         "--url",
         help="Retrieve all chunks of an OLG page by URL (full-page fetch).",
     )
-    args = parser.parse_args()
+    return parser
+
+
+# Lookup commands, in the order used to guess the command from raw argv.
+_COMMAND_FLAGS = (
+    ("--chunk-id", "chunk"),
+    ("--url", "url"),
+    ("--list-programs", "list"),
+)
+
+
+def _guess_context(argv: list[str]) -> tuple[str, str | None, bool]:
+    """Best guess at (command, source, --json) from raw argv, for reporting
+    an error that happens before (or while) the arguments parse."""
+    as_json = "--json" in argv
+    command = "search"
+    for flag, name in _COMMAND_FLAGS:
+        if any(a == flag or a.startswith(flag + "=") for a in argv):
+            command = name
+            break
+
+    source: str | None = "olg"
+    for i, arg in enumerate(argv):
+        value = None
+        if arg in ("--source", "-s"):
+            value = argv[i + 1] if i + 1 < len(argv) else ""
+        elif arg.startswith("--source="):
+            value = arg.split("=", 1)[1]
+        if value is not None:
+            source = value if value in SOURCES else None
+    return command, source, as_json
+
+
+def _resolve_command(args: argparse.Namespace) -> str:
+    """Pick the one command the arguments ask for, or raise a usage error.
+
+    Also applies the checks that need no files: collection vs source,
+    sparse/hybrid on a broad collection, and --url outside OLG.
+    """
+    given = []
+    if args.query is not None:
+        given.append(("search", "a search query"))
+    if args.chunk_id:
+        given.append(("chunk", "--chunk-id"))
+    if args.url:
+        given.append(("url", "--url"))
+    if args.list_programs:
+        given.append(("list", "--list-programs"))
+
+    if not given:
+        raise CliError("usage", "a search query is required "
+                                "(or use --list-programs, --chunk-id or --url)")
+    if len(given) > 1:
+        raise CliError("usage", "use only one of a search query, --chunk-id, "
+                                "--url or --list-programs (got "
+                                + " and ".join(label for _, label in given) + ")")
+    command = given[0][0]
+
+    if command == "url" and args.source != "olg":
+        raise CliError("usage", "--url is OLG-only (got --source "
+                                f"{args.source})")
+
+    if command == "search":
+        if not args.query.strip():
+            raise CliError("usage", "the search query is empty")
+        source_config = _resolve_source_config(args.source)
+        collection = args.collection or DEFAULT_COLLECTION
+        valid = {source_config["broad_name"], source_config["granular_name"]}
+        if collection not in valid:
+            raise CliError("usage", f"--collection {collection} is not valid for "
+                                    f"--source {args.source} (valid: "
+                                    f"{', '.join(sorted(valid))})")
+        mode = args.mode or DEFAULT_MODE
+        if mode != "dense" and collection == source_config["broad_name"]:
+            raise CliError("usage", f"--mode {mode} needs the section collection; "
+                                    f"the sparse index doesn't cover "
+                                    f"'{collection}'. Use --mode dense or drop "
+                                    f"--collection.")
+    return command
+
+
+def _cli_config(require_api_key: bool) -> configparser.ConfigParser:
+    """Read config.ini for the CLI, raising `unavailable` instead of exiting."""
+    if not CONFIG_FILE.exists():
+        raise CliError("unavailable", f"config file not found: {CONFIG_FILE}")
+    config = configparser.ConfigParser()
+    config.read(CONFIG_FILE, encoding="utf-8")
+    if require_api_key and not config.get("api", "voyage_api_key",
+                                          fallback="").strip():
+        raise CliError("unavailable",
+                       f"no voyage_api_key in the [api] section of {CONFIG_FILE}")
+    return config
+
+
+def _open_chroma(config: configparser.ConfigParser):
+    """Open the ChromaDB store, raising `unavailable` if its directory is missing."""
+    persist_dir = config.get("chromadb", "persist_dir", fallback="index/chroma_db")
+    persist_path = (PROJECT_ROOT / persist_dir).resolve()
+    if not persist_path.exists():
+        raise CliError("unavailable",
+                       f"ChromaDB directory not found at {persist_path} "
+                       "(run embedder.py first)")
+    return chromadb.PersistentClient(
+        path=str(persist_path),
+        settings=ChromaSettings(anonymized_telemetry=False),
+    )
+
+
+def _get_cli_collection(chroma, config: configparser.ConfigParser,
+                        source: str, tier: str):
+    """Fetch the source's broad or granular collection, or raise `unavailable`."""
+    source_config = _resolve_source_config(source)
+    key, fallback = (
+        (source_config["broad_collection_key"], source_config["broad_name"])
+        if tier == "broad" else
+        (source_config["granular_collection_key"], source_config["granular_name"])
+    )
+    name = config.get("chromadb", key, fallback=fallback)
+    try:
+        return chroma.get_collection(name)
+    except Exception as exc:
+        raise CliError("unavailable",
+                       f"ChromaDB collection '{name}' for source {source} is "
+                       f"not available ({type(exc).__name__}: {exc})") from exc
+
+
+def _preflight(args: argparse.Namespace, command: str,
+               config: configparser.ConfigParser):
+    """Check the index pieces the command needs before any client is created.
+
+    Returns the open ChromaDB client.
+    """
+    chroma = _open_chroma(config)
+    _get_cli_collection(chroma, config, args.source, "granular")
+
+    if command == "search":
+        source_config = _resolve_source_config(args.source)
+        collection = args.collection or DEFAULT_COLLECTION
+        if collection == source_config["broad_name"]:
+            _get_cli_collection(chroma, config, args.source, "broad")
+        mode = args.mode or DEFAULT_MODE
+        if mode != "dense":
+            from rag.sparse_index import index_path_for
+            path = index_path_for(PROJECT_ROOT, args.source)
+            if not path.exists():
+                raise CliError("unavailable",
+                               f"no sparse index for source {args.source} at "
+                               f"{path}; --mode {mode} needs it")
+    return chroma
+
+
+def _classify_exception(exc: BaseException) -> CliError:
+    """Map an exception raised during a run onto a contract error kind."""
+    if isinstance(exc, CliError):
+        return exc
+    if isinstance(exc, UnknownProgramError):
+        return CliError("usage", str(exc))
+    if isinstance(exc, SparseIndexMissingError):
+        return CliError("unavailable", str(exc))
+    if (isinstance(exc, VoyageError)
+            or type(exc).__module__.split(".")[0] == "voyageai"):
+        return CliError("api", f"Voyage API call failed "
+                               f"({type(exc).__name__}): {exc}")
+    if isinstance(exc, ChromaNotFoundError):
+        return CliError("unavailable", f"ChromaDB: {exc}")
+    return CliError("internal", f"{type(exc).__name__}: {exc}")
+
+
+def _print_json(payload: dict) -> None:
+    """Write one JSON response to stdout."""
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+
+
+def _run_command(args: argparse.Namespace, command: str) -> None:
+    """Run a parsed, validated command and print its response."""
+    config = _cli_config(require_api_key=command != "list")
+    chroma = _preflight(args, command, config)
 
     # --- URL → full page mode (OLG-only) ---
-    if args.url:
-        if args.source != "olg":
-            print("Error: --url is OLG-only.", file=sys.stderr)
-            sys.exit(1)
+    if command == "url":
         clients = create_client(source="olg")
         chunks = fetch_page_chunks(args.url, clients)
         if args.output_json:
-            print(format_chunk_lookup_json(chunks, args.url, args.source))
+            _print_json(with_envelope(
+                chunk_lookup_response(chunks, args.url, args.source),
+                "url", args.source))
         else:
             print(format_chunk_lookup_text(
                 chunks, args.url, args.source, show_full=True
@@ -1485,13 +1752,15 @@ Examples:
         return
 
     # --- Chunk ID lookup mode ---
-    if args.chunk_id:
+    if command == "chunk":
         clients = create_client(source=args.source)
         chunks = fetch_chunks_by_id(
             args.chunk_id, clients, neighbors=args.neighbors
         )
         if args.output_json:
-            print(format_chunk_lookup_json(chunks, args.chunk_id, args.source))
+            _print_json(with_envelope(
+                chunk_lookup_response(chunks, args.chunk_id, args.source),
+                "chunk", args.source))
         else:
             # Chunk lookups show full text by default (--full is implicit)
             print(format_chunk_lookup_text(
@@ -1500,23 +1769,25 @@ Examples:
         return
 
     # --- Info mode ---
-    if args.list_programs:
-        _print_info(args.source)
+    if command == "list":
+        coll = _get_cli_collection(chroma, config, args.source, "granular")
+        info = collect_source_info(
+            args.source, coll.get(include=["metadatas"])["metadatas"])
+        if args.output_json:
+            _print_json(with_envelope(info, "list", args.source))
+        else:
+            print(format_source_info_text(info))
+            print()
+            print(format_index_info_text(index_info(args.source)))
+            print(INDEX_DATES_NOTE)
         return
 
     # --- Search mode ---
-    # Validate --collection against --source
-    source_config = _resolve_source_config(args.source)
-    valid_collections = {source_config["broad_name"], source_config["granular_name"]}
-    if args.collection not in valid_collections:
-        print(f"Error: --collection {args.collection} is not valid for "
-              f"--source {args.source}.")
-        print(f"  Valid choices for {args.source}: "
-              f"{', '.join(sorted(valid_collections))}")
-        sys.exit(1)
-
-    if not args.query:
-        parser.error("Search query is required (or use --list-programs / --chunk-id)")
+    collection = args.collection or DEFAULT_COLLECTION
+    mode = args.mode or DEFAULT_MODE
+    top_n = args.top if args.top is not None else DEFAULT_TOP_N
+    threshold = (args.threshold if args.threshold is not None
+                 else DEFAULT_SIMILARITY_THRESHOLD)
 
     programs = None
     if args.programs:
@@ -1524,6 +1795,7 @@ Examples:
     exclude = None
     if args.exclude_programs:
         exclude = [p.strip() for p in args.exclude_programs.split(",")]
+    program = args.program
 
     # OLG_PROGRAMS guardrail (see module-level constant): intersect the
     # agent-passed filter with the orchestrator's whitelist so the
@@ -1532,9 +1804,9 @@ Examples:
         whitelist = set(OLG_PROGRAMS_WHITELIST)
         if programs:
             programs = [p for p in programs if p in whitelist]
-        elif args.program:
-            programs = [args.program] if args.program in whitelist else []
-            args.program = None
+        elif program:
+            programs = [program] if program in whitelist else []
+            program = None
         else:
             base = whitelist - set(exclude or [])
             programs = sorted(base)
@@ -1546,14 +1818,14 @@ Examples:
             empty = {
                 "query": args.query,
                 "source": "olg",
-                "collection": args.collection,
+                "collection": collection,
                 "filters": {"olg_programs_guardrail": "no_match"},
-                "mode": "dense",
+                "mode": mode,
                 "result_count": 0,
                 "results": [],
             }
             if args.output_json:
-                print(json.dumps(empty, indent=2, ensure_ascii=False))
+                _print_json(with_envelope(empty, "search", "olg"))
             else:
                 print(
                     "No matching results — agent filter is outside the "
@@ -1564,17 +1836,38 @@ Examples:
     run_query(
         query=args.query,
         source=args.source,
-        collection=args.collection,
+        collection=collection,
         programs=programs,
-        program=args.program,
+        program=program,
         exclude_programs=exclude,
-        top_n=args.top,
-        threshold=args.threshold,
+        top_n=top_n,
+        threshold=threshold,
         include_context=args.context,
         output_json=args.output_json,
         show_full=args.full,
+        mode=mode,
     )
 
 
+def main(argv: list[str] | None = None) -> int:
+    """Parse arguments, run the command, and return the process exit code.
+
+    Every failure is reported through `emit_error` (one stderr line, plus the
+    JSON error object with ``--json``) with the contract exit code.
+    """
+    argv = list(sys.argv[1:] if argv is None else argv)
+    command, source, as_json = _guess_context(argv)
+    try:
+        args = _build_parser().parse_args(argv)
+        source, as_json = args.source, args.output_json
+        command = _resolve_command(args)
+        _run_command(args, command)
+        return 0
+    except Exception as exc:
+        err = _classify_exception(exc)
+        return emit_error(err, command, source, as_json,
+                          index_reader=index_info, exc=exc)
+
+
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

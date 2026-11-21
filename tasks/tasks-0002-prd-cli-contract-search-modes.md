@@ -38,16 +38,16 @@
   - [x] 2.4 `rag/embedder.py`: after each collection embeds successfully, write its `embed` entry with model, collection and count. Skip on `--dry-run` and whenever a `collection_suffix` is set.
   - [x] 2.5 `rag/sparse_index.py` `save_index()`: write the `sparse` stage with the chunk count, using `index.built_at` as the time. The index root is derived from the pickle path.
   - [x] 2.6 Tests: `save_index()` into a temp index root writes the sparse stage, and the embedder's skip rule (a pure helper) is covered.
-- [ ] 3.0 Turn the CLI into the contract layer: error kinds and exit codes, the JSON envelope, `--mode`, `--list-programs --json`, exclusive commands
-  - [ ] 3.1 Write `rag/cli_errors.py`:
+- [x] 3.0 Turn the CLI into the contract layer: error kinds and exit codes, the JSON envelope, `--mode`, `--list-programs --json`, exclusive commands
+  - [x] 3.1 Write `rag/cli_errors.py`:
     - `CliError(kind, message)` and the kind â†’ exit code map (`usage` 2, `unavailable` 3, `api` 4, `internal` 5);
     - `emit_error(err, command, source, as_json)`, which writes the stderr line and, with `--json`, the JSON object on stdout;
     - a `QUERY_DEBUG` traceback switch.
-  - [ ] 3.2 `query.py` argument parsing:
+  - [x] 3.2 `query.py` argument parsing:
     - an ArgumentParser subclass whose `error()` raises `CliError("usage")`;
     - `--mode` and `--top`, `--threshold`, `--collection` default to `None`, so an explicit flag can be detected (search falls back to the old defaults);
     - the lookup commands are mutually exclusive.
-  - [ ] 3.3 CLI checks before any client is created:
+  - [x] 3.3 CLI checks before any client is created:
     - config file and Voyage key (not needed for `--exact`);
     - ChromaDB directory and collection exist;
     - collection valid for the source;
@@ -56,11 +56,11 @@
     - `--url` only with OLG.
 
     All of these raise `CliError` with nothing on stdout.
-  - [ ] 3.4 Map failures to kinds: unknown program (`ValueError` from `_resolve_program_name`) â†’ `usage`; Voyage exceptions â†’ `api`; a ChromaDB missing collection â†’ `unavailable`; anything else â†’ `internal`. `main()` wraps the run and exits with the code.
-  - [ ] 3.5 API: `search_with_client()` raises `SparseIndexMissingError` (a subclass of `FileNotFoundError`) when the mode isn't dense and no sparse index exists. Fix the docstring default and document the broad-tier downgrade.
-  - [ ] 3.6 Add `contract_version`, `command` and `index` to the search, chunk and URL JSON, plus the OLG_PROGRAMS guardrail's empty response. The `--mode` value passes through to `search_with_client()`.
-  - [ ] 3.7 `--list-programs`: one index-date line in the text output. With `--json`, the PRD 4.4.3 shape. Refactor `_print_info` into a data function and a text formatter so the text output stays the same.
-  - [ ] 3.8 Write `tests/test_query_cli.py`, with ChromaDB and Voyage stubbed:
+  - [x] 3.4 Map failures to kinds: unknown program (`ValueError` from `_resolve_program_name`) â†’ `usage`; Voyage exceptions â†’ `api`; a ChromaDB missing collection â†’ `unavailable`; anything else â†’ `internal`. `main()` wraps the run and exits with the code.
+  - [x] 3.5 API: `search_with_client()` raises `SparseIndexMissingError` (a subclass of `FileNotFoundError`) when the mode isn't dense and no sparse index exists. Fix the docstring default and document the broad-tier downgrade.
+  - [x] 3.6 Add `contract_version`, `command` and `index` to the search, chunk and URL JSON, plus the OLG_PROGRAMS guardrail's empty response. The `--mode` value passes through to `search_with_client()`.
+  - [x] 3.7 `--list-programs`: one index-date line in the text output. With `--json`, the PRD 4.4.3 shape. Refactor `_print_info` into a data function and a text formatter so the text output stays the same.
+  - [x] 3.8 Write `tests/test_query_cli.py`, with ChromaDB and Voyage stubbed:
     - argument parsing and conflicts;
     - mode passthrough, and broad + sparse rejected;
     - each exit code;
