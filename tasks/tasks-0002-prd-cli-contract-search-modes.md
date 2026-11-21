@@ -108,7 +108,7 @@
   - [x] 5.1 Write `docs/cli_contract.md` covering every item in PRD 4.6.
   - [x] 5.2 Update the `query.py` module docstring and `--help` epilog, the CLAUDE.md query commands and module table (`exact_search`, `build_record`, `cli_errors`), and the README.
   - [x] 5.3 Read the portfolio standard, section 4. Set the handoff status to `accepted` and write the `## Response`, covering PRD 4.7 with no agency content.
-- [ ] 6.0 Verify on the real index
+- [x] 6.0 Verify on the real index
   - [x] 6.1 Run sparse and hybrid OLG queries and confirm both return results.
   - [x] 6.2 Run the dense baseline queries again and diff against 1.1: results must be identical apart from the added fields.
   - [x] 6.3 Run `--exact` on a known phrase, on a phrase that crosses a chunk boundary, and on a nonsense phrase (exit 0, `result_count: 0`), for each source.
@@ -123,4 +123,4 @@
       - 6.5: bad program → 2 `usage`; broad + sparse → 2 `usage`; a config pointing at a missing ChromaDB directory → 3 `unavailable`; a missing collection → 3 `unavailable`; an invalid Voyage key → 4 `api`. Each wrote exactly one `query.py: error [kind]: ...` line to stderr, ignoring the third-party torch note.
       - 6.6: `py -m pytest tests`: 149 passed.
       - Found and fixed during task 5–6: text output crashed for sparse results and BM25-only hybrid hits (`score: null`), and `--json` output wasn't UTF-8 when piped.
-  - [ ] 6.7 **GATE (see):** Ben reviews the verification results. If he approves, set the handoff status to `done` and commit.
+  - [x] 6.7 **GATE (see):** Ben reviews the verification results. If he approves, set the handoff status to `done` and commit.

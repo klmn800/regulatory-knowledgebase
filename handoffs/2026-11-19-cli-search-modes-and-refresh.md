@@ -3,7 +3,7 @@
 - **From:** business
 - **To:** regulatory-knowledgebase
 - **Opened:** 2026-11-19
-- **Status:** accepted
+- **Status:** done
 
 ## Context
 
@@ -149,7 +149,17 @@ re-scrape, re-chunk, re-embed and rebuild the sparse index, and it changes chunk
 That part of this handoff waits on it, and so does the handoff announcing new ids.
 Until then, the index dates above say how old the content is.
 
-**Verification:** 149 offline tests pass. The sparse and hybrid queries, the `--exact`
-cases (known, boundary-crossing and nonsense phrases for each source) and the index
-dates are being checked on the real index now. This handoff becomes `done` when that
-passes Ben's review.
+**Verification (2026-11-21), passed and reviewed by Ben:**
+
+- `--mode sparse` and `--mode hybrid` return results on OLG.
+- Default dense results are identical to before the change, apart from the added
+  fields.
+- For every source, `--exact` finds a known phrase and a phrase that crosses a chunk
+  boundary, and returns zero results (exit 0) for a nonsense phrase.
+- `--list-programs` and `--json` show the index dates; a missing record reads
+  `"unknown"`.
+- Each error kind gives its exit code and one stderr line.
+- 149 offline tests pass.
+
+Status `done` for asks 1, 2, 4 and 5. Ask 3 (the OLG refresh) continues as its own
+project, with a handoff to `business` before chunk ids change.
