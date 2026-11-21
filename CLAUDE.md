@@ -399,9 +399,21 @@ regulatory-knowledgebase/
 This project is developed on two machines, kept in sync through GitHub. Git carries the code only; everything gitignored stays on each machine.
 
 - **Start of a session:** `git pull`. If it reports a conflict, stop and tell Ben.
+- **Pull regularly, not just at the start.** Pull again before starting each new piece of work and before committing, so you never build on a stale copy. Another environment (the other machine or a cloud session) may have pushed in the meantime.
+- **Check for unmerged cloud branches.** At the start of a session, run `git fetch origin` and look for `claude/...` branches that aren't merged into `master` (`git branch -r --no-merged origin/master`). If there are any, tell Ben before starting work.
 - **End of a session:** commit and push, so the other machine can pick up from here. Only one machine works on the project at a time.
 - **The index (`index/`) does not sync.** Rebuild it on one machine only (currently the original development machine), then copy `index/` to the other by flash drive. Never re-scrape or re-embed on both machines: it costs Voyage tokens twice and the two indexes drift apart. Note the date of each rebuild in `PROJECT.md`.
 - **`raw/`** moves the same way as the index when sources change. **`output/`** is per-machine and isn't synced.
 - **`config.ini`** is per-machine. When a setting is added or renamed, update `config.ini.example` in the same commit, so the other machine knows to update its copy.
 - **Dependencies:** keep the same versions on both machines, `chromadb` especially (its on-disk format changes between versions). If a version is pinned or bumped in `requirements.txt`, reinstall on the other machine before running anything.
 - **Local-only files** (the gitignored tools and brand assets in `.gitignore`) don't sync. If you change one, copy it across by hand.
+
+### Cloud sessions (Claude Code on the web / mobile)
+
+Ben also runs sessions in the cloud, connected to the GitHub repo rather than to either machine. They are a third working environment:
+
+- **Fresh clone, committed files only.** A cloud session sees no `index/`, `raw/`, `output/`, `config.ini`, or anything outside the repo (such as the portfolio files). It can't query the index, run embeddings, or rebuild anything. Code, docs, tests with synthetic fixtures, and handoffs are fine.
+- **Works on a `claude/...` branch, never `master`.** It commits and pushes to its assigned branch only.
+- **Reaches `master` only through Ben.** Cloud work gets to the machines when Ben merges a pull request (or explicitly tells the session to merge). Until then, a local `git pull` on `master` won't show it.
+- **Ephemeral.** The container is reclaimed after inactivity. Anything not pushed is lost, so a cloud session pushes at every checkpoint.
+- **Pull before work there too.** A cloud session fetches and merges `origin/master` before starting each piece of work, the same rule as the machines.
