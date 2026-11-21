@@ -418,3 +418,14 @@ def test_exact_text_output(env, capsys):
     assert code == 0
     assert 'Found 1 results (1 matches) for exact "form XY-9"' in out
     assert "Chunk:   sec__SNAP__Alpha__001" in out
+
+
+def test_json_stdout_is_utf8_even_on_a_cp1252_stream(env, monkeypatch):
+    import io
+    import sys
+    buf = io.BytesIO()
+    stream = io.TextIOWrapper(buf, encoding="cp1252")
+    monkeypatch.setattr(sys, "stdout", stream)
+    assert q.main(["--exact", "a → b", "--json"]) == 0
+    stream.flush()
+    assert json.loads(buf.getvalue().decode("utf-8"))["phrase"] == "a → b"

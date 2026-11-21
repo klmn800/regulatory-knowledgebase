@@ -2001,6 +2001,20 @@ def _run_command(args: argparse.Namespace, command: str) -> None:
     )
 
 
+def _use_utf8_stdout() -> None:
+    """Make stdout UTF-8, whatever the console or pipe would default to.
+
+    On Windows, Python writes piped or redirected output in the ANSI code
+    page (cp1252), which garbles non-ASCII text for UTF-8 readers and
+    crashes on characters it lacks (e.g. ``→``). The JSON contract promises
+    UTF-8.
+    """
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):  # a replaced or already-used stream
+        pass
+
+
 def main(argv: list[str] | None = None) -> int:
     """Parse arguments, run the command, and return the process exit code.
 
@@ -2009,6 +2023,8 @@ def main(argv: list[str] | None = None) -> int:
     """
     argv = list(sys.argv[1:] if argv is None else argv)
     command, source, as_json = _guess_context(argv)
+    if as_json:
+        _use_utf8_stdout()
     try:
         args = _build_parser().parse_args(argv)
         source, as_json = args.source, args.output_json
