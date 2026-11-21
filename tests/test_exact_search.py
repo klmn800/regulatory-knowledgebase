@@ -81,10 +81,35 @@ def test_phrase_straddling_chunk_boundary():
     assert r["match_count"] == 1
 
 
-def test_heading_crossing_phrase_is_reported_unaligned():
-    chunks = [_chunk("c__000", "alpha beta", prefix="Page > Rules")]
-    doc = _doc("p1", "## Rules\nalpha beta", title="Rules page")
+def test_heading_crossing_phrase_aligns_to_chunk_under_heading():
+    chunks = [_chunk("c__000", "intro text", prefix="Page > Overview"),
+              _chunk("c__001", "alpha beta", prefix="Page > Rules"),
+              _chunk("c__002", "more alpha", prefix="Page > Rules")]
+    doc = _doc("p1", "## Overview\nintro text\n\n## Rules\nalpha beta\n\nmore alpha")
     res = exact_search("rules alpha", [doc], lambda pid: chunks)
+    (r,) = res["results"]
+    assert r["id"] == "c__001" and r["chunk_ids"] == ["c__001"]
+    # A heading on its own lands on the first chunk under it, not on the
+    # split-off chunk that repeats the same prefix.
+    res = exact_search("rules", [doc], lambda pid: chunks)
+    assert [r["id"] for r in res["results"]] == ["c__001"]
+    # A phrase crossing from one section's body into the next heading.
+    res = exact_search("intro text rules", [doc], lambda pid: chunks)
+    assert res["results"][0]["chunk_ids"] == ["c__000", "c__001"]
+
+
+def test_body_alignment_unchanged_by_heading_pass():
+    chunks = [_chunk("c__000", "rules apply here", prefix="Page > Rules")]
+    doc = _doc("p1", "## Rules\nrules apply here")
+    res = exact_search("rules", [doc], lambda pid: chunks)
+    (r,) = res["results"]
+    assert r["id"] == "c__000" and r["match_count"] == 2
+
+
+def test_text_missing_from_chunks_is_reported_unaligned():
+    chunks = [_chunk("c__000", "alpha beta", prefix="Page > Rules")]
+    doc = _doc("p1", "## Rules\nalpha beta\n\nomitted history text", title="Rules page")
+    res = exact_search("omitted history", [doc], lambda pid: chunks)
     (r,) = res["results"]
     assert r["id"] is None and r["chunk_ids"] == []
     assert r["parent_id"] == "p1"
@@ -113,7 +138,8 @@ def _corpus():
     docs = [
         _doc("p_b", "x rule one\n\nx rule two", program="SNAP"),
         _doc("p_a", "x rule three\n\nx rule four", program="TAFDC"),
-        _doc("p_c", "## X rule heading\nx rule five", program="SNAP", title="C"),
+        _doc("p_c", "x rule five\n\nx rule left out of the chunks", program="SNAP",
+             title="C"),
     ]
     chunks = {
         "p_b": [_chunk("b__000", "x rule one"), _chunk("b__001", "x rule two")],
@@ -128,8 +154,8 @@ def test_ordering_by_parent_count_then_id_unaligned_last():
     docs, chunks = _corpus()
     res = exact_search("x rule", docs, chunks.get)
     order = [(r["parent_id"], r["id"]) for r in res["results"]]
-    # Every parent has 2 matches, so ties break by parent id; p_c's heading
-    # match can't be aligned and comes after its chunk.
+    # Every parent has 2 matches, so ties break by parent id; p_c's second
+    # match isn't in any chunk, so it can't be aligned and comes last.
     assert order == [("p_a", "a__000"), ("p_a", "a__001"),
                      ("p_b", "b__000"), ("p_b", "b__001"),
                      ("p_c", "c__000"), ("p_c", None)]

@@ -68,7 +68,7 @@
     - the JSON error object;
     - search, chunk and list JSON carrying `contract_version`, `command` and `index`;
     - default search JSON unchanged apart from the added fields.
-- [ ] 4.0 Add `--exact` phrase search (`rag/exact_search.py`) and wire it into the CLI
+- [x] 4.0 Add `--exact` phrase search (`rag/exact_search.py`) and wire it into the CLI
   - [x] 4.1 `normalize_with_map(text)`: applies the PRD 4.2.4 rules and returns the normalized string plus a map from each normalized index to its original index. `normalize(text)` is the plain form.
   - [x] 4.2 `find_matches(phrase, docs)`: non-overlapping matches in each broad document, as normalized offsets.
   - [x] 4.3 `attribute(parent_text_match, chunks)`: builds the concatenated stream of chunk bodies (prefix line removed) with per-chunk spans. Each matched phrase occurrence is aligned to a stream occurrence in order. The result is the start chunk plus every chunk spanned, or the match is unaligned.
@@ -91,7 +91,19 @@
       | CMR | 112 | 5 | 3 | 0 | 93.3% | 100% |
       | CFR | 112 | 28 | 2 | 0 | 78.9% | 100% |
 
-      The first run used in-order alignment and missed 9 matches (FNS repeats example boxes in a different order in the two tiers). The alignment is now best-first and not forced into order. (a) is mostly by design: CFR's 272.1(g) amendment history and 271.8 are excluded from the section tier (`rag/cfr/chunker.py` `SUBSECTION_EXCLUDES`). CMR 364's benefit tables are laid out differently in the two tiers. All unaligned matches are still reported against the parent document.  - [ ] 4.9 **GATE (plan-changing test):** stop only if the attribution rate is under 95% for any source. In that case show Ben the failing patterns and propose either better alignment or searching the chunk text instead. At 95% or above, carry on without stopping.
+      The first run used in-order alignment and missed 9 matches (FNS repeats example boxes in a different order in the two tiers). The alignment is now best-first and not forced into order. (a) is mostly by design: CFR's 272.1(g) amendment history and 271.8 are excluded from the section tier (`rag/cfr/chunker.py` `SUBSECTION_EXCLUDES`). CMR 364's benefit tables are laid out differently in the two tiers. All unaligned matches are still reported against the parent document.
+  - [x] 4.9 **GATE (plan-changing test):** stop only if the attribution rate is under 95% for any source. In that case show Ben the failing patterns and propose either better alignment or searching the chunk text instead. At 95% or above, carry on without stopping.
+
+      **Gate 4.9 (2026-11-21):** the raw rate was under 95% for OLG, CMR and CFR, so I took it to Ben with three options: A accept, B add a heading pass, C search the chunk text instead. Ben chose B: a match that doesn't align is retried with each chunk's own heading (the last `>` segment of its prefix) put back in front of its body. Re-measured on the same sample:
+
+      | Source | Aligned | (a) not in chunks | (b) heading | (c) missed | Raw rate |
+      |--------|---------|-------------------|-------------|------------|----------|
+      | OLG | 105 | 0 | 2 | 0 | 98.1% |
+      | FNS | 159 | 0 | 0 | 0 | 100% |
+      | CMR | 116 | 4 | 0 | 0 | 96.7% |
+      | CFR | 113 | 28 | 1 | 0 | 79.6% |
+
+      CFR stays low by design (the 272.1(g) / 271.8 exclusion). Heading searches such as a CMR section title, or FNS "Positive Allegation", now land on the chunk under that heading.
 - [ ] 5.0 Write `docs/cli_contract.md`, update CLAUDE.md and README, and write the handoff response
   - [ ] 5.1 Write `docs/cli_contract.md` covering every item in PRD 4.6.
   - [ ] 5.2 Update the `query.py` module docstring and `--help` epilog, the CLAUDE.md query commands and module table (`exact_search`, `build_record`, `cli_errors`), and the README.

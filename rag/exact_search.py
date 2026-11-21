@@ -19,10 +19,14 @@ How a match is found and attributed:
    single spaces into one *stream*, with a span per chunk.
 3. Each broad match is aligned to a stream occurrence of the phrase
    (`attribute`): in order, picking the nearby occurrence whose surrounding
-   text agrees best. An aligned match is reported against the chunk where it
-   starts, listing every chunk it spans. A match that can't be aligned (for
-   example, text that sits in a heading or a table laid out differently in
-   the chunks) is still reported, against the parent document.
+   text agrees best. A match that doesn't align is tried again against the
+   chunks with each one's own heading (the last ``>`` segment of its prefix
+   line) put back in front of its body, so a phrase on or across a heading
+   lands on the chunk under that heading. An aligned match is reported
+   against the chunk where it starts, listing every chunk it spans. A match
+   that still can't be aligned (text left out of the section tier, or a
+   table laid out differently there) is reported against the parent
+   document.
 
 The module splits into pure functions over plain document dicts
 (``{"id", "text", "metadata"}``) and a thin ChromaDB loader at the end.
@@ -166,8 +170,26 @@ def order_chunks(parent_norm: str, chunks: list[dict]) -> list[dict]:
     return [ch for _, ch in keyed]
 
 
-def build_stream(chunks: list[dict]) -> tuple[str, list[tuple[int, int]]]:
+def chunk_heading(text: str) -> str:
+    """A chunk's own heading: the last ``>`` segment of its prefix line.
+
+    E.g. ``"106 CMR 362 > NONFINANCIAL > 362.330 Good Cause Criteria"`` gives
+    ``"362.330 Good Cause Criteria"``. Empty when the chunk has no prefix.
+    """
+    head, sep, _ = text.partition("\n\n")
+    if not sep:
+        return ""
+    first_line = head.split("\n", 1)[0]
+    return first_line.rsplit(" > ", 1)[-1].strip()
+
+
+def build_stream(chunks: list[dict],
+                 with_headings: bool = False) -> tuple[str, list[tuple[int, int]]]:
     """Join the normalized chunk bodies with single spaces.
+
+    With `with_headings`, each body is preceded by the chunk's own heading
+    (`chunk_heading`), which the broad text carries inline but the chunk
+    keeps only in its prefix line.
 
     Returns the stream and each chunk's ``(start, end)`` span in it.
     """
@@ -175,7 +197,10 @@ def build_stream(chunks: list[dict]) -> tuple[str, list[tuple[int, int]]]:
     spans: list[tuple[int, int]] = []
     pos = 0
     for ch in chunks:
-        body = normalize(chunk_body(ch["text"]))
+        body = chunk_body(ch["text"])
+        if with_headings:
+            body = chunk_heading(ch["text"]) + "\n" + body
+        body = normalize(body)
         if parts:
             pos += 1  # the joining space
         spans.append((pos, pos + len(body)))
@@ -311,6 +336,15 @@ def search_document(
     ordered = order_chunks(parent_norm, chunks)
     stream, spans = build_stream(ordered)
     attributions = attribute(phrase_norm, parent_norm, offsets, stream, spans)
+
+    # Second pass for matches on or across a heading: align against the
+    # chunks with their own headings restored. Run over every match so the
+    # one-occurrence-per-match rule still holds, but only fill the gaps.
+    if None in attributions:
+        h_stream, h_spans = build_stream(ordered, with_headings=True)
+        retry = attribute(phrase_norm, parent_norm, offsets, h_stream, h_spans)
+        attributions = [a if a is not None else r
+                        for a, r in zip(attributions, retry)]
 
     by_chunk: dict[int, dict] = {}
     unaligned: list[int] = []
