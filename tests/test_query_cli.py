@@ -429,3 +429,17 @@ def test_json_stdout_is_utf8_even_on_a_cp1252_stream(env, monkeypatch):
     assert q.main(["--exact", "a → b", "--json"]) == 0
     stream.flush()
     assert json.loads(buf.getvalue().decode("utf-8"))["phrase"] == "a → b"
+
+
+@pytest.mark.parametrize("mode", ["sparse", "hybrid"])
+def test_text_output_handles_null_scores(env, capsys, mode, monkeypatch):
+    _sparse_index(env)
+    # Dense finds nothing, so every hybrid hit is BM25-only (score null).
+    monkeypatch.setattr(FakeChroma, "collections",
+                        {"sections": SECTIONS, "pages": PAGES})
+    monkeypatch.setattr(FakeCollection, "query",
+                        lambda self, **k: {"ids": [[]], "documents": [[]],
+                                           "metadatas": [[]], "distances": [[]]})
+    code, out, err = run(capsys, "form XY-9", "--mode", mode)
+    assert code == 0, err
+    assert "BM25: " in out

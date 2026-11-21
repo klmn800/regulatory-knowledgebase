@@ -7,16 +7,26 @@ Provides three ways to search the embedded policy knowledge base:
   2. Python API       — from query import search; search("income deduction")
   3. JSON output      — python query.py "income deduction" --json
 
+The CLI (flags, --json fields, exit codes, stderr format) is a versioned
+interface for programs and agents: see docs/cli_contract.md (contract 1.0).
+The Python API is internal and not covered by it.
+
 Supports multiple sources via the --source flag:
   - olg  — the Online Guide (pages + sections)
   - fns  — FNS Handbook 310 (chapters + sections)
+  - cmr  — 106 CMR (chapters + sections)
+  - cfr  — 7 CFR (parts + sections)
 
 Features:
-  - Program filtering (SNAP, TAFDC, EAEDC, etc.) — OLG only
+  - Retrieval modes: dense (default), sparse (BM25), hybrid (RRF fusion)
+  - --exact literal phrase search, no embedding call (rag/exact_search.py)
+  - Program filtering (OLG, CMR, CFR); the OLG_PROGRAMS orchestrator whitelist
   - Similarity scores converted to intuitive 0-1 scale
-  - Parent context fetching (parent page for OLG, parent chapter for FNS)
+  - Parent context fetching (parent page, chapter or part)
   - Reusable client objects for agent integration (avoid re-init)
   - Source attribution with breadcrumb paths and URLs
+  - Index build dates in --list-programs and every --json response
+  - Exit codes: 0 ok, 2 usage, 3 unavailable, 4 Voyage API, 5 internal
 
 Usage:
     # OLG (default)
@@ -26,6 +36,8 @@ Usage:
     python query.py "eligibility rules" --collection pages
     python query.py "income limits" --context
     python query.py "work requirements" --json
+    python query.py "income" --mode hybrid
+    python query.py --exact "expedited service" --top 10
     python query.py --list-programs
 
     # FNS
@@ -1069,11 +1081,21 @@ def format_result_text(
     return "\n".join(lines)
 
 
+def _score_text(result: dict) -> str:
+    """The score label for a text result: dense similarity when there is one,
+    else the BM25 score (sparse mode, or a hybrid hit only BM25 found)."""
+    if result.get("score") is not None:
+        return f"Score: {result['score']:.2f}"
+    if result.get("bm25_score") is not None:
+        return f"BM25: {result['bm25_score']:.2f}"
+    return "Score: n/a"
+
+
 def _format_olg_result(lines: list[str], result: dict, meta: dict,
                        score: float, collection: str) -> None:
     """Format a single OLG result's header lines."""
     breadcrumb = meta.get("breadcrumb", "")
-    lines.append(f"[{result['rank']}]  Score: {score:.2f}  |  {breadcrumb}")
+    lines.append(f"[{result['rank']}]  {_score_text(result)}  |  {breadcrumb}")
 
     if collection == "sections":
         page_title = meta.get("page_title", "")
@@ -1111,7 +1133,7 @@ def _format_fns_result(lines: list[str], result: dict, meta: dict,
     chapter = meta.get("chapter", "")
     chapter_title = meta.get("chapter_title", "")
     context = f"FNS 310 > Chapter {chapter}: {chapter_title}"
-    lines.append(f"[{result['rank']}]  Score: {score:.2f}  |  {context}")
+    lines.append(f"[{result['rank']}]  {_score_text(result)}  |  {context}")
 
     if collection == "sections":
         sec_num = meta.get("section_number", "")
@@ -1141,7 +1163,7 @@ def _format_cmr_result(lines: list[str], result: dict, meta: dict,
     chapter_title = meta.get("chapter_title", "")
     program = meta.get("program", "")
     context = f"106 CMR {chapter} ({program})"
-    lines.append(f"[{result['rank']}]  Score: {score:.2f}  |  {context}")
+    lines.append(f"[{result['rank']}]  {_score_text(result)}  |  {context}")
 
     if collection == "sections":
         sec_num = meta.get("section_number", "")
@@ -1174,7 +1196,7 @@ def _format_cfr_result(lines: list[str], result: dict, meta: dict,
     part_title = meta.get("part_title", "")
     program = meta.get("program", "")
     context = f"7 CFR {part} ({program})"
-    lines.append(f"[{result['rank']}]  Score: {score:.2f}  |  {context}")
+    lines.append(f"[{result['rank']}]  {_score_text(result)}  |  {context}")
 
     if collection == "sections":
         sec_num = meta.get("section_number", "")
@@ -1477,8 +1499,9 @@ Examples:
   python query.py "eligibility rules" --collection pages  # Search pages
   python query.py "income limits" --context             # Include parent page
   python query.py "work requirements" --json            # JSON output
-  python query.py "SNAP-2 form" --mode hybrid           # Dense + BM25
-  python query.py --list-programs                       # Show programs
+  python query.py "273.9 income" --source cfr --mode sparse  # BM25 keywords
+  python query.py --exact "expedited service"           # Literal phrase, all hits
+  python query.py --list-programs                       # Programs + index dates
 
   # FNS
   python query.py "income deduction" --source fns       # Search FNS
