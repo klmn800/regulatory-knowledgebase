@@ -10,7 +10,9 @@
 - `docs/cli_contract.md`: new. The versioned CLI contract.
 - `handoffs/2026-11-19-cli-search-modes-and-refresh.md`: the `## Response` section and status.
 - `CLAUDE.md`, `README.md`: commands and module tables.
-- `tests/test_build_record.py`, `tests/test_exact_search.py`, `tests/test_query_cli.py`: new.
+- `tests/test_build_record.py`, `tests/test_pipeline_records.py`, `tests/test_exact_search.py`, `tests/test_query_cli.py`: new.
+- Seed records written to `index/{olg,fns,cmr,cfr}/build_record.json` (gitignored; copy to the other machine with the next index copy).
+- Known: `tests/test_reference_docs.py::test_path_traversal_and_reserved_names` hangs on Windows 10, where `CON.txt` resolves to the console device (pre-existing bug in `apps/author/reference_docs.py`, outside this PRD). Run the suite with `--deselect` until it's fixed.
 
 ### Notes
 
@@ -19,27 +21,27 @@
 
 ## Tasks
 
-- [ ] 1.0 Capture a dense baseline, then build the build-record module and seed the current index
-  - [ ] 1.1 Before any code change, save `--json` output for 5 dense queries (2 OLG, 1 each FNS, CMR, CFR) and for 1 chunk-id lookup, to the scratchpad as the baseline.
-  - [ ] 1.2 Write `rag/build_record.py`:
+- [x] 1.0 Capture a dense baseline, then build the build-record module and seed the current index
+  - [x] 1.1 Before any code change, save `--json` output for 5 dense queries (2 OLG, 1 each FNS, CMR, CFR) and for 1 chunk-id lookup, to the scratchpad as the baseline.
+  - [x] 1.2 Write `rag/build_record.py`:
     - stage names per source (`scrape` for OLG, `parse` for the others, then `chunk`, `embed`, `sparse`);
     - `record_stage(source, stage, counts, details=None, note=None, index_root=None, when=None)`: atomic read, merge, then temp-file-and-replace; never raises, warns on failure;
     - `record_embed_collection(source, tier, collection, model, count, ...)`: the stage date is the oldest collection date;
     - `read_index_info(source, index_root=None)`: returns the PRD 4.3.5 block, with `record_status` of `present`, `missing` or `unreadable`, and missing dates as `"unknown"`;
     - `format_index_info_text(info)`: the one-line summary for the text output.
-  - [ ] 1.3 Add `index/*/build_record.json` to `.gitignore`.
-  - [ ] 1.4 Write `tests/test_build_record.py`: write/read round trip, merging two stages, the embed per-collection oldest-date rule, missing record → `"unknown"`, unreadable JSON → `"unreadable"` with no exception, and a write failure that doesn't raise.
-  - [ ] 1.5 Seed the four records with a one-off scratch script: the dates confirmed in PRD 4.3.7, the reconstruction note, counts from the current chunk files and collections, and the sparse `completed_at` from the pickle's `built_at`. Print each record to check it.
-- [ ] 2.0 Make each pipeline stage write its build record
-  - [ ] 2.1 `rag/olg/scraper.py`: on a completed run, write the `scrape` stage with counts of pages scraped, 404s and failures.
-  - [ ] 2.2 `rag/fns/parser.py`, `rag/cmr/parser.py`, `rag/cfr/parser.py`: after parsed JSONs are written, write the `parse` stage with section and source-PDF counts.
-  - [ ] 2.3 The four chunkers: after the chunk files are written, write the `chunk` stage with broad and section chunk counts. For CFR, record which variant file the embedder uses.
-  - [ ] 2.4 `rag/embedder.py`: after each collection embeds successfully, write its `embed` entry with model, collection and count. Skip on `--dry-run` and whenever a `collection_suffix` is set.
-  - [ ] 2.5 `rag/sparse_index.py` `save_index()`: write the `sparse` stage with the chunk count, using `index.built_at` as the time. The index root is derived from the pickle path.
-  - [ ] 2.6 Tests: `save_index()` into a temp index root writes the sparse stage, and the embedder's skip rule (a pure helper) is covered.
+  - [x] 1.3 Add `index/*/build_record.json` to `.gitignore`.
+  - [x] 1.4 Write `tests/test_build_record.py`: write/read round trip, merging two stages, the embed per-collection oldest-date rule, missing record â†’ `"unknown"`, unreadable JSON â†’ `"unreadable"` with no exception, and a write failure that doesn't raise.
+  - [x] 1.5 Seed the four records with a one-off scratch script: the dates confirmed in PRD 4.3.7, the reconstruction note, counts from the current chunk files and collections, and the sparse `completed_at` from the pickle's `built_at`. Print each record to check it.
+- [x] 2.0 Make each pipeline stage write its build record
+  - [x] 2.1 `rag/olg/scraper.py`: on a completed run, write the `scrape` stage with counts of pages scraped, 404s and failures.
+  - [x] 2.2 `rag/fns/parser.py`, `rag/cmr/parser.py`, `rag/cfr/parser.py`: after parsed JSONs are written, write the `parse` stage with section and source-PDF counts.
+  - [x] 2.3 The four chunkers: after the chunk files are written, write the `chunk` stage with broad and section chunk counts. For CFR, record which variant file the embedder uses.
+  - [x] 2.4 `rag/embedder.py`: after each collection embeds successfully, write its `embed` entry with model, collection and count. Skip on `--dry-run` and whenever a `collection_suffix` is set.
+  - [x] 2.5 `rag/sparse_index.py` `save_index()`: write the `sparse` stage with the chunk count, using `index.built_at` as the time. The index root is derived from the pickle path.
+  - [x] 2.6 Tests: `save_index()` into a temp index root writes the sparse stage, and the embedder's skip rule (a pure helper) is covered.
 - [ ] 3.0 Turn the CLI into the contract layer: error kinds and exit codes, the JSON envelope, `--mode`, `--list-programs --json`, exclusive commands
   - [ ] 3.1 Write `rag/cli_errors.py`:
-    - `CliError(kind, message)` and the kind → exit code map (`usage` 2, `unavailable` 3, `api` 4, `internal` 5);
+    - `CliError(kind, message)` and the kind â†’ exit code map (`usage` 2, `unavailable` 3, `api` 4, `internal` 5);
     - `emit_error(err, command, source, as_json)`, which writes the stderr line and, with `--json`, the JSON object on stdout;
     - a `QUERY_DEBUG` traceback switch.
   - [ ] 3.2 `query.py` argument parsing:
@@ -55,7 +57,7 @@
     - `--url` only with OLG.
 
     All of these raise `CliError` with nothing on stdout.
-  - [ ] 3.4 Map failures to kinds: unknown program (`ValueError` from `_resolve_program_name`) → `usage`; Voyage exceptions → `api`; a ChromaDB missing collection → `unavailable`; anything else → `internal`. `main()` wraps the run and exits with the code.
+  - [ ] 3.4 Map failures to kinds: unknown program (`ValueError` from `_resolve_program_name`) â†’ `usage`; Voyage exceptions â†’ `api`; a ChromaDB missing collection â†’ `unavailable`; anything else â†’ `internal`. `main()` wraps the run and exits with the code.
   - [ ] 3.5 API: `search_with_client()` raises `SparseIndexMissingError` (a subclass of `FileNotFoundError`) when the mode isn't dense and no sparse index exists. Fix the docstring default and document the broad-tier downgrade.
   - [ ] 3.6 Add `contract_version`, `command` and `index` to the search, chunk and URL JSON, plus the OLG_PROGRAMS guardrail's empty response. The `--mode` value passes through to `search_with_client()`.
   - [ ] 3.7 `--list-programs`: one index-date line in the text output. With `--json`, the PRD 4.4.3 shape. Refactor `_print_info` into a data function and a text formatter so the text output stays the same.
@@ -79,7 +81,7 @@
     - `--context`;
     - JSON (`command: "exact"`);
     - a text formatter.
-  - [ ] 4.7 Write `tests/test_exact_search.py`: each normalization rule, a phrase straddling a chunk boundary, a heading-crossing phrase, an unaligned fallback, ordering, the `--top` cap and totals, the program filter, an empty phrase → usage error, and no match → `result_count: 0` with exit 0.
+  - [ ] 4.7 Write `tests/test_exact_search.py`: each normalization rule, a phrase straddling a chunk boundary, a heading-crossing phrase, an unaligned fallback, ordering, the `--top` cap and totals, the program filter, an empty phrase â†’ usage error, and no match â†’ `result_count: 0` with exit 0.
   - [ ] 4.8 On the real index, measure the attribution rate on a sample of about 200 phrases taken from the broad text across the four sources, and record it in this task list.
   - [ ] 4.9 **GATE (plan-changing test):** stop only if the attribution rate is under 95% for any source. In that case show Ben the failing patterns and propose either better alignment or searching the chunk text instead. At 95% or above, carry on without stopping.
 - [ ] 5.0 Write `docs/cli_contract.md`, update CLAUDE.md and README, and write the handoff response

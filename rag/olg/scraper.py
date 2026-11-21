@@ -55,6 +55,9 @@ from parser import parse_page
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.append(str(PROJECT_ROOT))  # so `rag.*` imports work when run as a script
+from rag.build_record import record_scrape_from_progress  # noqa: E402
+
 INDEX_DIR = PROJECT_ROOT / "index" / "olg"
 MANIFEST_FILE = INDEX_DIR / "policy_manifest.json"
 OUTPUT_DIR = INDEX_DIR / "scraped_pages"
@@ -509,6 +512,9 @@ def run_scraper(
     print(f"Report saved to: {REPORT_FILE}")
     print(f"Progress saved to: {PROGRESS_FILE}")
     print(f"Page data saved to: {OUTPUT_DIR}/")
+
+    # Build record: the scrape stage is dated by the oldest page fetch.
+    record_scrape_from_progress(progress)
 
 
 # ============================================================

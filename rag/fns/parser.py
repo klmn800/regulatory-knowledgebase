@@ -42,6 +42,9 @@ from pathlib import Path
 
 import pdfplumber
 
+sys.path.append(str(Path(__file__).resolve().parents[2]))  # for `rag.*` when run as a script
+from rag.build_record import record_stage  # noqa: E402
+
 
 # ============================================================
 # CONSTANTS
@@ -1217,6 +1220,15 @@ def main():
             project_root, "index", "fns", "parsed_sections"
         )
         save_sections(sections, output_dir)
+
+        # Build record: only a full run into the index updates the parse date.
+        if args.chapter is None and page_range is None and args.output is None:
+            record_stage("fns", "parse", counts={
+                "sections": len(list(Path(output_dir).glob("*.json"))),
+                "pdfs": 1,
+            })
+        else:
+            print("Build record not updated (partial or redirected run).")
 
 
 if __name__ == "__main__":

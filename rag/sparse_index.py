@@ -12,6 +12,7 @@ import json
 import pickle
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Iterable
 
@@ -82,10 +83,28 @@ def build_sparse_index(source: str, chunks: Iterable[dict]) -> SparseIndex:
     )
 
 
-def save_index(index: SparseIndex, path: Path) -> None:
+def save_index(index: SparseIndex, path: Path, record: bool = True) -> None:
+    """Pickle the index to `path` and record the ``sparse`` build stage.
+
+    The build record is written next to the other index data: for the
+    standard layout ``index/sparse/{source}.pkl`` that is
+    ``index/{source}/build_record.json``. Recording is skipped when the
+    pickle isn't in a ``sparse/`` directory (e.g. an evaluation copy) or
+    when `record` is False. A record failure only prints a warning.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("wb") as f:
         pickle.dump(index, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    if record and path.parent.name == "sparse" and path.stem == index.source:
+        from rag.build_record import record_stage
+        record_stage(
+            index.source, "sparse",
+            counts={"chunks": len(index.chunk_ids)},
+            index_root=path.parent.parent,
+            when=datetime.fromtimestamp(index.built_at).astimezone()
+            if index.built_at else None,
+        )
 
 
 def load_index(path: Path) -> SparseIndex:

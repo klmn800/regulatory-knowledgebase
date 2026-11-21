@@ -29,6 +29,7 @@ import argparse
 import json
 import re
 import statistics
+import sys
 from pathlib import Path
 
 
@@ -49,6 +50,8 @@ def _extract_chunk_cross_refs(text: str) -> list[str]:
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.append(str(PROJECT_ROOT))  # for `rag.*` when run as a script
+from rag.build_record import record_stage  # noqa: E402
 INDEX_DIR = PROJECT_ROOT / "index" / "cfr"
 PARSED_DIR = INDEX_DIR / "parsed_sections"
 PART_CHUNKS_FILE = INDEX_DIR / "part_chunks.json"
@@ -1437,6 +1440,11 @@ Examples:
             json.dump(context_chunks, f, indent=2, ensure_ascii=False)
         print(f"Wrote {len(context_chunks)} section chunks to "
               f"{SECTION_CHUNKS_CONTEXT_FILE}")
+
+        # The embedder uses the parent-context variant (see embedder.py).
+        record_stage("cfr", "chunk",
+                     counts={"parts": len(part_chunks), "sections": len(context_chunks)},
+                     details={"section_chunk_file": "index/cfr/section_chunks_context.json"})
 
 
 if __name__ == "__main__":

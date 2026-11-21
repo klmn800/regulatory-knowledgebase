@@ -27,9 +27,13 @@ import argparse
 import configparser
 import json
 import re
+import sys
 from pathlib import Path
 
 import pdfplumber
+
+sys.path.append(str(Path(__file__).resolve().parents[2]))  # for `rag.*` when run as a script
+from rag.build_record import record_stage  # noqa: E402
 
 
 # ============================================================
@@ -611,11 +615,21 @@ Examples:
     print(f"Output directory: {OUTPUT_DIR}")
     print()
 
-    parse_all(
+    sections = parse_all(
         pdf_dir=pdf_dir,
         part_filter=args.part,
         dry_run=args.dry_run,
     )
+
+    # Build record: only a full, written run updates the parse date.
+    if sections and not args.dry_run:
+        if args.part is None:
+            record_stage("cfr", "parse", counts={
+                "sections": len(list(OUTPUT_DIR.glob("*.json"))),
+                "pdfs": len(list(pdf_dir.glob("*.pdf"))),
+            })
+        else:
+            print("Build record not updated (partial run).")
 
 
 if __name__ == "__main__":

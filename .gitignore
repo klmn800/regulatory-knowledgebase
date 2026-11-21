@@ -92,3 +92,6 @@ nul
 # Claude Code
 .claude/
 .pytest_cache/
+
+# Index build records (travel with index/, not git)
+index/*/build_record.json

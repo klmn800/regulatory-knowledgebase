@@ -44,6 +44,9 @@ import chromadb
 from chromadb.config import Settings as ChromaSettings
 import voyageai
 
+sys.path.append(str(Path(__file__).resolve().parents[1]))  # for `rag.*` when run as a script
+from rag.build_record import record_embed_collection  # noqa: E402
+
 
 # ============================================================
 # CONFIGURATION
@@ -639,6 +642,19 @@ def _make_stats(total_tokens: int, embedded: int, skipped: int,
 # MAIN
 # ============================================================
 
+def should_record_build(
+    collection_suffix: str | None,
+    granular_chunks_file_override: str | None,
+) -> bool:
+    """Whether an embed run should update the index build record.
+
+    Evaluation runs (side-by-side variant collections, or an alternative
+    chunk file) don't describe the production index, so they must not
+    move its embed date. Dry runs never reach the recording code.
+    """
+    return not collection_suffix and not granular_chunks_file_override
+
+
 def run_embedder(
     source: str = "olg",
     dry_run: bool = False,
@@ -744,6 +760,10 @@ def run_embedder(
     )
 
     total_stats = {"tokens": 0, "cost": 0.0, "embedded": 0}
+    record_build = should_record_build(collection_suffix, granular_chunks_file_override)
+    if not record_build:
+        print("Evaluation run (collection suffix or chunks-file override): "
+              "build record will not be updated.")
 
     # Embed broad tier (pages or chapters)
     if do_broad and broad_chunks:
@@ -778,6 +798,12 @@ def run_embedder(
               f"{stats['tokens']:,} tokens, ${stats['cost']:.4f}")
         print()
 
+        if record_build and stats["embedded"] > 0:
+            record_embed_collection(
+                source, paths["broad_label"], broad_collection_name, model,
+                broad_collection.count(),
+            )
+
     # Embed granular tier (sections)
     if do_granular and granular_chunks:
         print(f"{'='*50}")
@@ -810,6 +836,12 @@ def run_embedder(
               f"{stats['skipped']} skipped, "
               f"{stats['tokens']:,} tokens, ${stats['cost']:.4f}")
         print()
+
+        if record_build and stats["embedded"] > 0:
+            record_embed_collection(
+                source, paths["granular_label"], granular_collection_name, model,
+                granular_collection.count(),
+            )
 
     # Summary
     print(f"{'='*50}")

@@ -30,6 +30,7 @@ import argparse
 import json
 import re
 import statistics
+import sys
 from pathlib import Path
 
 
@@ -38,6 +39,8 @@ from pathlib import Path
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.append(str(PROJECT_ROOT))  # for `rag.*` when run as a script
+from rag.build_record import record_stage  # noqa: E402
 INDEX_DIR = PROJECT_ROOT / "index" / "fns"
 PARSED_DIR = INDEX_DIR / "parsed_sections"
 CHAPTER_CHUNKS_FILE = INDEX_DIR / "chapter_chunks.json"
@@ -1223,6 +1226,10 @@ def main():
         with open(SECTION_CHUNKS_FILE, "w", encoding="utf-8") as f:
             json.dump(section_chunks, f, indent=2, ensure_ascii=False)
         print(f"Wrote {len(section_chunks)} section chunks to {SECTION_CHUNKS_FILE}")
+
+        record_stage("fns", "chunk",
+                     counts={"chapters": len(chapter_chunks), "sections": len(section_chunks)},
+                     details={"section_chunk_file": "index/fns/section_chunks.json"})
 
 
 if __name__ == "__main__":

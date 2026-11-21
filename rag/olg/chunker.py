@@ -34,6 +34,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from rag.olg.page_excludes import PAGE_EXCLUDES, CHUNK_EXCLUDES
 from rag.olg.chunker_overrides import URL_OVERRIDES
+from rag.build_record import record_stage
 
 
 # ============================================================
@@ -1053,6 +1054,10 @@ Examples:
         with open(SECTION_CHUNKS_FILE, "w", encoding="utf-8") as f:
             json.dump(section_chunks, f, indent=2, ensure_ascii=False)
         print(f"Wrote {len(section_chunks)} section chunks to {SECTION_CHUNKS_FILE}")
+
+        record_stage("olg", "chunk",
+                     counts={"pages": len(page_chunks), "sections": len(section_chunks)},
+                     details={"section_chunk_file": "index/olg/section_chunks.json"})
 
 
 if __name__ == "__main__":
