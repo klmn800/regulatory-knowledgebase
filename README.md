@@ -57,6 +57,9 @@ python rag/query.py "income deduction" --source fns --top 10 --full
 python rag/query.py "work requirements" --source cmr --program SNAP
 python rag/query.py "summer EBT eligibility" --source cfr
 python rag/query.py "income limits" --exclude-programs "TAFDC,EAEDC"
+python rag/query.py "273.9 income" --source cfr --mode sparse   # BM25 keywords (dense is the default)
+python rag/query.py --exact "positive allegation" --source fns   # literal phrase, every hit
+python rag/query.py "work requirements" --json       # for programs: see docs/cli_contract.md
 
 # Author an OLG page
 python apps/author/author.py "Consolidate all VC-1 scripts" --name vc1_scripts
@@ -162,7 +165,10 @@ python apps/comparator/report.py --open
 
 | Module | Role |
 |--------|------|
-| `rag/query.py` | Unified search. CLI + Python API. `--source olg\|fns\|cmr\|cfr`, program filtering, similarity scoring. |
+| `rag/query.py` | Unified search. CLI + Python API. `--source olg\|fns\|cmr\|cfr`, `--mode dense\|sparse\|hybrid`, `--exact`, program filtering, similarity scoring. The CLI is a versioned interface: [docs/cli_contract.md](docs/cli_contract.md). |
+| `rag/exact_search.py` | Literal phrase search over the broad-tier text, with each match placed in its section chunk (`--exact`). |
+| `rag/build_record.py` | Per-source index build record (`index/{source}/build_record.json`), written by each pipeline stage and shown in `--list-programs` and every `--json` response. |
+| `rag/cli_errors.py` | CLI error kinds, exit codes and error output. |
 | `rag/embedder.py` | Batch embedding via Voyage AI. Token-aware batching, resume, cost estimation. |
 
 ### Shared Tools (`tools/`)
@@ -185,6 +191,9 @@ regulatory-knowledgebase/
 │
 ├── rag/                      # RAG pipeline (parse/chunk/embed/query)
 │   ├── query.py              #   unified search (--source olg|fns|cmr|cfr)
+│   ├── exact_search.py       #   --exact literal phrase search
+│   ├── build_record.py       #   index build dates per source
+│   ├── cli_errors.py         #   CLI exit codes and error output
 │   ├── embedder.py           #   batch embedding pipeline
 │   ├── olg/                  #   scraper, parser, extractor, chunker
 │   ├── fns/                  #   parser, chunker
@@ -276,6 +285,7 @@ Single `config.ini` at project root (gitignored). Key sections:
 - [CFR Pipeline](docs/cfr_pipeline.md)
 - [Comparator](docs/comparator.md)
 - [Search Engine Architecture](docs/search_engine_architecture.md)
+- [query.py CLI contract](docs/cli_contract.md) (for programs and agents that call the CLI)
 
 ## License
 

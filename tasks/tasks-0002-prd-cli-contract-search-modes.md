@@ -105,8 +105,8 @@
 
       CFR stays low by design (the 272.1(g) / 271.8 exclusion). Heading searches such as a CMR section title, or FNS "Positive Allegation", now land on the chunk under that heading.
 - [ ] 5.0 Write `docs/cli_contract.md`, update CLAUDE.md and README, and write the handoff response
-  - [ ] 5.1 Write `docs/cli_contract.md` covering every item in PRD 4.6.
-  - [ ] 5.2 Update the `query.py` module docstring and `--help` epilog, the CLAUDE.md query commands and module table (`exact_search`, `build_record`, `cli_errors`), and the README.
+  - [x] 5.1 Write `docs/cli_contract.md` covering every item in PRD 4.6.
+  - [x] 5.2 Update the `query.py` module docstring and `--help` epilog, the CLAUDE.md query commands and module table (`exact_search`, `build_record`, `cli_errors`), and the README.
   - [ ] 5.3 Read the portfolio standard, section 4. Set the handoff status to `accepted` and write the `## Response`, covering PRD 4.7 with no agency content.
 - [ ] 6.0 Verify on the real index
   - [ ] 6.1 Run sparse and hybrid OLG queries and confirm both return results.

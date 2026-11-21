@@ -105,7 +105,10 @@ Fully complete (parse, chunk, embed, query). Used in comparator L3 cross-check a
 | Module | Role |
 |--------|------|
 | `rag/embedder.py` | Batch embedding via Voyage AI → ChromaDB. `--source olg\|fns\|cmr\|cfr` flag routes to correct chunk files and collections. Token-aware batching, resume support, cost estimation, `--dry-run`, `--force`, `--only`. |
-| `rag/query.py` | Three interfaces: CLI, Python API (`search()` / `create_client(source)` + `search_with_client()`), JSON output. `--source olg\|fns\|cmr\|cfr` flag. Program filtering (OLG/CMR), `--exclude-programs` filter, similarity scoring, parent context fetching, source-specific display formatting. |
+| `rag/query.py` | Three interfaces: CLI, Python API (`search()` / `create_client(source)` + `search_with_client()`), JSON output. `--source olg\|fns\|cmr\|cfr` flag. Program filtering (OLG/CMR), `--exclude-programs` filter, similarity scoring, parent context fetching, source-specific display formatting. `--mode dense\|sparse\|hybrid` (default dense; hybrid tested worse) and `--exact`. **The CLI is a versioned contract** ([docs/cli_contract.md](docs/cli_contract.md), 1.0): flag names, `--json` fields and exit codes are an interface; renaming or removing one needs a handoff to `business` first. |
+| `rag/exact_search.py` | `--exact` literal phrase search. Pure functions (normalize, match, order chunks, align each broad-text match to its section chunk, with a heading retry) plus a thin ChromaDB loader. Unplaceable matches are reported against the parent, never dropped. |
+| `rag/build_record.py` | Index build record per source at `index/{source}/build_record.json` (gitignored; travels with `index/`). Each pipeline stage records its own date and counts (scrape/parse, chunk, embed per collection, sparse); never fails a run. `read_index_info()` feeds `--list-programs` and the `index` block of every `--json` response. |
+| `rag/cli_errors.py` | CLI error kinds and exit codes (usage 2, unavailable 3, api 4, internal 5), the one-line stderr format, the JSON error object, `QUERY_DEBUG=1` tracebacks. |
 
 ### Tools (`tools/`)
 
@@ -207,7 +210,10 @@ python rag/query.py "eligibility rules" --collection pages
 python rag/query.py "income limits" --context
 python rag/query.py "work requirements" --json
 python rag/query.py "income limits" --exclude-programs "TAFDC,EAEDC"
-python rag/query.py --list-programs
+python rag/query.py --list-programs                  # programs + index build dates
+python rag/query.py "income" --mode sparse            # BM25; also --mode hybrid (dense is default)
+python rag/query.py --exact "expedited service"       # literal phrase, all hits, no API call
+python rag/query.py --exact "good cause" --source cmr --top 5 --json
 
 # FNS
 python rag/query.py "income deduction" --source fns
