@@ -115,3 +115,12 @@ def test_draft_detail_shows_references(client, tmp_path):
     }), encoding="utf-8")
     r = client.get(f"/author/{NAME}/drafts/1")
     assert "Reference documents used (1)" in r.text and "Main page." in r.text
+
+
+def test_convert_upload_reserved_name_stored_safely(client, make_docx, tmp_path, monkeypatch):
+    monkeypatch.setattr(app_mod, "CONVERT_DIR", tmp_path / "convert")
+    r = client.post("/convert/upload",
+                    files={"file": ("CON.docx", make_docx(body="Convert body."),
+                                    "application/octet-stream")})
+    assert r.status_code == 200 and "Convert body." in r.text
+    assert (tmp_path / "convert" / "CON-file.docx").exists()

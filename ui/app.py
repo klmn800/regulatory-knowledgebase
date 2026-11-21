@@ -1882,8 +1882,9 @@ async def convert_upload(
     CONVERT_DIR.mkdir(parents=True, exist_ok=True)
     stem = Path(file.filename).stem
 
-    # Save uploaded file
-    upload_path = CONVERT_DIR / f"{stem}.docx"
+    # Save uploaded file. A Windows device name (CON.docx, NUL.docx...) is
+    # stored as CON-file.docx: opening the raw name would block forever.
+    upload_path = CONVERT_DIR / reference_docs.stored_filename(f"{stem}.docx")
     content = await file.read()
     upload_path.write_bytes(content)
 
