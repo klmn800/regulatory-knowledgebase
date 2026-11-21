@@ -7,9 +7,11 @@ prompt. Used by the web UI (``ui/app.py``) and the CLI (``apps/author/author.py`
 Layout, one folder per upload::
 
     output/author/<name>/references/<ref_id>/
-        <original filename>
+        <original filename> the upload as received (a Windows-reserved name such as
+                            CON.txt is stored as CON-file.txt; see stored_filename)
         converted.md        text used in prompts
-        meta.json           filename, type, counts, tracked changes, description
+        meta.json           filename (display), stored_as (on disk), type, counts,
+                            tracked changes, description
         images/             images extracted from a .docx (only if it has any)
 
 ``ref_id`` is a slug of the filename stem. Uploading a file with the same slug replaces
@@ -108,6 +110,37 @@ def _retry_on_lock(op, *args, attempts: int = 10, delay: float = 0.2):
             if i == attempts - 1:
                 raise
             time.sleep(delay)
+
+
+def is_windows_reserved(filename: str) -> bool:
+    """True if Windows treats this name as a device (``CON``, ``NUL.docx``, ``aux.tar.gz``).
+
+    Windows 10 matches the part before the first dot, ignoring case and trailing
+    spaces, so ``CON.txt`` opens the console instead of a file and a read blocks
+    forever. Windows 11 relaxed this; the rule is applied on every platform so
+    stored names are the same everywhere.
+    """
+    base = (filename or "").split(".", 1)[0].rstrip(" ").lower()
+    return base in _WINDOWS_RESERVED
+
+
+def stored_filename(filename: str) -> str:
+    """Name to store an upload under on disk: ``filename`` unless it's reserved.
+
+    A reserved name gets ``-file`` after the reserved part (``CON.txt`` →
+    ``CON-file.txt``), matching the ``-file`` suffix ``make_ref_id`` uses. The
+    original name is kept in ``meta.json`` for display.
+    """
+    if not is_windows_reserved(filename):
+        return filename
+    base, dot, rest = filename.partition(".")
+    return f"{base.rstrip(' ')}-file{dot}{rest}"
+
+
+def _original_path(folder: Path, meta: dict) -> Path:
+    """Path of the stored original. Uploads saved before ``stored_as`` existed
+    were stored under their display name."""
+    return folder / (meta.get("stored_as") or meta["filename"])
 
 
 def make_ref_id(filename: str) -> str:
@@ -234,7 +267,7 @@ def add_reference(
         staging = root / f"{STAGING_PREFIX}{ref_id}-{uuid.uuid4().hex[:8]}"
         staging.mkdir()
         try:
-            original = staging / name
+            original = staging / stored_filename(name)
             original.write_bytes(data)
             conv = _convert(staging, original, "accept")
 
@@ -256,6 +289,7 @@ def add_reference(
             meta = {
                 "ref_id": ref_id,
                 "filename": name,
+                "stored_as": original.name,
                 "file_type": ext.lstrip("."),
                 "uploaded": now,
                 "first_uploaded": (previous or {}).get("first_uploaded") or now,
@@ -333,7 +367,7 @@ def reconvert_reference(output_dir: Path, ref_id: str, change_mode: str) -> Refe
     meta = _read_meta(folder)
     if meta.get("file_type") != "docx":
         raise ReferenceDocError("Only .docx files have tracked changes to re-convert.")
-    original = folder / meta["filename"]
+    original = _original_path(folder, meta)
     meta.update(_convert(folder, original, change_mode))
     _write_meta(folder, meta)
     return load_reference(output_dir, ref_id)

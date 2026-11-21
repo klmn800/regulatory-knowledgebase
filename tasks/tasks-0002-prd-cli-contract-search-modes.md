@@ -12,7 +12,6 @@
 - `CLAUDE.md`, `README.md`: commands and module tables.
 - `tests/test_build_record.py`, `tests/test_pipeline_records.py`, `tests/test_exact_search.py`, `tests/test_query_cli.py`: new.
 - Seed records written to `index/{olg,fns,cmr,cfr}/build_record.json` (gitignored; copy to the other machine with the next index copy).
-- Known: `tests/test_reference_docs.py::test_path_traversal_and_reserved_names` hangs on Windows 10, where `CON.txt` resolves to the console device (pre-existing bug in `apps/author/reference_docs.py`, outside this PRD). Run the suite with `--deselect` until it's fixed.
 
 ### Notes
 

@@ -40,7 +40,7 @@ output/author/{name}/
 │   └── expedited-overview-v3/        ← ref_id: slug of the filename stem
 │       ├── Expedited Overview v3.docx  ← original upload
 │       ├── converted.md              ← text used in prompts
-│       ├── meta.json                 ← filename, type, char_count, tracked_changes, change_mode, image_count, description
+│       ├── meta.json                 ← filename, stored_as, type, char_count, tracked_changes, change_mode, image_count, description
 │       └── images/                   ← extracted .docx images (only if any)
 ├── research/
 │   ├── 001_20260408-2130/
@@ -78,7 +78,7 @@ The author's own unpublished pages and notes, uploaded per assignment (PRD: `tas
 
 - **Types:** `.docx` (converted with `tools/docx_reader.py`), `.md` and `.txt` (stored as-is; UTF-8, falling back to cp1252). Other types are rejected per file; one bad file doesn't block the rest. Size cap: `reference_max_mb`.
 - **Tracked changes:** accepted by default; `meta.json` records the counts and the mode, and the UI offers a re-convert with the other mode.
-- **Safety:** upload is converted in a `.staging-*` folder and swapped in only on success, so a failed re-upload never destroys a good one. Filenames are reduced to a Windows-safe basename; `ref_id` must be a lowercase slug (no traversal).
+- **Safety:** upload is converted in a `.staging-*` folder and swapped in only on success, so a failed re-upload never destroys a good one. Filenames are reduced to a Windows-safe basename; `ref_id` must be a lowercase slug (no traversal). A Windows device name (`CON`, `NUL`, `AUX`, `PRN`, `COM1`-`9`, `LPT1`-`9`, checked on the part before the first dot) is stored on disk with `-file` added (`CON.txt` → `CON-file.txt`): on Windows 10, opening `CON.txt` reaches the console and a read blocks forever. `meta.json` keeps the original name in `filename` for display and the on-disk name in `stored_as`; uploads from before `stored_as` existed fall back to `filename`.
 - **Description:** free text per upload telling the drafting model what the document is, its status, its role and how far to trust it. Editable any time; past drafts keep the description they used.
 - **In the prompt:** selected uploads (UI: checkboxes, all on; CLI: all) become the *Author's Reference Documents* section. The fixed framing text is `apps/author/prompts/author_reference_framing.md`: the documents are unpublished, authoritative for the new page as qualified by their descriptions, must not be cited as published OLG, and conflicts with published OLG/CMR/FNS/CFR are followed (upload wins) and listed in Author's Notes. Each document is wrapped in `<reference_document filename="...">` with `<author_description>` and `<content>`.
 - **Known limit:** conflict detection is opportunistic. The draft only compares against published text it sees through selected research or its own searches; a clean Author's Notes doesn't prove an upload agrees with policy. Research doesn't use uploads yet.

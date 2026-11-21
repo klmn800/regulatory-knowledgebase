@@ -151,3 +151,39 @@ def test_windows_invalid_characters_stripped(assignment_dir):
     res = rd.add_reference(assignment_dir, 'say "hi"?.txt.', b"text")
     assert res.ok and res.filename == "say hi.txt"
     assert (assignment_dir / "references" / res.ref_id / "say hi.txt").exists()
+
+
+@pytest.mark.parametrize("name,reserved", [
+    ("CON.txt", True), ("con", True), ("NUL.docx", True), ("aux.tar.gz", True),
+    ("COM1.md", True), ("CON .txt", True),
+    ("console.txt", False), ("icon.txt", False), ("CON-notes.txt", False), ("COM10.md", False),
+])
+def test_is_windows_reserved(name, reserved):
+    assert rd.is_windows_reserved(name) is reserved
+
+
+def test_reserved_upload_stored_under_safe_name(assignment_dir):
+    # On Windows 10, writing "CON.txt" opens the console and the read blocks forever.
+    res = rd.add_reference(assignment_dir, "CON.txt", b"text")
+    folder = assignment_dir / "references" / "con-file"
+    assert res.ok and res.filename == "CON.txt"
+    assert (folder / "CON-file.txt").read_bytes() == b"text"
+    meta = json.loads((folder / "meta.json").read_text(encoding="utf-8"))
+    assert meta["filename"] == "CON.txt" and meta["stored_as"] == "CON-file.txt"
+    assert rd.load_reference(assignment_dir, "con-file").filename == "CON.txt"
+
+
+def test_reserved_docx_reconverts_from_stored_name(assignment_dir, make_docx):
+    res = rd.add_reference(assignment_dir, "NUL.docx", make_docx(tracked=True))
+    assert res.ok
+    rejected = rd.reconvert_reference(assignment_dir, res.ref_id, "reject")
+    assert "100" in rejected.text and rejected.meta["change_mode"] == "reject"
+
+
+def test_reconvert_legacy_meta_without_stored_as(assignment_dir, make_docx):
+    res = rd.add_reference(assignment_dir, "Legacy Page.docx", make_docx(tracked=True))
+    folder = assignment_dir / "references" / res.ref_id
+    meta = json.loads((folder / "meta.json").read_text(encoding="utf-8"))
+    del meta["stored_as"]  # uploads saved before stored_as existed
+    (folder / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+    assert rd.reconvert_reference(assignment_dir, res.ref_id, "reject").meta["change_mode"] == "reject"
