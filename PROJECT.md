@@ -2,35 +2,38 @@
 
 ## At a glance
 
-*Updated 2026-11-04*
+*Updated 2026-11-25*
 
 ### Current state
 Multi-source RAG over SNAP policy (OLG, 106 CMR, FNS Handbook 310, 7 CFR). All four sources
 are parsed, chunked, embedded and searchable. Search UI, comparator, author and report are
-built. Runs on both machines, synced through GitHub.
+built. Runs on both machines, synced through GitHub. Tests: `python -m pytest tests`
+(156, offline, synthetic fixtures).
 
-**New (PRD 0001):** Author reference uploads. A References tab takes the author's own
-unpublished pages (.docx/.md/.txt) with a description each; the Draft picker includes them
-in the prompt, framed as unpublished. Also, `docx_reader` now recognizes heading styles
-(it never did before; the Convert tab benefits too). The repo now has a test suite:
-`python -m pytest tests` (38 tests, offline, synthetic fixtures).
+- **PRD 0001, Author reference uploads: done** (gate 6.3 closed 2026-11-25 on a real
+  four-document draft). The References tab takes the author's unpublished pages with a
+  description each, and drafts include them framed as unpublished. The draft and resume
+  launchers now put the project `.venv` first on PATH, so `python rag/query.py` works in the
+  draft session on the laptop.
+- **PRD 0002, CLI contract 1.0: done** (2026-11-21, handoff with `business` closed).
+  `--mode dense|sparse|hybrid`, `--exact`, index build dates, exit codes. See
+  `docs/cli_contract.md`.
 
 ### Needs Ben
-- **Restart the web UI** (the running copy predates the change), then do task 6.3: upload a
-  real document in the References tab, write a description, launch a draft, and check the
-  draft and its Author's Notes.
-- Try a real question in the web UI on the laptop (`.venv\Scripts\python.exe ui/app.py`,
-  then http://127.0.0.1:8001). Smoke tests passed; a full synthesis hasn't been run here.
-  (Laptop set up 2026-11-03: `.venv` on Python 3.14, `chromadb==1.5.2`.)
-- Laptop: `pytest` and `httpx` were installed into `.venv` here; run
-  `pip install -r requirements.txt` on the development machine before running the tests.
+- Try a real question in the web UI on the laptop (`start-app.bat`). Smoke tests passed; a
+  full synthesis hasn't been run here.
+- When you next write a reference description, glance at whether the draft follows it. It
+  was the one part of 6.3 not exercised live.
 
 ### Blockers
 - None.
 
 ### Next
-After 6.3: mark the handoff done. Then a PRD for Research using the uploads (systematic
-conflict checks against published sources).
+- A PRD for Research using the uploads (systematic conflict checks against published sources).
+- The OLG refresh (ask 3 of the 2026-11-19 handoff), as its own project, with a handoff to
+  `business` before chunk ids change.
+- Other Claude Code launchers (author research, QC judge, comparator L2) also tell sessions
+  to run `python rag/query.py` and don't yet put the venv on PATH. Not changed; offered to Ben.
 
 ## Notes
 

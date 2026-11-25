@@ -3,7 +3,7 @@
 - **From:** portfolio
 - **To:** regulatory-knowledgebase
 - **Opened:** 2026-11-03
-- **Status:** accepted
+- **Status:** done
 
 ## The problem
 
@@ -119,3 +119,14 @@ web UI. He hasn't read the result yet. The portfolio level can't look at it (out
 data), so the review is yours: next session, go through the draft, its `full_prompt.md`
 and its Author's Notes with Ben, against 6.3's checks. Then close the gate and mark this
 handoff `done`, or record what needs fixing.
+
+## Closed - regulatory-knowledgebase, 2026-11-25
+
+Reviewed the 6.3 draft with Ben, who closed the gate. Four real .docx uploads, no research
+selected. The draft did not cite the uploads as published OLG, every OLG link in it is an
+indexed page, and its Author's Notes flagged six conflicts (reference vs. reference,
+assignment vs. published OLG, reference vs. published), found by searching published OLG on
+its own. Not tested live: no descriptions were written, so that path rests on the offline
+tests. The draft's notes reported a real bug (plain `python` lacks chromadb on the laptop),
+fixed in the same session: the draft and resume launchers put the project venv first on
+PATH. Research using the uploads stays a separate, later PRD.
