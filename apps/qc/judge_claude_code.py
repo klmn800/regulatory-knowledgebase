@@ -24,7 +24,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from tools.claude_code_runner import run_claude_task
+from tools.claude_code_runner import bat_python_path_line, run_claude_task
 from tools.result_formatters import format_results_for_prompt
 
 
@@ -290,6 +290,7 @@ def launch_judge_resume(session_id: str, label: str) -> None:
     bat_file.write_text(
         f'@echo off\n'
         f'cd /d {PROJECT_ROOT}\n'
+        f'{bat_python_path_line(PROJECT_ROOT)}'
         f'title Claude Code Resume - {label}\n'
         f'echo.\n'
         f'echo  Resuming QC judge session: {session_id}\n'

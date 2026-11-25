@@ -56,6 +56,7 @@ from apps.qc.qc_analyzer import (
     find_recurring_gaps,
 )
 from tools.pptx_writer import generate_pptx, validate_outline
+from tools.claude_code_runner import bat_python_path_line
 
 
 PPT_PROMPT_PATH = PROJECT_ROOT / "apps" / "qc" / "prompts" / "ppt_outline.md"
@@ -332,6 +333,7 @@ def _launch_windowed(run_dir: Path, session_id: str, kickoff_msg: str,
     bat_file.write_text(
         f"@echo off\n"
         f"cd /d {PROJECT_ROOT}\n"
+        f"{bat_python_path_line(PROJECT_ROOT)}"
         f"title {title}\n"
         f"echo.\n"
         f"echo  QC PPT Generation: {analysis_name}\n"

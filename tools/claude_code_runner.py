@@ -31,6 +31,8 @@ import threading
 import time
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
 
 def project_python_dir(project_root: Path) -> Path | None:
     """Return the folder holding the project's virtualenv Python, or None.
@@ -55,15 +57,22 @@ def bat_python_path_line(project_root: Path) -> str:
 
 
 def _merged_env(env: dict[str, str] | None) -> dict[str, str] | None:
-    """Merge caller-supplied env vars onto the current process env.
+    """Build the environment for a Claude Code session.
 
-    Returns None when `env` is None so subprocess.run / Popen falls
-    through to its default of inheriting os.environ. Returns a new
-    dict otherwise so caller mutations don't leak."""
-    if env is None:
+    Starts from the current process env, applies caller-supplied vars, and
+    puts the project's venv Python first on PATH (see project_python_dir), so
+    every session this runner starts can run `python rag/query.py`.
+
+    Returns None when there is nothing to change (no `env`, no venv), so
+    subprocess.run / Popen fall through to inheriting os.environ. Otherwise
+    returns a new dict, so caller mutations don't leak."""
+    venv_dir = project_python_dir(PROJECT_ROOT)
+    if env is None and venv_dir is None:
         return None
     merged = dict(os.environ)
-    merged.update(env)
+    merged.update(env or {})
+    if venv_dir is not None:
+        merged["PATH"] = str(venv_dir) + os.pathsep + merged.get("PATH", "")
     return merged
 
 
