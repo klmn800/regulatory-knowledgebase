@@ -130,3 +130,10 @@ its own. Not tested live: no descriptions were written, so that path rests on th
 tests. The draft's notes reported a real bug (plain `python` lacks chromadb on the laptop),
 fixed in the same session: the draft and resume launchers put the project venv first on
 PATH. Research using the uploads stays a separate, later PRD.
+
+## Closed - portfolio, 2026-11-25
+
+Ben: "Author has passed its tests." Task 6.3 passed, so this handoff is `done`. Left for
+this project's next session: tick 6.3 in `tasks/tasks-0001-prd-author-reference-uploads.md`
+and note the pass in `PROJECT.md`. No review is needed now; that ask in the note above is
+withdrawn.
