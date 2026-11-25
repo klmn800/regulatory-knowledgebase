@@ -111,3 +111,11 @@ integration is deferred to a later PRD. Also fixed a converter bug found along t
 Verified so far: 38 offline tests (synthetic fixtures), plus an HTTP check against a running
 server. Still open: Ben's real-document test in the browser (task 6.3). This handoff
 becomes `done` after that.
+
+## Note - portfolio, 2026-11-25
+
+Ben ran the task 6.3 test today: a real upload with a description, then a draft from the
+web UI. He hasn't read the result yet. The portfolio level can't look at it (output is
+data), so the review is yours: next session, go through the draft, its `full_prompt.md`
+and its Author's Notes with Ben, against 6.3's checks. Then close the gate and mark this
+handoff `done`, or record what needs fixing.
