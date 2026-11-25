@@ -32,6 +32,28 @@ import time
 from pathlib import Path
 
 
+def project_python_dir(project_root: Path) -> Path | None:
+    """Return the folder holding the project's virtualenv Python, or None.
+
+    Prompts tell Claude Code sessions to run `python rag/query.py`. On a machine
+    where the project's dependencies live only in `.venv`, plain `python` resolves
+    to an interpreter without them (chromadb missing), so the session's searches
+    fail. Launchers put this folder first on PATH so `python` means the project's
+    interpreter in every shell the session opens. No venv: None, and PATH is left
+    alone (that machine's `python` is the one with the dependencies)."""
+    for sub, exe in (("Scripts", "python.exe"), ("bin", "python")):
+        folder = project_root / ".venv" / sub
+        if (folder / exe).is_file():
+            return folder
+    return None
+
+
+def bat_python_path_line(project_root: Path) -> str:
+    """A .bat line putting the project's venv Python first on PATH ('' if no venv)."""
+    folder = project_python_dir(project_root)
+    return f'set "PATH={folder};%PATH%"\n' if folder else ""
+
+
 def _merged_env(env: dict[str, str] | None) -> dict[str, str] | None:
     """Merge caller-supplied env vars onto the current process env.
 

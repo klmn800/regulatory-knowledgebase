@@ -31,6 +31,7 @@ CONFIG_FILE = PROJECT_ROOT / "config.ini"
 
 sys.path.insert(0, str(PROJECT_ROOT))
 from tools.synthesis import run_synthesis, SynthesisResult
+from tools.claude_code_runner import bat_python_path_line
 from apps.author.research_claude_code import (
     run_research_claude_code,
     launch_research_resume,
@@ -454,6 +455,7 @@ def launch_draft(
     bat_file.write_text(
         f'@echo off\n'
         f'cd /d {PROJECT_ROOT}\n'
+        f'{bat_python_path_line(PROJECT_ROOT)}'
         f'title Claude Code - {name}\n'
         f'echo.\n'
         f'echo  Authoring: {name}\n'
@@ -486,6 +488,7 @@ def launch_resume(
     bat_file.write_text(
         f'@echo off\n'
         f'cd /d {PROJECT_ROOT}\n'
+        f'{bat_python_path_line(PROJECT_ROOT)}'
         f'title Claude Code Resume - {name}\n'
         f'echo.\n'
         f'echo  Resuming session: {session_id}\n'
