@@ -20,12 +20,6 @@ built. Runs on both machines, synced through GitHub. Tests: `python -m pytest te
   `--mode dense|sparse|hybrid`, `--exact`, index build dates, exit codes. See
   `docs/cli_contract.md`.
 
-### Needs Ben
-- Try a real question in the web UI on the laptop (`start-app.bat`). Smoke tests passed; a
-  full synthesis hasn't been run here.
-- When you next write a reference description, glance at whether the draft follows it. It
-  was the one part of 6.3 not exercised live.
-
 ### Blockers
 - None.
 
