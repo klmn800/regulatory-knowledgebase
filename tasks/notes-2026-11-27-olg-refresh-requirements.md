@@ -156,13 +156,46 @@ publisher to update them.)
   or loses a section renumbers the sections after it; a moved URL gets new ids. The advice
   (don't keep ids) stands; the stated reason was wrong. Correct it in the refresh handoff.
 
+## Tests run 2026-11-27 (read-only, public site, scratch files only)
+
+- **Menu files fetch directly.** Starting from the root menu file and following every
+  pointer: 244 files, 0 failures, 1,190 page URLs. No browser or HAR needed.
+- **Today's menu vs the April page list** (1,204 unique URLs): 48 added, 62 removed (60
+  pages plus two `#anchor` entries). Only 2 are same-filename moves to a new folder. Most
+  of the rest are renames and consolidations that no matcher would pair: several
+  program-specific SSN pages replaced by a few cross-program ones, four verification
+  sub-pages by one overview, eight child-care pages by one consolidated page. Supports
+  decision 7.
+- **The April page list was older than the April scrape.** It is dated 2026-04-06 on disk
+  and lacks pages from a 2026-03-10 release, though April's scraped pages already link to
+  them. So the April index missed pages added between the HAR capture and the scrape.
+- **Internal links as a discovery source:** April's pages link to 837 distinct in-site page
+  URLs; 110 are not in the April list, and 12 of those 110 are in today's menu (all 12 are
+  among today's 48 added). The other 98 are not in today's menu: broken links, retired
+  pages or pages outside the menu. Not fetched, so which is not established.
+- **The site keeps its own release log.** A yearly "Transmittal Updates" page has one row
+  per release: date, number, program, title, and "Topics" (the titles of the pages it
+  changed, or "Transmittal only"). The current year's page has 69 rows; 44 are newer than
+  the last release the April index holds, 4 of them transmittal-only. Two self-declaration
+  releases (June and August 2026) are among them. This is a second cross-check source,
+  on the site itself, matched by page title rather than URL.
+- **Raw HTML size:** a 25-page random sample averaged 11.5 KB a page, about 14 MB for all
+  pages. A snapshot repo stays small; one release changes a handful of pages.
+- **Archive filtering in ChromaDB 1.5.2:** `where={"status": {"$ne": "archived"}}` returns
+  chunks that have no `status` field at all, in both `get` and `query`. So only archived
+  chunks need the field; live chunks need no rewrite. Version-dependent behaviour: pin it
+  with a test. Sparse (BM25) and `--exact` search need the same filter separately.
+
 ## Open questions
 
 1. Snapshot repo remote: none, a private GitHub repo (which account?), or a bundle in
-   OneDrive.
-2. Retired-page archive: same collections with an `archived` flag, or separate collections.
+   OneDrive. Recommendation: no remote; a `git bundle` to OneDrive after each refresh.
+2. Retired-page archive: same collections with a `status: archived` field (recommended,
+   given the filter test above), or separate collections.
 3. When the scheduled run comes: what it runs on its own (discover, fetch, diff, cross-check
    are free) and how it tells Ben a refresh awaits approval.
-4. What the digest names for each page: title, URL or both, and whether every page it lists
-   is in the menu.
-5. Whether the menu files can be fetched outside a browser (the first test).
+4. What the digest names for each page: title, URL or both. Needs one saved digest. If it
+   mirrors the site's release log, it names titles, and the URLs come from its links.
+5. ~~Whether the menu files can be fetched outside a browser.~~ Yes (above).
+6. Whether to match release-log page titles to menu titles exactly or loosely (titles in
+   the log can differ slightly from the menu, e.g. punctuation).
